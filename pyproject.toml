@@ -1,0 +1,17 @@
+[project]
+name = "netkatana"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Vlad Dmitrievich", email = "2tunnels@proton.me" }
+]
+requires-python = ">=3.14.3"
+dependencies = []
+
+[project.scripts]
+netkatana = "netkatana:main"
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12.0"]
+build-backend = "uv_build"
