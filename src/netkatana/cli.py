@@ -18,6 +18,7 @@ from netkatana.checks.tls import (
     TlsVersionOutdated,
 )
 from netkatana.formatters import AbstractFormatter, JsonFormatter, JsonlFormatter, TableFormatter, VerboseFormatter
+from netkatana.utils import parse_host
 
 _formatters: dict[str, type[AbstractFormatter]] = {
     "verbose": VerboseFormatter,
@@ -41,6 +42,8 @@ def http(hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
 
 
 async def _http(*, hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
+    urls = tuple(f"https://{parse_host(h)}" for h in hosts)
+
     async with AsyncClient(verify=False, follow_redirects=True) as client:
         checker = HttpChecker(
             checks=[StrictTransportSecurityMissing(), ContentSecurityPolicyMissing()],
@@ -49,7 +52,7 @@ async def _http(*, hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
         )
 
         with _formatters[fmt]() as formatter:
-            async for host_finding in checker.run(hosts):
+            async for host_finding in checker.run(urls):
                 formatter.emit(host_finding)
 
 
