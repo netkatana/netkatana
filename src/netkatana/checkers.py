@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Sequence
 
+import httpx
 from httpx import AsyncClient
 from pydantic import ValidationError
 
@@ -30,9 +31,15 @@ class HttpChecker:
 
     async def _check_host(self, host: str) -> list[HostFinding]:
         async with self._semaphore:
-            response = await self._client.get(host)
+            try:
+                response = await self._client.get(f"https://{host}")
+            except httpx.TransportError as e:
+                _logger.warning("%s: %s", host, e)
+                return []
+
         results = await asyncio.gather(*(c.check(response) for c in self._checks))
         findings: list[Finding] = [f for findings in results for f in findings]
+
         return [HostFinding(host=host, finding=f) for f in findings]
 
 
