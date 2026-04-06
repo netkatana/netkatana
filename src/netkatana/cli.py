@@ -63,7 +63,7 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str) -> None:
         )
 
         with _formatters[fmt]() as formatter:
-            async for host_finding in checker.run(hosts):
+            async for host_finding in checker.check_hosts(hosts):
                 formatter.emit(host_finding)
 
 
