@@ -1,4 +1,4 @@
-from contextlib import AsyncExitStack
+from typing import Any, Self
 
 from httpx import AsyncBaseTransport, AsyncClient, Response
 
@@ -26,19 +26,16 @@ class Client:
         transport: AsyncBaseTransport | None = None,
     ) -> None:
         self._max_redirects = max_redirects
-        self._verify = verify
-        self._transport = transport
-        self._exit_stack = AsyncExitStack()
-        self._client: AsyncClient
+        self._client = AsyncClient(verify=verify, follow_redirects=False, transport=transport)
 
-    async def __aenter__(self) -> "Client":
-        self._client = await self._exit_stack.enter_async_context(
-            AsyncClient(verify=self._verify, follow_redirects=False, transport=self._transport)
-        )
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *exc_info: object) -> None:
-        await self._exit_stack.__aexit__(*exc_info)
+    async def __aexit__(self, *exc_info: Any) -> None:
+        await self.aclose()
 
     async def get(self, url: str) -> Response:
         request = self._client.build_request("GET", url)
