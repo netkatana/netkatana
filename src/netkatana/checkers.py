@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Sequence
 
+import httpx
 from httpx import AsyncClient
 from pydantic import ValidationError
 
@@ -21,18 +22,24 @@ class HttpChecker:
         self._client = client
         self._semaphore = asyncio.Semaphore(concurrency)
 
-    async def run(self, hosts: Sequence[str]) -> AsyncIterator[HostFinding]:
-        tasks = [asyncio.create_task(self._check_host(h)) for h in hosts]
+    async def check_hosts(self, hosts: Sequence[str]) -> AsyncIterator[HostFinding]:
+        tasks = [asyncio.create_task(self.check_host(h)) for h in hosts]
         for done in asyncio.as_completed(tasks):
             host_findings = await done
             for host_finding in host_findings:
                 yield host_finding
 
-    async def _check_host(self, host: str) -> list[HostFinding]:
+    async def check_host(self, host: str) -> list[HostFinding]:
         async with self._semaphore:
-            response = await self._client.get(host)
+            try:
+                response = await self._client.get(f"https://{host}")
+            except httpx.TransportError as e:
+                _logger.warning("%s: %s", host, e)
+                return []
+
         results = await asyncio.gather(*(c.check(response) for c in self._checks))
         findings: list[Finding] = [f for findings in results for f in findings]
+
         return [HostFinding(host=host, finding=f) for f in findings]
 
 

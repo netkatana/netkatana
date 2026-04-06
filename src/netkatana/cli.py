@@ -55,8 +55,6 @@ def http(hosts: list[str], concurrency: int, fmt: str) -> None:
 
 
 async def _http(*, hosts: list[str], concurrency: int, fmt: str) -> None:
-    urls = [f"https://{h}" for h in hosts]
-
     async with AsyncClient(verify=False, follow_redirects=True) as client:
         checker = HttpChecker(
             checks=[StrictTransportSecurityMissing(), ContentSecurityPolicyMissing()],
@@ -65,7 +63,7 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str) -> None:
         )
 
         with _formatters[fmt]() as formatter:
-            async for host_finding in checker.run(urls):
+            async for host_finding in checker.check_hosts(hosts):
                 formatter.emit(host_finding)
 
 
