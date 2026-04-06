@@ -1,6 +1,6 @@
 from typing import Any, Self
 
-from httpx import AsyncBaseTransport, AsyncClient, Response
+from httpx import AsyncClient, Response
 
 
 class RedirectError(Exception):
@@ -19,14 +19,9 @@ class OutOfBoundsRedirect(RedirectError): ...
 
 
 class Client:
-    def __init__(
-        self,
-        max_redirects: int = 10,
-        verify: bool = False,
-        transport: AsyncBaseTransport | None = None,
-    ) -> None:
+    def __init__(self, *, max_redirects: int = 10, verify: bool = False) -> None:
         self._max_redirects = max_redirects
-        self._client = AsyncClient(verify=verify, follow_redirects=False, transport=transport)
+        self._client = AsyncClient(verify=verify, follow_redirects=False)
 
     async def aclose(self) -> None:
         await self._client.aclose()
