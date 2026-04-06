@@ -18,7 +18,17 @@ from netkatana.checks.tls import (
     TlsVersionOutdated,
 )
 from netkatana.formatters import AbstractFormatter, JsonFormatter, JsonlFormatter, TableFormatter, VerboseFormatter
-from netkatana.utils import parse_host
+from netkatana.utils import extract_host
+
+def _get_hosts(hosts: tuple[str, ...]) -> tuple[str, ...]:
+    if not hosts:
+        stdin = click.get_text_stream("stdin")
+        if not stdin.isatty():
+            hosts = tuple(line.strip() for line in stdin if line.strip())
+    if not hosts:
+        raise click.UsageError("Provide hosts as arguments or via stdin.")
+    return tuple(extract_host(h) for h in hosts)
+
 
 _formatters: dict[str, type[AbstractFormatter]] = {
     "verbose": VerboseFormatter,
@@ -38,11 +48,11 @@ def cli() -> None:
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 def http(hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
-    asyncio.run(_http(hosts=hosts, concurrency=concurrency, fmt=fmt))
+    asyncio.run(_http(hosts=_get_hosts(hosts), concurrency=concurrency, fmt=fmt))
 
 
 async def _http(*, hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
-    urls = tuple(f"https://{parse_host(h)}" for h in hosts)
+    urls = tuple(f"https://{h}" for h in hosts)
 
     async with AsyncClient(verify=False, follow_redirects=True) as client:
         checker = HttpChecker(
@@ -61,16 +71,7 @@ async def _http(*, hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 def tls(hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
-    if not hosts:
-        stdin = click.get_text_stream("stdin")
-
-        if not stdin.isatty():
-            hosts = tuple(line.strip() for line in stdin if line.strip())
-
-    if not hosts:
-        raise click.UsageError("Provide hosts as arguments or via stdin.")
-
-    asyncio.run(_tls(hosts=hosts, concurrency=concurrency, fmt=fmt))
+    asyncio.run(_tls(hosts=_get_hosts(hosts), concurrency=concurrency, fmt=fmt))
 
 
 async def _tls(*, hosts: tuple[str, ...], concurrency: int, fmt: str) -> None:
