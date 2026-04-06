@@ -3,9 +3,9 @@ import logging
 from collections.abc import AsyncIterator, Sequence
 
 import httpx
-from httpx import AsyncClient
 from pydantic import ValidationError
 
+from netkatana.http import Client, RedirectError
 from netkatana.models import AbstractHttpCheck, AbstractTlsCheck, Finding, HostFinding, TlsResult
 
 _logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ class HttpChecker:
     def __init__(
         self,
         checks: list[AbstractHttpCheck],
-        client: AsyncClient,
+        client: Client,
         concurrency: int = 10,
     ) -> None:
         self._checks = checks
@@ -33,6 +33,9 @@ class HttpChecker:
         async with self._semaphore:
             try:
                 response = await self._client.get(f"https://{host}")
+            except RedirectError as e:
+                _logger.warning("%s: %s", host, e)
+                response = e.response
             except httpx.TransportError as e:
                 _logger.warning("%s: %s", host, e)
                 return []

@@ -2,7 +2,6 @@ import asyncio
 import logging
 
 import click
-from httpx import AsyncClient
 from rich.logging import RichHandler
 
 from netkatana.checkers import HttpChecker, TlsChecker
@@ -18,6 +17,7 @@ from netkatana.checks.tls import (
     TlsVersionOutdated,
 )
 from netkatana.formatters import AbstractFormatter, JsonFormatter, JsonlFormatter, TableFormatter, VerboseFormatter
+from netkatana.http import Client
 from netkatana.utils import extract_host
 
 _formatters: dict[str, type[AbstractFormatter]] = {
@@ -55,7 +55,7 @@ def http(hosts: list[str], concurrency: int, fmt: str) -> None:
 
 
 async def _http(*, hosts: list[str], concurrency: int, fmt: str) -> None:
-    async with AsyncClient(verify=False, follow_redirects=True) as client:
+    async with Client() as client:
         checker = HttpChecker(
             checks=[StrictTransportSecurityMissing(), ContentSecurityPolicyMissing()],
             client=client,
