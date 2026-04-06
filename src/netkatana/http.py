@@ -55,7 +55,9 @@ class Client:
                 raise TooManyRedirects("Exceeded maximum allowed redirects.", response=response)
 
             if next_request.url.host != origin_host:
-                raise OutOfBoundsRedirect("Redirect out of bounds.", response=response)
+                raise OutOfBoundsRedirect(
+                    f"Redirect out of bounds. From {origin_host!r} to {next_request.url.host!r}.", response=response
+                )
 
             visited.add(str(request.url))
             history.append(response)

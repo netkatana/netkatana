@@ -34,10 +34,10 @@ class HttpChecker:
             try:
                 response = await self._client.get(f"https://{host}")
             except RedirectError as e:
-                _logger.warning("%s: %s", host, e)
+                _logger.warning("%s: %r", host, e)
                 response = e.response
             except httpx.TransportError as e:
-                _logger.warning("%s: %s", host, e)
+                _logger.warning("%s: %r", host, e)
                 return []
 
         results = await asyncio.gather(*(c.check(response) for c in self._checks))
