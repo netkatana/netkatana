@@ -67,5 +67,4 @@ class Client:
 
             visited.add(str(request.url))
             history.append(response)
-            await response.aread()
             request = next_request
