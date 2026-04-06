@@ -1,9 +1,9 @@
 from httpx import Response
 
-from netkatana.models import AbstractCheck, Finding, Severity
+from netkatana.models import AbstractHttpCheck, Finding, Severity
 
 
-class StrictTransportSecurityMissing(AbstractCheck):
+class StrictTransportSecurityMissing(AbstractHttpCheck):
     async def check(self, response: Response) -> list[Finding]:
         if "strict-transport-security" in response.headers:
             return []
@@ -14,14 +14,11 @@ class StrictTransportSecurityMissing(AbstractCheck):
                 severity=Severity.CRITICAL,
                 title="Strict-Transport-Security (HSTS) missing",
                 detail="Without HSTS, browsers may connect over HTTP and be vulnerable to protocol downgrade and SSL stripping attacks.",
-                references=[
-                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security",
-                ],
             )
         ]
 
 
-class ContentSecurityPolicyMissing(AbstractCheck):
+class ContentSecurityPolicyMissing(AbstractHttpCheck):
     async def check(self, response: Response) -> list[Finding]:
         if "content-security-policy" in response.headers:
             return []
@@ -32,8 +29,5 @@ class ContentSecurityPolicyMissing(AbstractCheck):
                 severity=Severity.WARNING,
                 title="Content-Security-Policy (CSP) missing",
                 detail="Without CSP, browsers have no restrictions on which resources they load, increasing the risk of XSS and data injection attacks.",
-                references=[
-                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy",
-                ],
             )
         ]

@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from netkatana.models import Finding, Severity
+from netkatana.models import HostFinding, Severity
 
 _SEVERITY_SYMBOL: dict[Severity, tuple[str, str]] = {
     Severity.CRITICAL: ("C", "bold red"),
@@ -19,7 +19,7 @@ _INDENT = "    "
 
 class AbstractFormatter(ABC):
     @abstractmethod
-    def emit(self, finding: Finding) -> None: ...
+    def emit(self, host_finding: HostFinding) -> None: ...
 
     def flush(self) -> None:
         pass
@@ -35,65 +35,57 @@ class VerboseFormatter(AbstractFormatter):
     def __init__(self) -> None:
         self._console = Console(highlight=False)
 
-    def emit(self, finding: Finding) -> None:
+    def emit(self, host_finding: HostFinding) -> None:
+        finding = host_finding.finding
         symbol, style = _SEVERITY_SYMBOL[finding.severity]
 
         header = Text()
         header.append(f"[{symbol}]", style=style)
         header.append(" ")
-        header.append(finding.host, style="white")
+        header.append(host_finding.host, style="white")
         header.append(" - ")
         header.append(finding.title)
         header.append(f" [{finding.code}]", style="dim")
         self._console.print(header)
 
         self._console.print(f"{_INDENT}{finding.detail}")
-
-        for ref in finding.references:
-            line = Text()
-            line.append(_INDENT)
-            line.append("ref", style="dim")
-            line.append(" ")
-            line.append(ref, style="link")
-            self._console.print(line)
-
         self._console.print()
 
 
-def _serialize(finding: Finding) -> dict[str, object]:
+def _serialize(host_finding: HostFinding) -> dict[str, object]:
+    finding = host_finding.finding
     return {
         "code": finding.code,
         "severity": finding.severity.value,
         "title": finding.title,
         "detail": finding.detail,
-        "host": finding.host,
-        "references": finding.references,
+        "host": host_finding.host,
     }
 
 
 class JsonlFormatter(AbstractFormatter):
-    def emit(self, finding: Finding) -> None:
-        print(json.dumps(_serialize(finding)))
+    def emit(self, host_finding: HostFinding) -> None:
+        print(json.dumps(_serialize(host_finding)))
 
 
 class JsonFormatter(AbstractFormatter):
     def __init__(self) -> None:
-        self._findings: list[Finding] = []
+        self._host_findings: list[HostFinding] = []
 
-    def emit(self, finding: Finding) -> None:
-        self._findings.append(finding)
+    def emit(self, host_finding: HostFinding) -> None:
+        self._host_findings.append(host_finding)
 
     def flush(self) -> None:
-        print(json.dumps([_serialize(f) for f in self._findings], indent=2))
+        print(json.dumps([_serialize(hf) for hf in self._host_findings], indent=2))
 
 
 class TableFormatter(AbstractFormatter):
     def __init__(self) -> None:
         self._console = Console(highlight=False)
-        self._findings: list[Finding] = []
+        self._host_findings: list[HostFinding] = []
 
-    def emit(self, finding: Finding) -> None:
-        self._findings.append(finding)
+    def emit(self, host_finding: HostFinding) -> None:
+        self._host_findings.append(host_finding)
 
     def flush(self) -> None:
         table = Table(show_header=True, header_style="bold")
@@ -102,13 +94,13 @@ class TableFormatter(AbstractFormatter):
         table.add_column("Finding")
         table.add_column("Code", style="dim")
 
-        for finding in self._findings:
-            symbol, style = _SEVERITY_SYMBOL[finding.severity]
+        for hf in self._host_findings:
+            symbol, style = _SEVERITY_SYMBOL[hf.finding.severity]
             table.add_row(
-                Text(finding.severity, style=style),
-                finding.host,
-                finding.title,
-                finding.code,
+                Text(hf.finding.severity, style=style),
+                hf.host,
+                hf.finding.title,
+                hf.finding.code,
             )
 
         self._console.print(table)
