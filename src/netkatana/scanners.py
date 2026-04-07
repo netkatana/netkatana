@@ -2,11 +2,21 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Sequence
 
+import dns.asyncresolver
+import dns.exception
 import httpx
 from pydantic import ValidationError
 
 from netkatana.http import Client, RedirectError
-from netkatana.models import AbstractHttpCheck, AbstractTlsCheck, Finding, HostFinding, TlsResult
+from netkatana.models import (
+    AbstractDnsCheck,
+    AbstractHttpCheck,
+    AbstractTlsCheck,
+    DnsResult,
+    Finding,
+    HostFinding,
+    TlsResult,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -92,3 +102,33 @@ class TlsScanner:
 
         await write_task
         await proc.wait()
+
+
+class DnsScanner:
+    def __init__(self, checks: list[AbstractDnsCheck], concurrency: int = 10) -> None:
+        self._checks = checks
+        self._semaphore = asyncio.Semaphore(concurrency)
+
+    async def run(self, domains: Sequence[str]) -> AsyncIterator[HostFinding]:
+        tasks = [asyncio.create_task(self._check_domain(d)) for d in domains]
+        for done in asyncio.as_completed(tasks):
+            for hf in await done:
+                yield hf
+
+    async def _check_domain(self, domain: str) -> list[HostFinding]:
+        async with self._semaphore:
+            txt = await self._query_txt(domain)
+            dmarc_txt = await self._query_txt(f"_dmarc.{domain}")
+
+        result = DnsResult(domain=domain, txt=txt, dmarc_txt=dmarc_txt)
+        check_results = await asyncio.gather(*(c.check(result) for c in self._checks))
+        findings: list[Finding] = [f for findings in check_results for f in findings]
+        return [HostFinding(host=domain, finding=f) for f in findings]
+
+    async def _query_txt(self, name: str) -> list[str]:
+        try:
+            answer = await dns.asyncresolver.resolve(name, "TXT")
+            return [b"".join(rdata.strings).decode() for rdata in answer]
+        except dns.exception.DNSException as e:
+            _logger.debug("%s TXT: %r", name, e)
+            return []
