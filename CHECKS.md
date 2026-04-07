@@ -53,21 +53,22 @@
 
 ### DNS
 
-| Code                        | Severity | Status  | Description                                                                                 |
-|-----------------------------|----------|---------|---------------------------------------------------------------------------------------------|
-| `dns_zone_transfer_enabled` | CRITICAL | planned | DNS zone transfer (AXFR) is allowed — exposes the full DNS zone to any requester            |
-| `dns_dangling_cname`        | CRITICAL | planned | CNAME record points to an unclaimed or non-existent resource — subdomain takeover risk      |
-| `dns_spf_missing`           | WARNING  | planned | No SPF TXT record — the domain can be spoofed in email phishing attacks                     |
-| `dns_dmarc_missing`         | WARNING  | planned | No DMARC record at `_dmarc.<domain>` — email spoofing and phishing are unmitigated          |
-| `dns_dmarc_policy_none`     | WARNING  | planned | DMARC policy is `p=none` — monitoring only, no enforcement against spoofed emails           |
-| `dns_caa_missing`           | WARNING  | planned | No CAA record — any certificate authority can issue certificates for this domain            |
-| `dns_dnssec_missing`        | NOTICE   | planned | DNSSEC not configured — DNS responses can be spoofed or poisoned                            |
-| `dns_dkim_missing`          | NOTICE   | planned | No DKIM TXT record found — outbound email integrity cannot be verified                      |
-| `dns_mta_sts_missing`       | NOTICE   | planned | No MTA-STS policy — email delivery is not enforced to use TLS                               |
-| `dns_nameserver_single`     | NOTICE   | planned | Only one authoritative nameserver — single point of failure for DNS resolution              |
-| `dns_spf_invalid`           | WARNING  | planned | SPF TXT record is malformed — mail servers treat it as absent, leaving the domain spoofable |
-| `dns_spf_multiple`          | WARNING  | planned | More than one SPF TXT record present — causes `permerror`, effectively disabling SPF        |
-| `dns_dmarc_invalid`         | WARNING  | planned | DMARC record is malformed — treated as absent by mail servers, no enforcement               |
+| Code                        | Severity | Status      | Description                                                                                         |
+|-----------------------------|----------|-------------|-----------------------------------------------------------------------------------------------------|
+| `dns_zone_transfer_enabled` | CRITICAL | planned     | DNS zone transfer (AXFR) is allowed — exposes the full DNS zone to any requester                    |
+| `dns_dangling_cname`        | CRITICAL | planned     | CNAME record points to an unclaimed or non-existent resource — subdomain takeover risk              |
+| `dns_spf_missing`           | NOTICE   | implemented | No SPF TXT record — the domain can be spoofed in email phishing attacks                             |
+| `dns_spf_permissive`        | CRITICAL | implemented | SPF record ends with `+all` — any server on the internet is authorized to send email as this domain |
+| `dns_dmarc_missing`         | NOTICE   | implemented | No DMARC record at `_dmarc.<domain>` — email spoofing and phishing are unmitigated                  |
+| `dns_dmarc_policy_none`     | WARNING  | planned     | DMARC policy is `p=none` — monitoring only, no enforcement against spoofed emails                   |
+| `dns_caa_missing`           | WARNING  | planned     | No CAA record — any certificate authority can issue certificates for this domain                    |
+| `dns_dnssec_missing`        | NOTICE   | planned     | DNSSEC not configured — DNS responses can be spoofed or poisoned                                    |
+| `dns_dkim_missing`          | NOTICE   | planned     | No DKIM TXT record found — outbound email integrity cannot be verified                              |
+| `dns_mta_sts_missing`       | NOTICE   | planned     | No MTA-STS policy — email delivery is not enforced to use TLS                                       |
+| `dns_nameserver_single`     | NOTICE   | planned     | Only one authoritative nameserver — single point of failure for DNS resolution                      |
+| `dns_spf_invalid`           | WARNING  | planned     | SPF TXT record is malformed — mail servers treat it as absent, leaving the domain spoofable         |
+| `dns_spf_multiple`          | WARNING  | planned     | More than one SPF TXT record present — causes `permerror`, effectively disabling SPF                |
+| `dns_dmarc_invalid`         | WARNING  | planned     | DMARC record is malformed — treated as absent by mail servers, no enforcement                       |
 
 ### Response
 

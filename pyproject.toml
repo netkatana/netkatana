@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.14.3"
 dependencies = [
     "click>=8.3.2",
+    "dnspython>=2.8.0",
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
     "rich>=14.3.3",
