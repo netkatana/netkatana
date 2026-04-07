@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 import click
+from rich.console import Console
 from rich.logging import RichHandler
 
 from netkatana.checks.dns import DmarcMissing, SpfMissing, SpfPermissive
@@ -31,7 +32,7 @@ _formatters: dict[str, type[AbstractFormatter]] = {
 
 @click.group()
 def cli() -> None:
-    logging.basicConfig(handlers=[RichHandler()], format="%(message)s")
+    logging.basicConfig(handlers=[RichHandler(console=Console(stderr=True))], format="%(message)s")
 
 
 def _get_hosts(ctx: click.Context, param: click.Parameter, hosts: tuple[str, ...]) -> list[str]:
