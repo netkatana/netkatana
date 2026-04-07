@@ -9,9 +9,9 @@ class SpfMissing(AbstractDnsCheck):
     )
 
     async def check(self, result: DnsResult) -> list[Finding]:
-        spf = next((r for r in result.txt if r.startswith("v=spf1")), None)
-        if spf is not None:
+        if any(record for record in result.txt if record.startswith("v=spf1")):
             return [Finding(code=self._code, severity=Severity.PASS, title="SPF record present", detail=self._detail)]
+
         return [Finding(code=self._code, severity=Severity.NOTICE, title="SPF record missing", detail=self._detail)]
 
 
@@ -23,26 +23,35 @@ class SpfPermissive(AbstractDnsCheck):
     )
 
     async def check(self, result: DnsResult) -> list[Finding]:
-        spf = next((r for r in result.txt if r.startswith("v=spf1")), None)
-        if spf is None:
+        spf_records = [r for r in result.txt if r.startswith("v=spf1")]
+
+        if not spf_records:
             return []
-        if spf.rstrip().endswith("+all"):
-            return [
-                Finding(
-                    code=self._code,
-                    severity=Severity.CRITICAL,
-                    title="SPF record allows all senders (+all)",
-                    detail=self._detail,
+
+        findings = []
+        for record in spf_records:
+            if record.rstrip().endswith("+all"):
+                findings.append(
+                    Finding(
+                        code=self._code,
+                        severity=Severity.CRITICAL,
+                        title="SPF record allows all senders (+all)",
+                        detail=self._detail,
+                        metadata={"record": record},
+                    )
                 )
-            ]
-        return [
-            Finding(
-                code=self._code,
-                severity=Severity.PASS,
-                title="SPF record does not allow all senders",
-                detail=self._detail,
-            )
-        ]
+            else:
+                findings.append(
+                    Finding(
+                        code=self._code,
+                        severity=Severity.PASS,
+                        title="SPF record does not allow all senders",
+                        detail=self._detail,
+                        metadata={"record": record},
+                    )
+                )
+
+        return findings
 
 
 class DmarcMissing(AbstractDnsCheck):
@@ -53,7 +62,9 @@ class DmarcMissing(AbstractDnsCheck):
     )
 
     async def check(self, result: DnsResult) -> list[Finding]:
-        dmarc = next((r for r in result.dmarc_txt if r.startswith("v=DMARC1")), None)
-        if dmarc is not None:
+        dmarc = [r for r in result.dmarc_txt if r.startswith("v=DMARC1")]
+
+        if dmarc:
             return [Finding(code=self._code, severity=Severity.PASS, title="DMARC record present", detail=self._detail)]
+
         return [Finding(code=self._code, severity=Severity.NOTICE, title="DMARC record missing", detail=self._detail)]

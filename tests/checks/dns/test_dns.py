@@ -40,6 +40,7 @@ class TestSpfPermissive:
         assert len(findings) == 1
         assert findings[0].code == "dns_spf_permissive"
         assert findings[0].severity == Severity.CRITICAL
+        assert findings[0].metadata["record"] == "v=spf1 +all"
 
     @pytest.mark.asyncio
     async def test_softfail(self):
@@ -49,6 +50,7 @@ class TestSpfPermissive:
         assert len(findings) == 1
         assert findings[0].code == "dns_spf_permissive"
         assert findings[0].severity == Severity.PASS
+        assert findings[0].metadata["record"] == "v=spf1 include:sendgrid.net ~all"
 
     @pytest.mark.asyncio
     async def test_hardfail(self):
@@ -57,6 +59,15 @@ class TestSpfPermissive:
 
         assert len(findings) == 1
         assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_multiple_records(self):
+        result = DnsResult(domain="example.com", txt=["v=spf1 -all", "v=spf1 +all"], dmarc_txt=[])
+        findings = await SpfPermissive().check(result)
+
+        assert len(findings) == 2
+        assert findings[0].severity == Severity.PASS
+        assert findings[1].severity == Severity.CRITICAL
 
 
 class TestDmarcMissing:
