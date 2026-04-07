@@ -14,7 +14,12 @@
 | `headers_cookie_prefix_secure_misconfigured`                   | CRITICAL | planned     | Cookie uses `__Secure-` prefix but is missing the `Secure` flag — browser silently drops it, breaking functionality                                      |
 | `headers_cookie_prefix_host_misconfigured`                     | CRITICAL | planned     | Cookie uses `__Host-` prefix but violates its requirements (`Secure`, `Path=/`, no `Domain`) — browser silently drops it, breaking functionality         |
 | `headers_content_security_policy_missing`                      | WARNING  | implemented | CSP header missing — no restriction on which resources browsers load, increases XSS/data injection risk                                                  |
-| `headers_content_security_policy_invalid`                      | WARNING  | planned     | CSP header present but malformed — browser may ignore the entire header, leaving XSS protections ineffective                                             |
+| `headers_content_security_policy_invalid`                      | CRITICAL | skipped     | CSP header present but malformed — unlike HSTS, browsers are extremely lenient with CSP and silently ignore unknown directives or malformed source values rather than dropping the whole header, making a truly "browser-rejected" CSP nearly impossible to detect reliably; meaningful misconfigurations are caught by the content checks below |
+| `headers_content_security_policy_report_only_no_enforce`       | WARNING  | implemented | CSP present only as `Content-Security-Policy-Report-Only` — violations are reported but not blocked, providing no actual protection against XSS or resource injection |
+| `headers_content_security_policy_unsafe_inline`                | CRITICAL | implemented | CSP `script-src` (or `default-src` fallback) contains `'unsafe-inline'` without a nonce or hash to neutralize it — any inline script executes, directly defeating XSS protection |
+| `headers_content_security_policy_unsafe_eval`                  | CRITICAL | implemented | CSP `script-src` (or `default-src` fallback) contains `'unsafe-eval'` — permits `eval()`, `new Function(string)`, and similar dynamic code execution, enabling code injection from any attacker-controlled string |
+| `headers_content_security_policy_object_src_unsafe`            | WARNING  | implemented | CSP `object-src` (or `default-src` fallback) is not restricted to `'none'` — plugin content (`<object>`, `<embed>`) is unrestricted, enabling potential code execution via Flash or Java applets |
+| `headers_content_security_policy_base_uri_missing`             | WARNING  | implemented | CSP policy lacks a `base-uri` directive — attackers can inject `<base href='https://evil.com/'>` to redirect all relative resource loads, bypassing `script-src` allowlists; `base-uri` does not fall back to `default-src` and must be set explicitly |
 | `headers_cors_wildcard_origin`                                 | WARNING  | planned     | `Access-Control-Allow-Origin: *` — any origin can read the response; may allow unintended cross-origin reads on credentialed endpoints                   |
 | `headers_x_content_type_options_missing`                       | WARNING  | planned     | `nosniff` directive missing — allows MIME-type sniffing attacks                                                                                          |
 | `headers_x_content_type_options_invalid`                       | WARNING  | planned     | `X-Content-Type-Options` value is not `nosniff` — browser ignores it, MIME-type sniffing remains enabled                                                 |
@@ -84,11 +89,7 @@
 | `response_redirect_chain_mixed_schemes`  | NOTICE   | planned | Redirect chain switches between HTTP and HTTPS mid-chain — intermediate hops leak the request over plaintext |
 | `response_time_slow`                     | NOTICE   | planned | Response exceeded time threshold — potential indicator of resource exhaustion or misconfigured upstream      |
 
-## Ideas
-
-- `headers_content_security_policy_unsafe_inline` — CSP contains `unsafe-inline` directive, negating script/style injection protection
-- `headers_content_security_policy_unsafe_eval` — CSP contains `unsafe-eval` directive, allowing dynamic code execution via `eval()` and similar
-
 ## References
 
 - [HTTP Strict Transport Security (HSTS)](https://datatracker.ietf.org/doc/html/rfc6797)
+- [Content Security Policy Level 3](https://www.w3.org/TR/CSP3/)

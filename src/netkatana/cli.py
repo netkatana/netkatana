@@ -7,7 +7,12 @@ from rich.logging import RichHandler
 
 from netkatana.checks.dns import DmarcMissing, SpfMissing, SpfPermissive
 from netkatana.checks.http.headers import (
+    ContentSecurityPolicyBaseUriMissing,
     ContentSecurityPolicyMissing,
+    ContentSecurityPolicyObjectSrcUnsafe,
+    ContentSecurityPolicyReportOnlyNoEnforce,
+    ContentSecurityPolicyUnsafeEval,
+    ContentSecurityPolicyUnsafeInline,
     StrictTransportSecurityIncludeSubdomainsMissing,
     StrictTransportSecurityInvalid,
     StrictTransportSecurityMaxAgeLow,
@@ -76,6 +81,11 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bo
                 StrictTransportSecurityIncludeSubdomainsMissing(),
                 StrictTransportSecurityPreloadNotEligible(),
                 ContentSecurityPolicyMissing(),
+                ContentSecurityPolicyReportOnlyNoEnforce(),
+                ContentSecurityPolicyUnsafeInline(),
+                ContentSecurityPolicyUnsafeEval(),
+                ContentSecurityPolicyObjectSrcUnsafe(),
+                ContentSecurityPolicyBaseUriMissing(),
             ],
             client=client,
             concurrency=concurrency,

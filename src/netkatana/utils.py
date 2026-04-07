@@ -38,3 +38,19 @@ def parse_strict_transport_security_header(value: str) -> StrictTransportSecurit
         include_subdomains=include_subdomains,
         preload=preload,
     )
+
+
+def parse_content_security_policy(value: str) -> dict[str, list[str]]:
+    """Parse a CSP header value into a dict of lowercase directive name → list of lowercase source values."""
+    directives: dict[str, list[str]] = {}
+    for part in value.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        tokens = part.split()
+        if not tokens:
+            continue
+        name = tokens[0].lower()
+        sources = [s.lower() for s in tokens[1:]]
+        directives[name] = sources
+    return directives

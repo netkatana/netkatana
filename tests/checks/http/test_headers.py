@@ -2,7 +2,12 @@ import pytest
 from httpx import Response
 
 from netkatana.checks.http.headers import (
+    ContentSecurityPolicyBaseUriMissing,
     ContentSecurityPolicyMissing,
+    ContentSecurityPolicyObjectSrcUnsafe,
+    ContentSecurityPolicyReportOnlyNoEnforce,
+    ContentSecurityPolicyUnsafeEval,
+    ContentSecurityPolicyUnsafeInline,
     StrictTransportSecurityIncludeSubdomainsMissing,
     StrictTransportSecurityInvalid,
     StrictTransportSecurityMaxAgeLow,
@@ -248,4 +253,243 @@ class TestContentSecurityPolicyMissing:
 
         assert len(findings) == 1
         assert findings[0].code == "headers_content_security_policy_missing"
+        assert findings[0].severity == Severity.PASS
+
+
+class TestContentSecurityPolicyReportOnlyNoEnforce:
+    @pytest.mark.asyncio
+    async def test_enforcing_present(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+        findings = await ContentSecurityPolicyReportOnlyNoEnforce().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_report_only_no_enforce"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_report_only_only(self):
+        response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
+        findings = await ContentSecurityPolicyReportOnlyNoEnforce().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_report_only_no_enforce"
+        assert findings[0].severity == Severity.WARNING
+
+    @pytest.mark.asyncio
+    async def test_neither_present(self):
+        response = Response(200)
+        findings = await ContentSecurityPolicyReportOnlyNoEnforce().check(response)
+
+        assert findings == []
+
+
+class TestContentSecurityPolicyUnsafeInline:
+    @pytest.mark.asyncio
+    async def test_no_csp(self):
+        response = Response(200)
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_unsafe_inline_in_script_src(self):
+        response = Response(200, headers={"content-security-policy": "script-src 'self' 'unsafe-inline'"})
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].severity == Severity.CRITICAL
+
+    @pytest.mark.asyncio
+    async def test_unsafe_inline_neutralized_by_nonce(self):
+        response = Response(
+            200,
+            headers={"content-security-policy": "script-src 'nonce-abc123' 'unsafe-inline'"},
+        )
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_unsafe_inline_neutralized_by_hash(self):
+        response = Response(
+            200,
+            headers={"content-security-policy": "script-src 'sha256-abc123=' 'unsafe-inline'"},
+        )
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_unsafe_inline_neutralized_by_strict_dynamic(self):
+        response = Response(
+            200,
+            headers={"content-security-policy": "script-src 'nonce-abc' 'strict-dynamic' 'unsafe-inline'"},
+        )
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_unsafe_inline_via_default_src_fallback(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'self' 'unsafe-inline'"})
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].severity == Severity.CRITICAL
+
+    @pytest.mark.asyncio
+    async def test_no_script_src_no_default_src(self):
+        response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_clean_script_src(self):
+        response = Response(200, headers={"content-security-policy": "script-src 'self'"})
+        findings = await ContentSecurityPolicyUnsafeInline().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].severity == Severity.PASS
+
+
+class TestContentSecurityPolicyUnsafeEval:
+    @pytest.mark.asyncio
+    async def test_no_csp(self):
+        response = Response(200)
+        findings = await ContentSecurityPolicyUnsafeEval().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_unsafe_eval_in_script_src(self):
+        response = Response(200, headers={"content-security-policy": "script-src 'self' 'unsafe-eval'"})
+        findings = await ContentSecurityPolicyUnsafeEval().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_eval"
+        assert findings[0].severity == Severity.CRITICAL
+
+    @pytest.mark.asyncio
+    async def test_unsafe_eval_via_default_src_fallback(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'self' 'unsafe-eval'"})
+        findings = await ContentSecurityPolicyUnsafeEval().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_eval"
+        assert findings[0].severity == Severity.CRITICAL
+
+    @pytest.mark.asyncio
+    async def test_no_script_src_no_default_src(self):
+        response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+        findings = await ContentSecurityPolicyUnsafeEval().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_clean_script_src(self):
+        response = Response(200, headers={"content-security-policy": "script-src 'self'"})
+        findings = await ContentSecurityPolicyUnsafeEval().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_unsafe_eval"
+        assert findings[0].severity == Severity.PASS
+
+
+class TestContentSecurityPolicyObjectSrcUnsafe:
+    @pytest.mark.asyncio
+    async def test_no_csp(self):
+        response = Response(200)
+        findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_object_src_none(self):
+        response = Response(200, headers={"content-security-policy": "object-src 'none'"})
+        findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_object_src_self(self):
+        response = Response(200, headers={"content-security-policy": "object-src 'self'"})
+        findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].severity == Severity.WARNING
+
+    @pytest.mark.asyncio
+    async def test_no_object_src_default_src_none(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'none'"})
+        findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_no_object_src_default_src_self(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+        findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].severity == Severity.WARNING
+
+    @pytest.mark.asyncio
+    async def test_no_object_src_no_default_src(self):
+        response = Response(200, headers={"content-security-policy": "script-src 'self'"})
+        findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].severity == Severity.WARNING
+
+
+class TestContentSecurityPolicyBaseUriMissing:
+    @pytest.mark.asyncio
+    async def test_no_csp(self):
+        response = Response(200)
+        findings = await ContentSecurityPolicyBaseUriMissing().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_base_uri_absent(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+        findings = await ContentSecurityPolicyBaseUriMissing().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_base_uri_missing"
+        assert findings[0].severity == Severity.WARNING
+
+    @pytest.mark.asyncio
+    async def test_base_uri_none(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'self'; base-uri 'none'"})
+        findings = await ContentSecurityPolicyBaseUriMissing().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_base_uri_missing"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_base_uri_self(self):
+        response = Response(200, headers={"content-security-policy": "default-src 'self'; base-uri 'self'"})
+        findings = await ContentSecurityPolicyBaseUriMissing().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_content_security_policy_base_uri_missing"
         assert findings[0].severity == Severity.PASS
