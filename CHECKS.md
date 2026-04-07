@@ -80,7 +80,7 @@ set explicitly.
 
 ### headers_content_security_policy_frame_ancestors_missing
 
-> WARNING, planned
+> WARNING, implemented
 
 CSP policy lacks a `frame-ancestors` directive — any origin can embed this page in an iframe or frame, enabling
 clickjacking attacks. Unlike fetch directives, `frame-ancestors` does not fall back to `default-src` and must be set
@@ -88,7 +88,7 @@ explicitly.
 
 ### headers_content_security_policy_form_action_missing
 
-> WARNING, planned
+> WARNING, implemented
 
 CSP policy lacks a `form-action` directive — form submissions are unrestricted, allowing an injected form to exfiltrate
 data to any origin. Unlike fetch directives, `form-action` does not fall back to `default-src` and must be set
@@ -96,42 +96,42 @@ explicitly.
 
 ### headers_content_security_policy_script_src_missing
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 CSP present but neither `script-src` nor `default-src` is set — scripts are completely unrestricted, providing no XSS
 protection despite the header being present.
 
 ### headers_content_security_policy_script_src_unrestricted
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 CSP `script-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — scripts can be
 loaded from any origin, making the allowlist pointless.
 
 ### headers_content_security_policy_style_src_missing
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 CSP present but neither `style-src` nor `default-src` is set — stylesheets are completely unrestricted, enabling CSS
 injection attacks and data exfiltration via `url()` probes.
 
 ### headers_content_security_policy_style_src_unrestricted
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 CSP `style-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — stylesheets can
 be loaded from any origin, making the allowlist pointless.
 
 ### headers_content_security_policy_connect_src_missing
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 CSP present but neither `connect-src` nor `default-src` is set — fetch, XHR, and WebSocket connections are completely
 unrestricted, enabling data exfiltration to arbitrary origins.
 
 ### headers_content_security_policy_connect_src_unrestricted
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 CSP `connect-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — fetch, XHR, and
 WebSocket connections can target any origin, making the allowlist pointless.
@@ -162,49 +162,49 @@ Same as `headers_content_security_policy_base_uri_missing`, applied to `Content-
 
 ### headers_content_security_policy_report_only_frame_ancestors_missing
 
-> WARNING, planned
+> WARNING, implemented
 
 Same as `headers_content_security_policy_frame_ancestors_missing`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_form_action_missing
 
-> WARNING, planned
+> WARNING, implemented
 
 Same as `headers_content_security_policy_form_action_missing`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_script_src_missing
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 Same as `headers_content_security_policy_script_src_missing`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_script_src_unrestricted
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 Same as `headers_content_security_policy_script_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_style_src_missing
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 Same as `headers_content_security_policy_style_src_missing`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_style_src_unrestricted
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 Same as `headers_content_security_policy_style_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_connect_src_missing
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 Same as `headers_content_security_policy_connect_src_missing`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_connect_src_unrestricted
 
-> CRITICAL, planned
+> CRITICAL, implemented
 
 Same as `headers_content_security_policy_connect_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
 

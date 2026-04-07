@@ -494,3 +494,299 @@ class ContentSecurityPolicyReportOnlyBaseUriMissing(_CspBaseUriMissingCheck):
     _code = "headers_content_security_policy_report_only_base_uri_missing"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspFrameAncestorsMissingCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
+    _detail = (
+        "The `frame-ancestors` directive controls which origins may embed this page in a frame, "
+        "iframe, object, or embed element. Without it, any origin can frame the page, enabling "
+        "clickjacking attacks. Unlike fetch directives, `frame-ancestors` does not fall back to "
+        "`default-src` and must be set explicitly. Use `frame-ancestors 'none'` or "
+        "`frame-ancestors 'self'` as appropriate."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if self._header not in response.headers:
+            return []
+
+        directives = parse_content_security_policy(response.headers[self._header])
+
+        if "frame-ancestors" not in directives:
+            return [
+                Finding(
+                    code=self._code,
+                    severity=Severity.WARNING,
+                    title=f"{self._title_prefix} frame-ancestors directive is missing",
+                    detail=self._detail,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._code,
+                severity=Severity.PASS,
+                title=f"{self._title_prefix} frame-ancestors directive is present",
+                detail=self._detail,
+            )
+        ]
+
+
+class ContentSecurityPolicyFrameAncestorsMissing(_CspFrameAncestorsMissingCheck):
+    _code = "headers_content_security_policy_frame_ancestors_missing"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyFrameAncestorsMissing(_CspFrameAncestorsMissingCheck):
+    _code = "headers_content_security_policy_report_only_frame_ancestors_missing"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspFormActionMissingCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
+    _detail = (
+        "The `form-action` directive restricts the URLs to which forms on the page may submit. "
+        "Without it, a form can submit to any origin, which an attacker who can inject HTML "
+        "can exploit to exfiltrate data. Unlike fetch directives, `form-action` does not fall "
+        "back to `default-src` and must be set explicitly."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if self._header not in response.headers:
+            return []
+
+        directives = parse_content_security_policy(response.headers[self._header])
+
+        if "form-action" not in directives:
+            return [
+                Finding(
+                    code=self._code,
+                    severity=Severity.WARNING,
+                    title=f"{self._title_prefix} form-action directive is missing",
+                    detail=self._detail,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._code,
+                severity=Severity.PASS,
+                title=f"{self._title_prefix} form-action directive is present",
+                detail=self._detail,
+            )
+        ]
+
+
+class ContentSecurityPolicyFormActionMissing(_CspFormActionMissingCheck):
+    _code = "headers_content_security_policy_form_action_missing"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyFormActionMissing(_CspFormActionMissingCheck):
+    _code = "headers_content_security_policy_report_only_form_action_missing"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+_CSP_WILDCARD_SOURCES = {"*", "https:", "http:"}
+
+
+class _CspFetchDirectiveMissingCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
+    _directive: str
+    _detail: str
+
+    async def check(self, response: Response) -> list[Finding]:
+        if self._header not in response.headers:
+            return []
+
+        directives = parse_content_security_policy(response.headers[self._header])
+        effective = _csp_effective_sources(directives, self._directive)
+
+        if effective is None:
+            return [
+                Finding(
+                    code=self._code,
+                    severity=Severity.CRITICAL,
+                    title=f"{self._title_prefix} {self._directive} is unrestricted (no {self._directive} or default-src)",
+                    detail=self._detail,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._code,
+                severity=Severity.PASS,
+                title=f"{self._title_prefix} {self._directive} is set",
+                detail=self._detail,
+            )
+        ]
+
+
+class _CspScriptSrcMissingCheck(_CspFetchDirectiveMissingCheck):
+    _directive = "script-src"
+    _detail = (
+        "CSP is present but neither `script-src` nor `default-src` is set — scripts are completely "
+        "unrestricted, providing no XSS protection despite the header being present."
+    )
+
+
+class ContentSecurityPolicyScriptSrcMissing(_CspScriptSrcMissingCheck):
+    _code = "headers_content_security_policy_script_src_missing"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyScriptSrcMissing(_CspScriptSrcMissingCheck):
+    _code = "headers_content_security_policy_report_only_script_src_missing"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspStyleSrcMissingCheck(_CspFetchDirectiveMissingCheck):
+    _directive = "style-src"
+    _detail = (
+        "CSP is present but neither `style-src` nor `default-src` is set — stylesheets are completely "
+        "unrestricted, enabling CSS injection attacks and data exfiltration via `url()` probes."
+    )
+
+
+class ContentSecurityPolicyStyleSrcMissing(_CspStyleSrcMissingCheck):
+    _code = "headers_content_security_policy_style_src_missing"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyStyleSrcMissing(_CspStyleSrcMissingCheck):
+    _code = "headers_content_security_policy_report_only_style_src_missing"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspConnectSrcMissingCheck(_CspFetchDirectiveMissingCheck):
+    _directive = "connect-src"
+    _detail = (
+        "CSP is present but neither `connect-src` nor `default-src` is set — fetch, XHR, and "
+        "WebSocket connections are completely unrestricted, enabling data exfiltration to arbitrary origins."
+    )
+
+
+class ContentSecurityPolicyConnectSrcMissing(_CspConnectSrcMissingCheck):
+    _code = "headers_content_security_policy_connect_src_missing"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyConnectSrcMissing(_CspConnectSrcMissingCheck):
+    _code = "headers_content_security_policy_report_only_connect_src_missing"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspFetchDirectiveUnrestrictedCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
+    _directive: str
+    _detail: str
+
+    async def check(self, response: Response) -> list[Finding]:
+        if self._header not in response.headers:
+            return []
+
+        directives = parse_content_security_policy(response.headers[self._header])
+        effective = _csp_effective_sources(directives, self._directive)
+
+        if effective is None:
+            return []
+
+        if any(s in _CSP_WILDCARD_SOURCES for s in effective):
+            return [
+                Finding(
+                    code=self._code,
+                    severity=Severity.CRITICAL,
+                    title=f"{self._title_prefix} {self._directive} contains a wildcard source",
+                    detail=self._detail,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._code,
+                severity=Severity.PASS,
+                title=f"{self._title_prefix} {self._directive} does not contain a wildcard source",
+                detail=self._detail,
+            )
+        ]
+
+
+class _CspScriptSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
+    _directive = "script-src"
+    _detail = (
+        "The `script-src` directive (or `default-src` fallback) contains a wildcard source (`*`, "
+        "`https:`, or `http:`) — scripts can be loaded from any matching origin, making the "
+        "allowlist pointless and providing no XSS protection."
+    )
+
+
+class ContentSecurityPolicyScriptSrcUnrestricted(_CspScriptSrcUnrestrictedCheck):
+    _code = "headers_content_security_policy_script_src_unrestricted"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyScriptSrcUnrestricted(_CspScriptSrcUnrestrictedCheck):
+    _code = "headers_content_security_policy_report_only_script_src_unrestricted"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspStyleSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
+    _directive = "style-src"
+    _detail = (
+        "The `style-src` directive (or `default-src` fallback) contains a wildcard source (`*`, "
+        "`https:`, or `http:`) — stylesheets can be loaded from any matching origin, enabling "
+        "CSS injection attacks and data exfiltration via `url()` probes."
+    )
+
+
+class ContentSecurityPolicyStyleSrcUnrestricted(_CspStyleSrcUnrestrictedCheck):
+    _code = "headers_content_security_policy_style_src_unrestricted"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyStyleSrcUnrestricted(_CspStyleSrcUnrestrictedCheck):
+    _code = "headers_content_security_policy_report_only_style_src_unrestricted"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspConnectSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
+    _directive = "connect-src"
+    _detail = (
+        "The `connect-src` directive (or `default-src` fallback) contains a wildcard source (`*`, "
+        "`https:`, or `http:`) — fetch, XHR, and WebSocket connections can target any matching "
+        "origin, enabling data exfiltration."
+    )
+
+
+class ContentSecurityPolicyConnectSrcUnrestricted(_CspConnectSrcUnrestrictedCheck):
+    _code = "headers_content_security_policy_connect_src_unrestricted"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyConnectSrcUnrestricted(_CspConnectSrcUnrestrictedCheck):
+    _code = "headers_content_security_policy_report_only_connect_src_unrestricted"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
