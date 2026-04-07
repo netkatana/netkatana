@@ -1,29 +1,9 @@
-import re
-
 from httpx import Response
 
 from netkatana.models import AbstractHttpCheck, Finding, Severity
-
-_HSTS_RE = re.compile(
-    r"^\s*max-age\s*=\s*(?P<max_age>\d+)"
-    r"(?:\s*;\s*(?P<include_subdomains>includeSubDomains))?"
-    r"(?:\s*;\s*(?P<preload>preload))?"
-    r"\s*$",
-    re.IGNORECASE,
-)
+from netkatana.utils import parse_strict_transport_security_header
 
 _HSTS_MIN_MAX_AGE = 31_536_000  # one year
-
-
-def _parse_hsts(value: str) -> tuple[int, bool, bool] | None:
-    m = _HSTS_RE.match(value)
-    if not m:
-        return None
-    return (
-        int(m.group("max_age")),
-        m.group("include_subdomains") is not None,
-        m.group("preload") is not None,
-    )
 
 
 class StrictTransportSecurityMissing(AbstractHttpCheck):
@@ -68,9 +48,10 @@ class StrictTransportSecurityInvalid(AbstractHttpCheck):
             return []
 
         value = response.headers["strict-transport-security"]
-        parsed = _parse_hsts(value)
 
-        if parsed is None:
+        try:
+            parse_strict_transport_security_header(value)
+        except ValueError:
             return [
                 Finding(
                     code=self._code,
@@ -103,13 +84,12 @@ class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
         if "strict-transport-security" not in response.headers:
             return []
 
-        parsed = _parse_hsts(response.headers["strict-transport-security"])
-        if parsed is None:
+        try:
+            parsed = parse_strict_transport_security_header(response.headers["strict-transport-security"])
+        except ValueError:
             return []
 
-        max_age, _, _ = parsed
-
-        if max_age == 0:
+        if parsed.max_age == 0:
             return [
                 Finding(
                     code=self._code,
@@ -142,22 +122,22 @@ class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
         if "strict-transport-security" not in response.headers:
             return []
 
-        parsed = _parse_hsts(response.headers["strict-transport-security"])
-        if parsed is None:
+        try:
+            parsed = parse_strict_transport_security_header(response.headers["strict-transport-security"])
+        except ValueError:
             return []
 
-        max_age, _, _ = parsed
-        if max_age == 0:
+        if parsed.max_age == 0:
             return []
 
-        if max_age < _HSTS_MIN_MAX_AGE:
+        if parsed.max_age < _HSTS_MIN_MAX_AGE:
             return [
                 Finding(
                     code=self._code,
                     severity=Severity.WARNING,
                     title="Strict-Transport-Security (HSTS) max-age is less than one year",
                     detail=self._detail,
-                    metadata={"max_age": str(max_age)},
+                    metadata={"max_age": str(parsed.max_age)},
                 )
             ]
 
@@ -184,13 +164,12 @@ class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
         if "strict-transport-security" not in response.headers:
             return []
 
-        parsed = _parse_hsts(response.headers["strict-transport-security"])
-        if parsed is None:
+        try:
+            parsed = parse_strict_transport_security_header(response.headers["strict-transport-security"])
+        except ValueError:
             return []
 
-        _, include_subdomains, _ = parsed
-
-        if not include_subdomains:
+        if not parsed.include_subdomains:
             return [
                 Finding(
                     code=self._code,
@@ -223,13 +202,12 @@ class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
         if "strict-transport-security" not in response.headers:
             return []
 
-        parsed = _parse_hsts(response.headers["strict-transport-security"])
-        if parsed is None:
+        try:
+            parsed = parse_strict_transport_security_header(response.headers["strict-transport-security"])
+        except ValueError:
             return []
 
-        max_age, include_subdomains, _ = parsed
-
-        if max_age < _HSTS_MIN_MAX_AGE or not include_subdomains:
+        if parsed.max_age < _HSTS_MIN_MAX_AGE or not parsed.include_subdomains:
             return [
                 Finding(
                     code=self._code,
