@@ -23,7 +23,7 @@ class SpfPermissive(AbstractDnsCheck):
     )
 
     async def check(self, result: DnsResult) -> list[Finding]:
-        spf_records = [r for r in result.txt if r.startswith("v=spf1")]
+        spf_records = [record for record in result.txt if record.startswith("v=spf1")]
 
         if not spf_records:
             return []
@@ -62,9 +62,7 @@ class DmarcMissing(AbstractDnsCheck):
     )
 
     async def check(self, result: DnsResult) -> list[Finding]:
-        dmarc = [r for r in result.dmarc_txt if r.startswith("v=DMARC1")]
-
-        if dmarc:
+        if any(record for record in result.dmarc_txt if record.startswith("v=DMARC1")):
             return [Finding(code=self._code, severity=Severity.PASS, title="DMARC record present", detail=self._detail)]
 
         return [Finding(code=self._code, severity=Severity.NOTICE, title="DMARC record missing", detail=self._detail)]
