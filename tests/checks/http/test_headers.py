@@ -2,6 +2,7 @@ import pytest
 from httpx import Response
 
 from netkatana.checks.http.headers import ContentSecurityPolicyMissing, StrictTransportSecurityMissing
+from netkatana.models import Severity
 
 
 class TestStrictTransportSecurityMissing:
@@ -18,7 +19,9 @@ class TestStrictTransportSecurityMissing:
         response = Response(200, headers={"strict-transport-security": "max-age=31536000"})
         findings = await StrictTransportSecurityMissing().check(response)
 
-        assert findings == []
+        assert len(findings) == 1
+        assert findings[0].severity == Severity.PASS
+        assert findings[0].code == "headers_strict_transport_security_missing"
 
 
 class TestContentSecurityPolicyMissing:
@@ -35,4 +38,6 @@ class TestContentSecurityPolicyMissing:
         response = Response(200, headers={"content-security-policy": "default-src 'self'"})
         findings = await ContentSecurityPolicyMissing().check(response)
 
-        assert findings == []
+        assert len(findings) == 1
+        assert findings[0].severity == Severity.PASS
+        assert findings[0].code == "headers_content_security_policy_missing"

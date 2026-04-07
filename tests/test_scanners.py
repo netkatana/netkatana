@@ -4,17 +4,17 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from netkatana.checkers import HttpChecker
 from netkatana.http import Client, TooManyRedirects
+from netkatana.scanners import HttpScanner
 
 
-class TestHttpChecker:
+class TestHttpScanner:
     @pytest.mark.asyncio
     async def test_check_host_prepends_https(self):
         client = AsyncMock(spec=Client)
         client.get.return_value = httpx.Response(200)
 
-        checker = HttpChecker(checks=[], client=client)
+        checker = HttpScanner(checks=[], client=client)
         await checker.check_host("example.com")
 
         client.get.assert_called_once_with("https://example.com")
@@ -24,7 +24,7 @@ class TestHttpChecker:
         client = AsyncMock(spec=Client)
         client.get.side_effect = httpx.ConnectError("Connection refused")
 
-        checker = HttpChecker(checks=[], client=client)
+        checker = HttpScanner(checks=[], client=client)
 
         with caplog.at_level(logging.WARNING):
             result = await checker.check_host("unreachable.example.com")
@@ -38,7 +38,7 @@ class TestHttpChecker:
         client = AsyncMock(spec=Client)
         client.get.side_effect = TooManyRedirects("Exceeded maximum allowed redirects.", response=last_response)
 
-        checker = HttpChecker(checks=[], client=client)
+        checker = HttpScanner(checks=[], client=client)
 
         with caplog.at_level(logging.WARNING):
             result = await checker.check_host("example.com")

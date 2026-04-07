@@ -9,15 +9,19 @@ from rich.text import Text
 from netkatana.models import HostFinding, Severity
 
 _SEVERITY_SYMBOL: dict[Severity, tuple[str, str]] = {
-    Severity.CRITICAL: ("C", "bold red"),
-    Severity.WARNING: ("W", "bold yellow"),
+    Severity.PASS: ("P", "bold green"),
     Severity.NOTICE: ("I", "bold cyan"),
+    Severity.WARNING: ("W", "bold yellow"),
+    Severity.CRITICAL: ("C", "bold red"),
 }
 
 _INDENT = "    "
 
 
 class AbstractFormatter(ABC):
+    def __init__(self, show_passed: bool = False) -> None:
+        self._show_passed = show_passed
+
     @abstractmethod
     def emit(self, host_finding: HostFinding) -> None: ...
 
@@ -32,10 +36,14 @@ class AbstractFormatter(ABC):
 
 
 class VerboseFormatter(AbstractFormatter):
-    def __init__(self) -> None:
+    def __init__(self, show_passed: bool = False) -> None:
+        super().__init__(show_passed)
         self._console = Console(highlight=False)
 
     def emit(self, host_finding: HostFinding) -> None:
+        if host_finding.finding.severity == Severity.PASS and not self._show_passed:
+            return
+
         finding = host_finding.finding
         symbol, style = _SEVERITY_SYMBOL[finding.severity]
 
@@ -60,19 +68,28 @@ def _serialize(host_finding: HostFinding) -> dict[str, object]:
         "title": finding.title,
         "detail": finding.detail,
         "host": host_finding.host,
+        "metadata": finding.metadata,
     }
 
 
 class JsonlFormatter(AbstractFormatter):
+    def __init__(self, show_passed: bool = False) -> None:
+        super().__init__(show_passed)
+
     def emit(self, host_finding: HostFinding) -> None:
+        if host_finding.finding.severity == Severity.PASS and not self._show_passed:
+            return
         print(json.dumps(_serialize(host_finding)))
 
 
 class JsonFormatter(AbstractFormatter):
-    def __init__(self) -> None:
+    def __init__(self, show_passed: bool = False) -> None:
+        super().__init__(show_passed)
         self._host_findings: list[HostFinding] = []
 
     def emit(self, host_finding: HostFinding) -> None:
+        if host_finding.finding.severity == Severity.PASS and not self._show_passed:
+            return
         self._host_findings.append(host_finding)
 
     def flush(self) -> None:
@@ -80,11 +97,14 @@ class JsonFormatter(AbstractFormatter):
 
 
 class TableFormatter(AbstractFormatter):
-    def __init__(self) -> None:
+    def __init__(self, show_passed: bool = False) -> None:
+        super().__init__(show_passed)
         self._console = Console(highlight=False)
         self._host_findings: list[HostFinding] = []
 
     def emit(self, host_finding: HostFinding) -> None:
+        if host_finding.finding.severity == Severity.PASS and not self._show_passed:
+            return
         self._host_findings.append(host_finding)
 
     def flush(self) -> None:

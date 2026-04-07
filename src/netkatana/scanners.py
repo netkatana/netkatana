@@ -11,7 +11,7 @@ from netkatana.models import AbstractHttpCheck, AbstractTlsCheck, Finding, HostF
 _logger = logging.getLogger(__name__)
 
 
-class HttpChecker:
+class HttpScanner:
     def __init__(
         self,
         checks: list[AbstractHttpCheck],
@@ -46,7 +46,7 @@ class HttpChecker:
         return [HostFinding(host=host, finding=f) for f in findings]
 
 
-class TlsChecker:
+class TlsScanner:
     def __init__(self, checks: list[AbstractTlsCheck], concurrency: int = 10) -> None:
         self._checks = checks
         self._concurrency = concurrency
