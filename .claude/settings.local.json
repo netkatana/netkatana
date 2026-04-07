@@ -3,7 +3,9 @@
     "allow": [
       "WebSearch",
       "WebFetch",
-      "Bash(make)"
+      "Bash(make:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

@@ -28,6 +28,13 @@ class HostFinding:
     finding: Finding
 
 
+@dataclass(frozen=True)
+class StrictTransportSecurityHeader:
+    max_age: int
+    include_subdomains: bool
+    preload: bool
+
+
 class AbstractHttpCheck(ABC):
     @abstractmethod
     async def check(self, response: Response) -> list[Finding]:
