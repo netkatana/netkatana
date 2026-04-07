@@ -44,7 +44,7 @@ class TestStrictTransportSecurityMissing:
         findings = await StrictTransportSecurityMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_missing"
+        assert findings[0].code == "headers_hsts_missing"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -53,7 +53,7 @@ class TestStrictTransportSecurityMissing:
         findings = await StrictTransportSecurityMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_missing"
+        assert findings[0].code == "headers_hsts_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -71,7 +71,7 @@ class TestStrictTransportSecurityInvalid:
         findings = await StrictTransportSecurityInvalid().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_invalid"
+        assert findings[0].code == "headers_hsts_invalid"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -80,7 +80,7 @@ class TestStrictTransportSecurityInvalid:
         findings = await StrictTransportSecurityInvalid().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_invalid"
+        assert findings[0].code == "headers_hsts_invalid"
         assert findings[0].severity == Severity.CRITICAL
 
 
@@ -105,7 +105,7 @@ class TestStrictTransportSecurityMaxAgeZero:
         findings = await StrictTransportSecurityMaxAgeZero().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_max_age_zero"
+        assert findings[0].code == "headers_hsts_max_age_zero"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -114,7 +114,7 @@ class TestStrictTransportSecurityMaxAgeZero:
         findings = await StrictTransportSecurityMaxAgeZero().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_max_age_zero"
+        assert findings[0].code == "headers_hsts_max_age_zero"
         assert findings[0].severity == Severity.PASS
 
 
@@ -146,7 +146,7 @@ class TestStrictTransportSecurityMaxAgeLow:
         findings = await StrictTransportSecurityMaxAgeLow().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_max_age_low"
+        assert findings[0].code == "headers_hsts_max_age_low"
         assert findings[0].severity == Severity.WARNING
         assert findings[0].metadata["max_age"] == "86400"
 
@@ -156,7 +156,7 @@ class TestStrictTransportSecurityMaxAgeLow:
         findings = await StrictTransportSecurityMaxAgeLow().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_max_age_low"
+        assert findings[0].code == "headers_hsts_max_age_low"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -165,7 +165,7 @@ class TestStrictTransportSecurityMaxAgeLow:
         findings = await StrictTransportSecurityMaxAgeLow().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_max_age_low"
+        assert findings[0].code == "headers_hsts_max_age_low"
         assert findings[0].severity == Severity.PASS
 
 
@@ -190,7 +190,7 @@ class TestStrictTransportSecurityIncludeSubdomainsMissing:
         findings = await StrictTransportSecurityIncludeSubdomainsMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_include_subdomains_missing"
+        assert findings[0].code == "headers_hsts_include_subdomains_missing"
         assert findings[0].severity == Severity.NOTICE
 
     @pytest.mark.asyncio
@@ -199,7 +199,7 @@ class TestStrictTransportSecurityIncludeSubdomainsMissing:
         findings = await StrictTransportSecurityIncludeSubdomainsMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_include_subdomains_missing"
+        assert findings[0].code == "headers_hsts_include_subdomains_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -231,7 +231,7 @@ class TestStrictTransportSecurityPreloadNotEligible:
         findings = await StrictTransportSecurityPreloadNotEligible().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_preload_not_eligible"
+        assert findings[0].code == "headers_hsts_preload_not_eligible"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -240,7 +240,7 @@ class TestStrictTransportSecurityPreloadNotEligible:
         findings = await StrictTransportSecurityPreloadNotEligible().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_preload_not_eligible"
+        assert findings[0].code == "headers_hsts_preload_not_eligible"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -249,7 +249,7 @@ class TestStrictTransportSecurityPreloadNotEligible:
         findings = await StrictTransportSecurityPreloadNotEligible().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_strict_transport_security_preload_not_eligible"
+        assert findings[0].code == "headers_hsts_preload_not_eligible"
         assert findings[0].severity == Severity.PASS
 
 
@@ -260,7 +260,7 @@ class TestContentSecurityPolicyMissing:
         findings = await ContentSecurityPolicyMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_missing"
+        assert findings[0].code == "headers_csp_missing"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -269,7 +269,7 @@ class TestContentSecurityPolicyMissing:
         findings = await ContentSecurityPolicyMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_missing"
+        assert findings[0].code == "headers_csp_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -287,7 +287,7 @@ class TestContentSecurityPolicyUnsafeInline:
         findings = await ContentSecurityPolicyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].code == "headers_csp_unsafe_inline"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -299,7 +299,7 @@ class TestContentSecurityPolicyUnsafeInline:
         findings = await ContentSecurityPolicyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].code == "headers_csp_unsafe_inline"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -311,7 +311,7 @@ class TestContentSecurityPolicyUnsafeInline:
         findings = await ContentSecurityPolicyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].code == "headers_csp_unsafe_inline"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -323,7 +323,7 @@ class TestContentSecurityPolicyUnsafeInline:
         findings = await ContentSecurityPolicyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].code == "headers_csp_unsafe_inline"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -332,7 +332,7 @@ class TestContentSecurityPolicyUnsafeInline:
         findings = await ContentSecurityPolicyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].code == "headers_csp_unsafe_inline"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -348,7 +348,7 @@ class TestContentSecurityPolicyUnsafeInline:
         findings = await ContentSecurityPolicyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_inline"
+        assert findings[0].code == "headers_csp_unsafe_inline"
         assert findings[0].severity == Severity.PASS
 
 
@@ -366,7 +366,7 @@ class TestContentSecurityPolicyUnsafeEval:
         findings = await ContentSecurityPolicyUnsafeEval().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_eval"
+        assert findings[0].code == "headers_csp_unsafe_eval"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -375,7 +375,7 @@ class TestContentSecurityPolicyUnsafeEval:
         findings = await ContentSecurityPolicyUnsafeEval().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_eval"
+        assert findings[0].code == "headers_csp_unsafe_eval"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -391,7 +391,7 @@ class TestContentSecurityPolicyUnsafeEval:
         findings = await ContentSecurityPolicyUnsafeEval().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_unsafe_eval"
+        assert findings[0].code == "headers_csp_unsafe_eval"
         assert findings[0].severity == Severity.PASS
 
 
@@ -409,7 +409,7 @@ class TestContentSecurityPolicyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].code == "headers_csp_object_src_unsafe"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -418,7 +418,7 @@ class TestContentSecurityPolicyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].code == "headers_csp_object_src_unsafe"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -427,7 +427,7 @@ class TestContentSecurityPolicyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].code == "headers_csp_object_src_unsafe"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -436,7 +436,7 @@ class TestContentSecurityPolicyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].code == "headers_csp_object_src_unsafe"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -445,7 +445,7 @@ class TestContentSecurityPolicyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_object_src_unsafe"
+        assert findings[0].code == "headers_csp_object_src_unsafe"
         assert findings[0].severity == Severity.WARNING
 
 
@@ -463,7 +463,7 @@ class TestContentSecurityPolicyBaseUriMissing:
         findings = await ContentSecurityPolicyBaseUriMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_base_uri_missing"
+        assert findings[0].code == "headers_csp_base_uri_missing"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -472,7 +472,7 @@ class TestContentSecurityPolicyBaseUriMissing:
         findings = await ContentSecurityPolicyBaseUriMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_base_uri_missing"
+        assert findings[0].code == "headers_csp_base_uri_missing"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -481,7 +481,7 @@ class TestContentSecurityPolicyBaseUriMissing:
         findings = await ContentSecurityPolicyBaseUriMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_base_uri_missing"
+        assert findings[0].code == "headers_csp_base_uri_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -499,7 +499,7 @@ class TestContentSecurityPolicyReportOnlyUnsafeInline:
         findings = await ContentSecurityPolicyReportOnlyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_unsafe_inline"
+        assert findings[0].code == "headers_csp_report_only_unsafe_inline"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -511,7 +511,7 @@ class TestContentSecurityPolicyReportOnlyUnsafeInline:
         findings = await ContentSecurityPolicyReportOnlyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_unsafe_inline"
+        assert findings[0].code == "headers_csp_report_only_unsafe_inline"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -527,7 +527,7 @@ class TestContentSecurityPolicyReportOnlyUnsafeInline:
         findings = await ContentSecurityPolicyReportOnlyUnsafeInline().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_unsafe_inline"
+        assert findings[0].code == "headers_csp_report_only_unsafe_inline"
         assert findings[0].severity == Severity.PASS
 
 
@@ -545,7 +545,7 @@ class TestContentSecurityPolicyReportOnlyUnsafeEval:
         findings = await ContentSecurityPolicyReportOnlyUnsafeEval().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_unsafe_eval"
+        assert findings[0].code == "headers_csp_report_only_unsafe_eval"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -561,7 +561,7 @@ class TestContentSecurityPolicyReportOnlyUnsafeEval:
         findings = await ContentSecurityPolicyReportOnlyUnsafeEval().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_unsafe_eval"
+        assert findings[0].code == "headers_csp_report_only_unsafe_eval"
         assert findings[0].severity == Severity.PASS
 
 
@@ -579,7 +579,7 @@ class TestContentSecurityPolicyReportOnlyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyReportOnlyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_object_src_unsafe"
+        assert findings[0].code == "headers_csp_report_only_object_src_unsafe"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -588,7 +588,7 @@ class TestContentSecurityPolicyReportOnlyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyReportOnlyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_object_src_unsafe"
+        assert findings[0].code == "headers_csp_report_only_object_src_unsafe"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -597,7 +597,7 @@ class TestContentSecurityPolicyReportOnlyObjectSrcUnsafe:
         findings = await ContentSecurityPolicyReportOnlyObjectSrcUnsafe().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_object_src_unsafe"
+        assert findings[0].code == "headers_csp_report_only_object_src_unsafe"
         assert findings[0].severity == Severity.WARNING
 
 
@@ -615,7 +615,7 @@ class TestContentSecurityPolicyReportOnlyBaseUriMissing:
         findings = await ContentSecurityPolicyReportOnlyBaseUriMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_base_uri_missing"
+        assert findings[0].code == "headers_csp_report_only_base_uri_missing"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -627,7 +627,7 @@ class TestContentSecurityPolicyReportOnlyBaseUriMissing:
         findings = await ContentSecurityPolicyReportOnlyBaseUriMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_base_uri_missing"
+        assert findings[0].code == "headers_csp_report_only_base_uri_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -645,7 +645,7 @@ class TestContentSecurityPolicyFrameAncestorsMissing:
         findings = await ContentSecurityPolicyFrameAncestorsMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_frame_ancestors_missing"
+        assert findings[0].code == "headers_csp_frame_ancestors_missing"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -654,7 +654,7 @@ class TestContentSecurityPolicyFrameAncestorsMissing:
         findings = await ContentSecurityPolicyFrameAncestorsMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_frame_ancestors_missing"
+        assert findings[0].code == "headers_csp_frame_ancestors_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -672,7 +672,7 @@ class TestContentSecurityPolicyFormActionMissing:
         findings = await ContentSecurityPolicyFormActionMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_form_action_missing"
+        assert findings[0].code == "headers_csp_form_action_missing"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -681,7 +681,7 @@ class TestContentSecurityPolicyFormActionMissing:
         findings = await ContentSecurityPolicyFormActionMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_form_action_missing"
+        assert findings[0].code == "headers_csp_form_action_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -699,7 +699,7 @@ class TestContentSecurityPolicyScriptSrcMissing:
         findings = await ContentSecurityPolicyScriptSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_missing"
+        assert findings[0].code == "headers_csp_script_src_missing"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -708,7 +708,7 @@ class TestContentSecurityPolicyScriptSrcMissing:
         findings = await ContentSecurityPolicyScriptSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_missing"
+        assert findings[0].code == "headers_csp_script_src_missing"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -717,7 +717,7 @@ class TestContentSecurityPolicyScriptSrcMissing:
         findings = await ContentSecurityPolicyScriptSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_missing"
+        assert findings[0].code == "headers_csp_script_src_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -742,7 +742,7 @@ class TestContentSecurityPolicyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_script_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -751,7 +751,7 @@ class TestContentSecurityPolicyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_script_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -760,7 +760,7 @@ class TestContentSecurityPolicyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_script_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -769,7 +769,7 @@ class TestContentSecurityPolicyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_script_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -778,7 +778,7 @@ class TestContentSecurityPolicyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_script_src_unrestricted"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -787,7 +787,7 @@ class TestContentSecurityPolicyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_script_src_unrestricted"
         assert findings[0].severity == Severity.PASS
 
 
@@ -805,7 +805,7 @@ class TestContentSecurityPolicyStyleSrcMissing:
         findings = await ContentSecurityPolicyStyleSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_style_src_missing"
+        assert findings[0].code == "headers_csp_style_src_missing"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -814,7 +814,7 @@ class TestContentSecurityPolicyStyleSrcMissing:
         findings = await ContentSecurityPolicyStyleSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_style_src_missing"
+        assert findings[0].code == "headers_csp_style_src_missing"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -823,7 +823,7 @@ class TestContentSecurityPolicyStyleSrcMissing:
         findings = await ContentSecurityPolicyStyleSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_style_src_missing"
+        assert findings[0].code == "headers_csp_style_src_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -848,7 +848,7 @@ class TestContentSecurityPolicyStyleSrcUnrestricted:
         findings = await ContentSecurityPolicyStyleSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_style_src_unrestricted"
+        assert findings[0].code == "headers_csp_style_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -857,7 +857,7 @@ class TestContentSecurityPolicyStyleSrcUnrestricted:
         findings = await ContentSecurityPolicyStyleSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_style_src_unrestricted"
+        assert findings[0].code == "headers_csp_style_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -866,7 +866,7 @@ class TestContentSecurityPolicyStyleSrcUnrestricted:
         findings = await ContentSecurityPolicyStyleSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_style_src_unrestricted"
+        assert findings[0].code == "headers_csp_style_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -875,7 +875,7 @@ class TestContentSecurityPolicyStyleSrcUnrestricted:
         findings = await ContentSecurityPolicyStyleSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_style_src_unrestricted"
+        assert findings[0].code == "headers_csp_style_src_unrestricted"
         assert findings[0].severity == Severity.PASS
 
 
@@ -893,7 +893,7 @@ class TestContentSecurityPolicyConnectSrcMissing:
         findings = await ContentSecurityPolicyConnectSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_connect_src_missing"
+        assert findings[0].code == "headers_csp_connect_src_missing"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -902,7 +902,7 @@ class TestContentSecurityPolicyConnectSrcMissing:
         findings = await ContentSecurityPolicyConnectSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_connect_src_missing"
+        assert findings[0].code == "headers_csp_connect_src_missing"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -911,7 +911,7 @@ class TestContentSecurityPolicyConnectSrcMissing:
         findings = await ContentSecurityPolicyConnectSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_connect_src_missing"
+        assert findings[0].code == "headers_csp_connect_src_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -936,7 +936,7 @@ class TestContentSecurityPolicyConnectSrcUnrestricted:
         findings = await ContentSecurityPolicyConnectSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_connect_src_unrestricted"
+        assert findings[0].code == "headers_csp_connect_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -945,7 +945,7 @@ class TestContentSecurityPolicyConnectSrcUnrestricted:
         findings = await ContentSecurityPolicyConnectSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_connect_src_unrestricted"
+        assert findings[0].code == "headers_csp_connect_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -954,7 +954,7 @@ class TestContentSecurityPolicyConnectSrcUnrestricted:
         findings = await ContentSecurityPolicyConnectSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_connect_src_unrestricted"
+        assert findings[0].code == "headers_csp_connect_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -963,7 +963,7 @@ class TestContentSecurityPolicyConnectSrcUnrestricted:
         findings = await ContentSecurityPolicyConnectSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_connect_src_unrestricted"
+        assert findings[0].code == "headers_csp_connect_src_unrestricted"
         assert findings[0].severity == Severity.PASS
 
 
@@ -981,7 +981,7 @@ class TestContentSecurityPolicyReportOnlyFrameAncestorsMissing:
         findings = await ContentSecurityPolicyReportOnlyFrameAncestorsMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_frame_ancestors_missing"
+        assert findings[0].code == "headers_csp_report_only_frame_ancestors_missing"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -993,7 +993,7 @@ class TestContentSecurityPolicyReportOnlyFrameAncestorsMissing:
         findings = await ContentSecurityPolicyReportOnlyFrameAncestorsMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_frame_ancestors_missing"
+        assert findings[0].code == "headers_csp_report_only_frame_ancestors_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -1011,7 +1011,7 @@ class TestContentSecurityPolicyReportOnlyFormActionMissing:
         findings = await ContentSecurityPolicyReportOnlyFormActionMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_form_action_missing"
+        assert findings[0].code == "headers_csp_report_only_form_action_missing"
         assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
@@ -1023,7 +1023,7 @@ class TestContentSecurityPolicyReportOnlyFormActionMissing:
         findings = await ContentSecurityPolicyReportOnlyFormActionMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_form_action_missing"
+        assert findings[0].code == "headers_csp_report_only_form_action_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -1041,7 +1041,7 @@ class TestContentSecurityPolicyReportOnlyScriptSrcMissing:
         findings = await ContentSecurityPolicyReportOnlyScriptSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_script_src_missing"
+        assert findings[0].code == "headers_csp_report_only_script_src_missing"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -1050,7 +1050,7 @@ class TestContentSecurityPolicyReportOnlyScriptSrcMissing:
         findings = await ContentSecurityPolicyReportOnlyScriptSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_script_src_missing"
+        assert findings[0].code == "headers_csp_report_only_script_src_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -1068,7 +1068,7 @@ class TestContentSecurityPolicyReportOnlyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyReportOnlyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_report_only_script_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -1077,7 +1077,7 @@ class TestContentSecurityPolicyReportOnlyScriptSrcUnrestricted:
         findings = await ContentSecurityPolicyReportOnlyScriptSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_script_src_unrestricted"
+        assert findings[0].code == "headers_csp_report_only_script_src_unrestricted"
         assert findings[0].severity == Severity.PASS
 
 
@@ -1095,7 +1095,7 @@ class TestContentSecurityPolicyReportOnlyStyleSrcMissing:
         findings = await ContentSecurityPolicyReportOnlyStyleSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_style_src_missing"
+        assert findings[0].code == "headers_csp_report_only_style_src_missing"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -1104,7 +1104,7 @@ class TestContentSecurityPolicyReportOnlyStyleSrcMissing:
         findings = await ContentSecurityPolicyReportOnlyStyleSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_style_src_missing"
+        assert findings[0].code == "headers_csp_report_only_style_src_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -1122,7 +1122,7 @@ class TestContentSecurityPolicyReportOnlyStyleSrcUnrestricted:
         findings = await ContentSecurityPolicyReportOnlyStyleSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_style_src_unrestricted"
+        assert findings[0].code == "headers_csp_report_only_style_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -1131,7 +1131,7 @@ class TestContentSecurityPolicyReportOnlyStyleSrcUnrestricted:
         findings = await ContentSecurityPolicyReportOnlyStyleSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_style_src_unrestricted"
+        assert findings[0].code == "headers_csp_report_only_style_src_unrestricted"
         assert findings[0].severity == Severity.PASS
 
 
@@ -1149,7 +1149,7 @@ class TestContentSecurityPolicyReportOnlyConnectSrcMissing:
         findings = await ContentSecurityPolicyReportOnlyConnectSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_connect_src_missing"
+        assert findings[0].code == "headers_csp_report_only_connect_src_missing"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -1158,7 +1158,7 @@ class TestContentSecurityPolicyReportOnlyConnectSrcMissing:
         findings = await ContentSecurityPolicyReportOnlyConnectSrcMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_connect_src_missing"
+        assert findings[0].code == "headers_csp_report_only_connect_src_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -1176,7 +1176,7 @@ class TestContentSecurityPolicyReportOnlyConnectSrcUnrestricted:
         findings = await ContentSecurityPolicyReportOnlyConnectSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_connect_src_unrestricted"
+        assert findings[0].code == "headers_csp_report_only_connect_src_unrestricted"
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
@@ -1185,5 +1185,5 @@ class TestContentSecurityPolicyReportOnlyConnectSrcUnrestricted:
         findings = await ContentSecurityPolicyReportOnlyConnectSrcUnrestricted().check(response)
 
         assert len(findings) == 1
-        assert findings[0].code == "headers_content_security_policy_report_only_connect_src_unrestricted"
+        assert findings[0].code == "headers_csp_report_only_connect_src_unrestricted"
         assert findings[0].severity == Severity.PASS

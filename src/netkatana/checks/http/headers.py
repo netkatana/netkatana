@@ -7,7 +7,7 @@ _HSTS_MIN_MAX_AGE = 31_536_000  # one year
 
 
 class StrictTransportSecurityMissing(AbstractHttpCheck):
-    _code = "headers_strict_transport_security_missing"
+    _code = "headers_hsts_missing"
     _detail = (
         "The `Strict-Transport-Security` header instructs browsers to always use HTTPS for this domain, "
         "refusing plain HTTP connections. Without it, users are vulnerable to protocol downgrade and SSL "
@@ -36,7 +36,7 @@ class StrictTransportSecurityMissing(AbstractHttpCheck):
 
 
 class StrictTransportSecurityInvalid(AbstractHttpCheck):
-    _code = "headers_strict_transport_security_invalid"
+    _code = "headers_hsts_invalid"
     _detail = (
         "The `Strict-Transport-Security` header requires a valid `max-age` directive with a non-negative "
         "integer value (e.g. `max-age=31536000`). A malformed header is silently ignored by browsers, "
@@ -73,7 +73,7 @@ class StrictTransportSecurityInvalid(AbstractHttpCheck):
 
 
 class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
-    _code = "headers_strict_transport_security_max_age_zero"
+    _code = "headers_hsts_max_age_zero"
     _detail = (
         "A `max-age` of 0 instructs browsers to immediately delete the cached HSTS policy for this domain, "
         "removing enforcement of HTTPS for all future visits. This is only appropriate when intentionally "
@@ -110,7 +110,7 @@ class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
 
 
 class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
-    _code = "headers_strict_transport_security_max_age_low"
+    _code = "headers_hsts_max_age_low"
     _detail = (
         "The `max-age` directive controls how long browsers remember to enforce HTTPS for this domain, "
         "in seconds. Short values leave a larger window where returning users may connect over HTTP "
@@ -152,7 +152,7 @@ class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
 
 
 class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
-    _code = "headers_strict_transport_security_include_subdomains_missing"
+    _code = "headers_hsts_include_subdomains_missing"
     _detail = (
         "The `includeSubDomains` directive extends the HSTS policy to all subdomains of the current host. "
         "Without it, subdomains are reachable over plain HTTP, which can allow cookies scoped to the parent "
@@ -190,7 +190,7 @@ class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
 
 
 class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
-    _code = "headers_strict_transport_security_preload_not_eligible"
+    _code = "headers_hsts_preload_not_eligible"
     _detail = (
         "Browser preload lists hardcode HSTS policies before a user's first visit, eliminating the window "
         "where an attacker could intercept the initial plain HTTP connection. To qualify, the header must "
@@ -254,7 +254,7 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
 
 
 class ContentSecurityPolicyMissing(AbstractHttpCheck):
-    _code = "headers_content_security_policy_missing"
+    _code = "headers_csp_missing"
     _detail = "Without CSP, browsers have no restrictions on which resources they load, increasing the risk of XSS and data injection attacks."
 
     async def check(self, response: Response) -> list[Finding]:
@@ -331,13 +331,13 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
 
 
 class ContentSecurityPolicyUnsafeInline(_CspUnsafeInlineCheck):
-    _code = "headers_content_security_policy_unsafe_inline"
+    _code = "headers_csp_unsafe_inline"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyUnsafeInline(_CspUnsafeInlineCheck):
-    _code = "headers_content_security_policy_report_only_unsafe_inline"
+    _code = "headers_csp_report_only_unsafe_inline"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -385,13 +385,13 @@ class _CspUnsafeEvalCheck(AbstractHttpCheck):
 
 
 class ContentSecurityPolicyUnsafeEval(_CspUnsafeEvalCheck):
-    _code = "headers_content_security_policy_unsafe_eval"
+    _code = "headers_csp_unsafe_eval"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyUnsafeEval(_CspUnsafeEvalCheck):
-    _code = "headers_content_security_policy_report_only_unsafe_eval"
+    _code = "headers_csp_report_only_unsafe_eval"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -435,13 +435,13 @@ class _CspObjectSrcUnsafeCheck(AbstractHttpCheck):
 
 
 class ContentSecurityPolicyObjectSrcUnsafe(_CspObjectSrcUnsafeCheck):
-    _code = "headers_content_security_policy_object_src_unsafe"
+    _code = "headers_csp_object_src_unsafe"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyObjectSrcUnsafe(_CspObjectSrcUnsafeCheck):
-    _code = "headers_content_security_policy_report_only_object_src_unsafe"
+    _code = "headers_csp_report_only_object_src_unsafe"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -485,13 +485,13 @@ class _CspBaseUriMissingCheck(AbstractHttpCheck):
 
 
 class ContentSecurityPolicyBaseUriMissing(_CspBaseUriMissingCheck):
-    _code = "headers_content_security_policy_base_uri_missing"
+    _code = "headers_csp_base_uri_missing"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyBaseUriMissing(_CspBaseUriMissingCheck):
-    _code = "headers_content_security_policy_report_only_base_uri_missing"
+    _code = "headers_csp_report_only_base_uri_missing"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -535,13 +535,13 @@ class _CspFrameAncestorsMissingCheck(AbstractHttpCheck):
 
 
 class ContentSecurityPolicyFrameAncestorsMissing(_CspFrameAncestorsMissingCheck):
-    _code = "headers_content_security_policy_frame_ancestors_missing"
+    _code = "headers_csp_frame_ancestors_missing"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyFrameAncestorsMissing(_CspFrameAncestorsMissingCheck):
-    _code = "headers_content_security_policy_report_only_frame_ancestors_missing"
+    _code = "headers_csp_report_only_frame_ancestors_missing"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -584,13 +584,13 @@ class _CspFormActionMissingCheck(AbstractHttpCheck):
 
 
 class ContentSecurityPolicyFormActionMissing(_CspFormActionMissingCheck):
-    _code = "headers_content_security_policy_form_action_missing"
+    _code = "headers_csp_form_action_missing"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyFormActionMissing(_CspFormActionMissingCheck):
-    _code = "headers_content_security_policy_report_only_form_action_missing"
+    _code = "headers_csp_report_only_form_action_missing"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -641,13 +641,13 @@ class _CspScriptSrcMissingCheck(_CspFetchDirectiveMissingCheck):
 
 
 class ContentSecurityPolicyScriptSrcMissing(_CspScriptSrcMissingCheck):
-    _code = "headers_content_security_policy_script_src_missing"
+    _code = "headers_csp_script_src_missing"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyScriptSrcMissing(_CspScriptSrcMissingCheck):
-    _code = "headers_content_security_policy_report_only_script_src_missing"
+    _code = "headers_csp_report_only_script_src_missing"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -661,13 +661,13 @@ class _CspStyleSrcMissingCheck(_CspFetchDirectiveMissingCheck):
 
 
 class ContentSecurityPolicyStyleSrcMissing(_CspStyleSrcMissingCheck):
-    _code = "headers_content_security_policy_style_src_missing"
+    _code = "headers_csp_style_src_missing"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyStyleSrcMissing(_CspStyleSrcMissingCheck):
-    _code = "headers_content_security_policy_report_only_style_src_missing"
+    _code = "headers_csp_report_only_style_src_missing"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -681,13 +681,13 @@ class _CspConnectSrcMissingCheck(_CspFetchDirectiveMissingCheck):
 
 
 class ContentSecurityPolicyConnectSrcMissing(_CspConnectSrcMissingCheck):
-    _code = "headers_content_security_policy_connect_src_missing"
+    _code = "headers_csp_connect_src_missing"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyConnectSrcMissing(_CspConnectSrcMissingCheck):
-    _code = "headers_content_security_policy_report_only_connect_src_missing"
+    _code = "headers_csp_report_only_connect_src_missing"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -739,13 +739,13 @@ class _CspScriptSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
 
 
 class ContentSecurityPolicyScriptSrcUnrestricted(_CspScriptSrcUnrestrictedCheck):
-    _code = "headers_content_security_policy_script_src_unrestricted"
+    _code = "headers_csp_script_src_unrestricted"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyScriptSrcUnrestricted(_CspScriptSrcUnrestrictedCheck):
-    _code = "headers_content_security_policy_report_only_script_src_unrestricted"
+    _code = "headers_csp_report_only_script_src_unrestricted"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -760,13 +760,13 @@ class _CspStyleSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
 
 
 class ContentSecurityPolicyStyleSrcUnrestricted(_CspStyleSrcUnrestrictedCheck):
-    _code = "headers_content_security_policy_style_src_unrestricted"
+    _code = "headers_csp_style_src_unrestricted"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyStyleSrcUnrestricted(_CspStyleSrcUnrestrictedCheck):
-    _code = "headers_content_security_policy_report_only_style_src_unrestricted"
+    _code = "headers_csp_report_only_style_src_unrestricted"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
@@ -781,12 +781,12 @@ class _CspConnectSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
 
 
 class ContentSecurityPolicyConnectSrcUnrestricted(_CspConnectSrcUnrestrictedCheck):
-    _code = "headers_content_security_policy_connect_src_unrestricted"
+    _code = "headers_csp_connect_src_unrestricted"
     _header = _CSP_HEADER
     _title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyConnectSrcUnrestricted(_CspConnectSrcUnrestrictedCheck):
-    _code = "headers_content_security_policy_report_only_connect_src_unrestricted"
+    _code = "headers_csp_report_only_connect_src_unrestricted"
     _header = _CSP_REPORT_ONLY_HEADER
     _title_prefix = "Content-Security-Policy-Report-Only (CSP)"

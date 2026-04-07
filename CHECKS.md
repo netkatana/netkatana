@@ -2,75 +2,75 @@
 
 ## HTTP
 
-### headers_strict_transport_security_missing
+### headers_hsts_missing
 
 > CRITICAL, implemented
 
 HSTS header absent — browsers may connect over HTTP, leaving users vulnerable to protocol downgrade and SSL stripping
 attacks.
 
-### headers_strict_transport_security_invalid
+### headers_hsts_invalid
 
 > CRITICAL, implemented
 
 HSTS header present but malformed (missing `max-age`, non-numeric value, or directives in wrong order) — browser
 silently ignores it.
 
-### headers_strict_transport_security_max_age_zero
+### headers_hsts_max_age_zero
 
 > CRITICAL, implemented
 
 HSTS `max-age=0` — instructs browsers to delete the cached policy, removing HTTPS enforcement for all returning users.
 
-### headers_strict_transport_security_max_age_low
+### headers_hsts_max_age_low
 
 > WARNING, implemented
 
 HSTS `max-age` is less than one year (31,536,000 s) — short window leaves returning users exposed to downgrade attacks
 between visits.
 
-### headers_strict_transport_security_include_subdomains_missing
+### headers_hsts_include_subdomains_missing
 
 > NOTICE, implemented
 
 HSTS `includeSubDomains` directive absent — subdomains reachable over plain HTTP, parent-domain cookies may be
 intercepted.
 
-### headers_strict_transport_security_preload_not_eligible
+### headers_hsts_preload_not_eligible
 
 > WARNING, implemented
 
 HSTS header contains `preload` but does not meet preload list requirements (`max-age` ≥ 31,536,000 s and
 `includeSubDomains`) — the domain will be rejected by preload lists despite the developer signalling intent.
 
-### headers_content_security_policy_missing
+### headers_csp_missing
 
 > WARNING, implemented
 
 CSP header missing — no restriction on which resources browsers load, increases XSS/data injection risk.
 
-### headers_content_security_policy_unsafe_inline
+### headers_csp_unsafe_inline
 
 > CRITICAL, implemented
 
 CSP `script-src` (or `default-src` fallback) contains `'unsafe-inline'` without a nonce or hash to neutralize it — any
 inline script executes, directly defeating XSS protection.
 
-### headers_content_security_policy_unsafe_eval
+### headers_csp_unsafe_eval
 
 > CRITICAL, implemented
 
 CSP `script-src` (or `default-src` fallback) contains `'unsafe-eval'` — permits `eval()`, `new Function(string)`, and
 similar dynamic code execution, enabling code injection from any attacker-controlled string.
 
-### headers_content_security_policy_object_src_unsafe
+### headers_csp_object_src_unsafe
 
 > WARNING, implemented
 
 CSP `object-src` (or `default-src` fallback) is not restricted to `'none'` — plugin content (`<object>`, `<embed>`) is
 unrestricted, enabling potential code execution via Flash or Java applets.
 
-### headers_content_security_policy_base_uri_missing
+### headers_csp_base_uri_missing
 
 > WARNING, implemented
 
@@ -78,7 +78,7 @@ CSP policy lacks a `base-uri` directive — attackers can inject `<base href='ht
 relative resource loads, bypassing `script-src` allowlists; `base-uri` does not fall back to `default-src` and must be
 set explicitly.
 
-### headers_content_security_policy_frame_ancestors_missing
+### headers_csp_frame_ancestors_missing
 
 > WARNING, implemented
 
@@ -86,7 +86,7 @@ CSP policy lacks a `frame-ancestors` directive — any origin can embed this pag
 clickjacking attacks. Unlike fetch directives, `frame-ancestors` does not fall back to `default-src` and must be set
 explicitly.
 
-### headers_content_security_policy_form_action_missing
+### headers_csp_form_action_missing
 
 > WARNING, implemented
 
@@ -94,119 +94,119 @@ CSP policy lacks a `form-action` directive — form submissions are unrestricted
 data to any origin. Unlike fetch directives, `form-action` does not fall back to `default-src` and must be set
 explicitly.
 
-### headers_content_security_policy_script_src_missing
+### headers_csp_script_src_missing
 
 > CRITICAL, implemented
 
 CSP present but neither `script-src` nor `default-src` is set — scripts are completely unrestricted, providing no XSS
 protection despite the header being present.
 
-### headers_content_security_policy_script_src_unrestricted
+### headers_csp_script_src_unrestricted
 
 > CRITICAL, implemented
 
 CSP `script-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — scripts can be
 loaded from any origin, making the allowlist pointless.
 
-### headers_content_security_policy_style_src_missing
+### headers_csp_style_src_missing
 
 > CRITICAL, implemented
 
 CSP present but neither `style-src` nor `default-src` is set — stylesheets are completely unrestricted, enabling CSS
 injection attacks and data exfiltration via `url()` probes.
 
-### headers_content_security_policy_style_src_unrestricted
+### headers_csp_style_src_unrestricted
 
 > CRITICAL, implemented
 
 CSP `style-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — stylesheets can
 be loaded from any origin, making the allowlist pointless.
 
-### headers_content_security_policy_connect_src_missing
+### headers_csp_connect_src_missing
 
 > CRITICAL, implemented
 
 CSP present but neither `connect-src` nor `default-src` is set — fetch, XHR, and WebSocket connections are completely
 unrestricted, enabling data exfiltration to arbitrary origins.
 
-### headers_content_security_policy_connect_src_unrestricted
+### headers_csp_connect_src_unrestricted
 
 > CRITICAL, implemented
 
 CSP `connect-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — fetch, XHR, and
 WebSocket connections can target any origin, making the allowlist pointless.
 
-### headers_content_security_policy_report_only_unsafe_inline
+### headers_csp_report_only_unsafe_inline
 
 > CRITICAL, implemented
 
-Same as `headers_content_security_policy_unsafe_inline`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_unsafe_inline`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_unsafe_eval
+### headers_csp_report_only_unsafe_eval
 
 > CRITICAL, implemented
 
-Same as `headers_content_security_policy_unsafe_eval`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_unsafe_eval`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_object_src_unsafe
+### headers_csp_report_only_object_src_unsafe
 
 > WARNING, implemented
 
-Same as `headers_content_security_policy_object_src_unsafe`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_object_src_unsafe`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_base_uri_missing
-
-> WARNING, implemented
-
-Same as `headers_content_security_policy_base_uri_missing`, applied to `Content-Security-Policy-Report-Only`.
-
-### headers_content_security_policy_report_only_frame_ancestors_missing
+### headers_csp_report_only_base_uri_missing
 
 > WARNING, implemented
 
-Same as `headers_content_security_policy_frame_ancestors_missing`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_base_uri_missing`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_form_action_missing
+### headers_csp_report_only_frame_ancestors_missing
 
 > WARNING, implemented
 
-Same as `headers_content_security_policy_form_action_missing`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_frame_ancestors_missing`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_script_src_missing
+### headers_csp_report_only_form_action_missing
 
-> CRITICAL, implemented
+> WARNING, implemented
 
-Same as `headers_content_security_policy_script_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_form_action_missing`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_script_src_unrestricted
-
-> CRITICAL, implemented
-
-Same as `headers_content_security_policy_script_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
-
-### headers_content_security_policy_report_only_style_src_missing
+### headers_csp_report_only_script_src_missing
 
 > CRITICAL, implemented
 
-Same as `headers_content_security_policy_style_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_script_src_missing`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_style_src_unrestricted
-
-> CRITICAL, implemented
-
-Same as `headers_content_security_policy_style_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
-
-### headers_content_security_policy_report_only_connect_src_missing
+### headers_csp_report_only_script_src_unrestricted
 
 > CRITICAL, implemented
 
-Same as `headers_content_security_policy_connect_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_script_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_connect_src_unrestricted
+### headers_csp_report_only_style_src_missing
 
 > CRITICAL, implemented
 
-Same as `headers_content_security_policy_connect_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_csp_style_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_csp_report_only_style_src_unrestricted
+
+> CRITICAL, implemented
+
+Same as `headers_csp_style_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_csp_report_only_connect_src_missing
+
+> CRITICAL, implemented
+
+Same as `headers_csp_connect_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_csp_report_only_connect_src_unrestricted
+
+> CRITICAL, implemented
+
+Same as `headers_csp_connect_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_cors_wildcard_origin
 
