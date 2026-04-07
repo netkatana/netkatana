@@ -6,7 +6,15 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from netkatana.checks.dns import DmarcMissing, SpfMissing, SpfPermissive
-from netkatana.checks.http.headers import ContentSecurityPolicyMissing, StrictTransportSecurityMissing
+from netkatana.checks.http.headers import (
+    ContentSecurityPolicyMissing,
+    StrictTransportSecurityIncludeSubdomainsMissing,
+    StrictTransportSecurityInvalid,
+    StrictTransportSecurityMaxAgeLow,
+    StrictTransportSecurityMaxAgeZero,
+    StrictTransportSecurityMissing,
+    StrictTransportSecurityPreloadNotEligible,
+)
 from netkatana.checks.tls import (
     TlsCertExpired,
     TlsCertMismatched,
@@ -60,7 +68,15 @@ def http(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> Non
 async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     async with Client() as client:
         scanner = HttpScanner(
-            checks=[StrictTransportSecurityMissing(), ContentSecurityPolicyMissing()],
+            checks=[
+                StrictTransportSecurityMissing(),
+                StrictTransportSecurityInvalid(),
+                StrictTransportSecurityMaxAgeZero(),
+                StrictTransportSecurityMaxAgeLow(),
+                StrictTransportSecurityIncludeSubdomainsMissing(),
+                StrictTransportSecurityPreloadNotEligible(),
+                ContentSecurityPolicyMissing(),
+            ],
             client=client,
             concurrency=concurrency,
         )

@@ -2,36 +2,39 @@
 
 ### HTTP
 
-| Code                                                | Severity | Status      | Description                                                                                                                                      |
-|-----------------------------------------------------|----------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| `headers_strict_transport_security_missing`         | CRITICAL | implemented | HSTS header missing — browsers may connect over HTTP and be vulnerable to protocol downgrade and SSL stripping                                   |
-| `headers_cookie_missing_secure`                     | CRITICAL | planned     | Cookie set without `Secure` flag — transmitted over unencrypted HTTP connections                                                                 |
-| `headers_content_security_policy_missing`           | WARNING  | implemented | CSP header missing — no restriction on which resources browsers load, increases XSS/data injection risk                                          |
-| `headers_cors_wildcard_origin`                      | WARNING  | planned     | `Access-Control-Allow-Origin: *` — any origin can read the response; may allow unintended cross-origin reads on credentialed endpoints           |
-| `headers_x_content_type_options_missing`            | WARNING  | planned     | `nosniff` directive missing — allows MIME-type sniffing attacks                                                                                  |
-| `headers_x_frame_options_missing`                   | WARNING  | planned     | No clickjacking protection — page can be embedded in an iframe by any origin                                                                     |
-| `headers_cross_origin_resource_policy_missing`      | WARNING  | planned     | No CORP header — other origins can load this resource (Spectre-class side-channel risk)                                                          |
-| `headers_cross_origin_opener_policy_missing`        | WARNING  | planned     | No COOP header — page shares a browsing context group with cross-origin pages, enabling XS-Leaks                                                 |
-| `headers_cookie_missing_httponly`                   | WARNING  | planned     | Cookie accessible via JavaScript — stolen by XSS without `HttpOnly` flag                                                                         |
-| `headers_cookie_missing_samesite`                   | WARNING  | planned     | Cookie missing `SameSite` attribute — may be sent on cross-site requests, enabling CSRF                                                          |
-| `headers_hsts_max_age_low`                          | WARNING  | planned     | HSTS `max-age` is less than one year — too short to provide meaningful downgrade protection                                                      |
-| `headers_referrer_policy_missing`                   | NOTICE   | planned     | No `Referrer-Policy` — full URL may leak to third parties via the `Referer` header                                                               |
-| `headers_permissions_policy_missing`                | NOTICE   | planned     | No `Permissions-Policy` — browser features (camera, microphone, geolocation, etc.) are unconstrained                                             |
-| `headers_cross_origin_embedder_policy_missing`      | NOTICE   | planned     | No COEP header — prevents enabling cross-origin isolation (required for SharedArrayBuffer/high-res timers)                                       |
-| `headers_x_permitted_cross_domain_policies_missing` | NOTICE   | planned     | No `X-Permitted-Cross-Domain-Policies` — Flash/PDF clients may load cross-domain data                                                            |
-| `headers_server_disclosure`                         | NOTICE   | planned     | `Server` header present — reveals server software and version to potential attackers                                                             |
-| `headers_x_powered_by_disclosure`                   | NOTICE   | planned     | `X-Powered-By` header present — reveals framework or runtime to potential attackers                                                              |
-| `headers_x_xss_protection_deprecated`               | NOTICE   | planned     | `X-XSS-Protection` header present — deprecated and can introduce vulnerabilities in older browsers                                               |
-| `headers_expect_ct_deprecated`                      | NOTICE   | planned     | `Expect-CT` header present — deprecated since Chrome 115; Certificate Transparency is now enforced by browsers                                   |
-| `headers_feature_policy_deprecated`                 | NOTICE   | planned     | `Feature-Policy` header present — superseded by `Permissions-Policy`; use the modern header instead                                              |
-| `headers_cookie_prefix_secure_missing`              | NOTICE   | planned     | Cookie has `Secure` flag but no `__Secure-` prefix — prefix enforces the flag at the browser level                                               |
-| `headers_cookie_prefix_host_missing`                | NOTICE   | planned     | Cookie has `Secure; Path=/` and no `Domain` but lacks `__Host-` prefix — prefix provides stricter origin binding                                 |
-| `headers_cookie_prefix_secure_misconfigured`        | CRITICAL | planned     | Cookie uses `__Secure-` prefix but is missing the `Secure` flag — browser silently drops it, breaking functionality                              |
-| `headers_cookie_prefix_host_misconfigured`          | CRITICAL | planned     | Cookie uses `__Host-` prefix but violates its requirements (`Secure`, `Path=/`, no `Domain`) — browser silently drops it, breaking functionality |
-| `headers_strict_transport_security_invalid`         | CRITICAL | planned     | HSTS header present but malformed (missing `max-age`, non-numeric value, bad syntax) — browser ignores it, same effect as missing                |
-| `headers_content_security_policy_invalid`           | WARNING  | planned     | CSP header present but malformed — browser may ignore the entire header, leaving XSS protections ineffective                                     |
-| `headers_x_content_type_options_invalid`            | WARNING  | planned     | `X-Content-Type-Options` value is not `nosniff` — browser ignores it, MIME-type sniffing remains enabled                                         |
-| `headers_x_frame_options_invalid`                   | WARNING  | planned     | `X-Frame-Options` value is not `DENY` or `SAMEORIGIN` — browser ignores it, clickjacking protection is not applied                               |
+| Code                                                           | Severity | Status      | Description                                                                                                                                              |
+|----------------------------------------------------------------|----------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `headers_strict_transport_security_missing`                    | CRITICAL | implemented | HSTS header absent — browsers may connect over HTTP, leaving users vulnerable to protocol downgrade and SSL stripping attacks                            |
+| `headers_strict_transport_security_invalid`                    | CRITICAL | implemented | HSTS header present but malformed (missing `max-age`, non-numeric value, or directives in wrong order) — browser silently ignores it                     |
+| `headers_strict_transport_security_max_age_zero`               | CRITICAL | implemented | HSTS `max-age=0` — instructs browsers to delete the cached policy, removing HTTPS enforcement for all returning users                                    |
+| `headers_strict_transport_security_max_age_low`                | WARNING  | implemented | HSTS `max-age` is less than one year (31,536,000 s) — short window leaves returning users exposed to downgrade attacks between visits                    |
+| `headers_strict_transport_security_include_subdomains_missing` | NOTICE   | implemented | HSTS `includeSubDomains` directive absent — subdomains reachable over plain HTTP, parent-domain cookies may be intercepted                               |
+| `headers_strict_transport_security_preload_not_eligible`       | NOTICE   | implemented | HSTS header does not meet preload list requirements (`max-age` ≥ 31,536,000 s and `includeSubDomains`) — domain cannot be added to browser preload lists |
+| `headers_cookie_missing_secure`                                | CRITICAL | planned     | Cookie set without `Secure` flag — transmitted over unencrypted HTTP connections                                                                         |
+| `headers_cookie_prefix_secure_misconfigured`                   | CRITICAL | planned     | Cookie uses `__Secure-` prefix but is missing the `Secure` flag — browser silently drops it, breaking functionality                                      |
+| `headers_cookie_prefix_host_misconfigured`                     | CRITICAL | planned     | Cookie uses `__Host-` prefix but violates its requirements (`Secure`, `Path=/`, no `Domain`) — browser silently drops it, breaking functionality         |
+| `headers_content_security_policy_missing`                      | WARNING  | implemented | CSP header missing — no restriction on which resources browsers load, increases XSS/data injection risk                                                  |
+| `headers_content_security_policy_invalid`                      | WARNING  | planned     | CSP header present but malformed — browser may ignore the entire header, leaving XSS protections ineffective                                             |
+| `headers_cors_wildcard_origin`                                 | WARNING  | planned     | `Access-Control-Allow-Origin: *` — any origin can read the response; may allow unintended cross-origin reads on credentialed endpoints                   |
+| `headers_x_content_type_options_missing`                       | WARNING  | planned     | `nosniff` directive missing — allows MIME-type sniffing attacks                                                                                          |
+| `headers_x_content_type_options_invalid`                       | WARNING  | planned     | `X-Content-Type-Options` value is not `nosniff` — browser ignores it, MIME-type sniffing remains enabled                                                 |
+| `headers_x_frame_options_missing`                              | WARNING  | planned     | No clickjacking protection — page can be embedded in an iframe by any origin                                                                             |
+| `headers_x_frame_options_invalid`                              | WARNING  | planned     | `X-Frame-Options` value is not `DENY` or `SAMEORIGIN` — browser ignores it, clickjacking protection is not applied                                       |
+| `headers_cross_origin_resource_policy_missing`                 | WARNING  | planned     | No CORP header — other origins can load this resource (Spectre-class side-channel risk)                                                                  |
+| `headers_cross_origin_opener_policy_missing`                   | WARNING  | planned     | No COOP header — page shares a browsing context group with cross-origin pages, enabling XS-Leaks                                                         |
+| `headers_cookie_missing_httponly`                              | WARNING  | planned     | Cookie accessible via JavaScript — stolen by XSS without `HttpOnly` flag                                                                                 |
+| `headers_cookie_missing_samesite`                              | WARNING  | planned     | Cookie missing `SameSite` attribute — may be sent on cross-site requests, enabling CSRF                                                                  |
+| `headers_referrer_policy_missing`                              | NOTICE   | planned     | No `Referrer-Policy` — full URL may leak to third parties via the `Referer` header                                                                       |
+| `headers_permissions_policy_missing`                           | NOTICE   | planned     | No `Permissions-Policy` — browser features (camera, microphone, geolocation, etc.) are unconstrained                                                     |
+| `headers_cross_origin_embedder_policy_missing`                 | NOTICE   | planned     | No COEP header — prevents enabling cross-origin isolation (required for SharedArrayBuffer/high-res timers)                                               |
+| `headers_x_permitted_cross_domain_policies_missing`            | NOTICE   | planned     | No `X-Permitted-Cross-Domain-Policies` — Flash/PDF clients may load cross-domain data                                                                    |
+| `headers_server_disclosure`                                    | NOTICE   | planned     | `Server` header present — reveals server software and version to potential attackers                                                                     |
+| `headers_x_powered_by_disclosure`                              | NOTICE   | planned     | `X-Powered-By` header present — reveals framework or runtime to potential attackers                                                                      |
+| `headers_x_xss_protection_deprecated`                          | NOTICE   | planned     | `X-XSS-Protection` header present — deprecated and can introduce vulnerabilities in older browsers                                                       |
+| `headers_expect_ct_deprecated`                                 | NOTICE   | planned     | `Expect-CT` header present — deprecated since Chrome 115; Certificate Transparency is now enforced by browsers                                           |
+| `headers_feature_policy_deprecated`                            | NOTICE   | planned     | `Feature-Policy` header present — superseded by `Permissions-Policy`; use the modern header instead                                                      |
+| `headers_cookie_prefix_secure_missing`                         | NOTICE   | planned     | Cookie has `Secure` flag but no `__Secure-` prefix — prefix enforces the flag at the browser level                                                       |
+| `headers_cookie_prefix_host_missing`                           | NOTICE   | planned     | Cookie has `Secure; Path=/` and no `Domain` but lacks `__Host-` prefix — prefix provides stricter origin binding                                         |
 
 ### TLS
 
@@ -85,3 +88,7 @@
 
 - `headers_content_security_policy_unsafe_inline` — CSP contains `unsafe-inline` directive, negating script/style injection protection
 - `headers_content_security_policy_unsafe_eval` — CSP contains `unsafe-eval` directive, allowing dynamic code execution via `eval()` and similar
+
+## References
+
+- [HTTP Strict Transport Security (HSTS)](https://datatracker.ietf.org/doc/html/rfc6797)
