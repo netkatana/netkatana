@@ -6,13 +6,15 @@
 
 > CRITICAL, implemented
 
-HSTS header absent — browsers may connect over HTTP, leaving users vulnerable to protocol downgrade and SSL stripping attacks.
+HSTS header absent — browsers may connect over HTTP, leaving users vulnerable to protocol downgrade and SSL stripping
+attacks.
 
 ### headers_strict_transport_security_invalid
 
 > CRITICAL, implemented
 
-HSTS header present but malformed (missing `max-age`, non-numeric value, or directives in wrong order) — browser silently ignores it.
+HSTS header present but malformed (missing `max-age`, non-numeric value, or directives in wrong order) — browser
+silently ignores it.
 
 ### headers_strict_transport_security_max_age_zero
 
@@ -24,19 +26,22 @@ HSTS `max-age=0` — instructs browsers to delete the cached policy, removing HT
 
 > WARNING, implemented
 
-HSTS `max-age` is less than one year (31,536,000 s) — short window leaves returning users exposed to downgrade attacks between visits.
+HSTS `max-age` is less than one year (31,536,000 s) — short window leaves returning users exposed to downgrade attacks
+between visits.
 
 ### headers_strict_transport_security_include_subdomains_missing
 
 > NOTICE, implemented
 
-HSTS `includeSubDomains` directive absent — subdomains reachable over plain HTTP, parent-domain cookies may be intercepted.
+HSTS `includeSubDomains` directive absent — subdomains reachable over plain HTTP, parent-domain cookies may be
+intercepted.
 
 ### headers_strict_transport_security_preload_not_eligible
 
 > WARNING, implemented
 
-HSTS header contains `preload` but does not meet preload list requirements (`max-age` ≥ 31,536,000 s and `includeSubDomains`) — the domain will be rejected by preload lists despite the developer signalling intent.
+HSTS header contains `preload` but does not meet preload list requirements (`max-age` ≥ 31,536,000 s and
+`includeSubDomains`) — the domain will be rejected by preload lists despite the developer signalling intent.
 
 ### headers_content_security_policy_missing
 
@@ -48,31 +53,61 @@ CSP header missing — no restriction on which resources browsers load, increase
 
 > CRITICAL, skipped
 
-CSP header present but malformed — unlike HSTS, browsers are extremely lenient with CSP and silently ignore unknown directives or malformed source values rather than dropping the whole header, making a truly "browser-rejected" CSP nearly impossible to detect reliably; meaningful misconfigurations are caught by the content checks below.
+CSP header present but malformed — unlike HSTS, browsers are extremely lenient with CSP and silently ignore unknown
+directives or malformed source values rather than dropping the whole header, making a truly "browser-rejected" CSP
+nearly impossible to detect reliably; meaningful misconfigurations are caught by the content checks below.
 
 ### headers_content_security_policy_unsafe_inline
 
 > CRITICAL, implemented
 
-CSP `script-src` (or `default-src` fallback) contains `'unsafe-inline'` without a nonce or hash to neutralize it — any inline script executes, directly defeating XSS protection.
+CSP `script-src` (or `default-src` fallback) contains `'unsafe-inline'` without a nonce or hash to neutralize it — any
+inline script executes, directly defeating XSS protection.
 
 ### headers_content_security_policy_unsafe_eval
 
 > CRITICAL, implemented
 
-CSP `script-src` (or `default-src` fallback) contains `'unsafe-eval'` — permits `eval()`, `new Function(string)`, and similar dynamic code execution, enabling code injection from any attacker-controlled string.
+CSP `script-src` (or `default-src` fallback) contains `'unsafe-eval'` — permits `eval()`, `new Function(string)`, and
+similar dynamic code execution, enabling code injection from any attacker-controlled string.
 
 ### headers_content_security_policy_object_src_unsafe
 
 > WARNING, implemented
 
-CSP `object-src` (or `default-src` fallback) is not restricted to `'none'` — plugin content (`<object>`, `<embed>`) is unrestricted, enabling potential code execution via Flash or Java applets.
+CSP `object-src` (or `default-src` fallback) is not restricted to `'none'` — plugin content (`<object>`, `<embed>`) is
+unrestricted, enabling potential code execution via Flash or Java applets.
 
 ### headers_content_security_policy_base_uri_missing
 
 > WARNING, implemented
 
-CSP policy lacks a `base-uri` directive — attackers can inject `<base href='https://evil.com/'>` to redirect all relative resource loads, bypassing `script-src` allowlists; `base-uri` does not fall back to `default-src` and must be set explicitly.
+CSP policy lacks a `base-uri` directive — attackers can inject `<base href='https://evil.com/'>` to redirect all
+relative resource loads, bypassing `script-src` allowlists; `base-uri` does not fall back to `default-src` and must be
+set explicitly.
+
+### headers_content_security_policy_frame_ancestors_missing
+
+> WARNING, planned
+
+CSP policy lacks a `frame-ancestors` directive — any origin can embed this page in an iframe or frame, enabling
+clickjacking attacks. Unlike fetch directives, `frame-ancestors` does not fall back to `default-src` and must be set
+explicitly.
+
+### headers_content_security_policy_form_action_missing
+
+> WARNING, planned
+
+CSP policy lacks a `form-action` directive — form submissions are unrestricted, allowing an injected form to exfiltrate
+data to any origin. Unlike fetch directives, `form-action` does not fall back to `default-src` and must be set
+explicitly.
+
+### headers_content_security_policy_wildcard_script_src
+
+> CRITICAL, planned
+
+CSP `script-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — scripts can be
+loaded from any origin, effectively negating XSS protection regardless of other restrictions.
 
 ### headers_content_security_policy_report_only_unsafe_inline
 
@@ -98,11 +133,30 @@ Same as `headers_content_security_policy_object_src_unsafe`, applied to `Content
 
 Same as `headers_content_security_policy_base_uri_missing`, applied to `Content-Security-Policy-Report-Only`.
 
+### headers_content_security_policy_report_only_frame_ancestors_missing
+
+> WARNING, planned
+
+Same as `headers_content_security_policy_frame_ancestors_missing`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_form_action_missing
+
+> WARNING, planned
+
+Same as `headers_content_security_policy_form_action_missing`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_wildcard_script_src
+
+> CRITICAL, planned
+
+Same as `headers_content_security_policy_wildcard_script_src`, applied to `Content-Security-Policy-Report-Only`.
+
 ### headers_cors_wildcard_origin
 
 > WARNING, planned
 
-`Access-Control-Allow-Origin: *` — any origin can read the response; may allow unintended cross-origin reads on credentialed endpoints.
+`Access-Control-Allow-Origin: *` — any origin can read the response; may allow unintended cross-origin reads on
+credentialed endpoints.
 
 ### headers_x_content_type_options_missing
 
@@ -168,7 +222,8 @@ Cookie uses `__Secure-` prefix but is missing the `Secure` flag — browser sile
 
 > CRITICAL, planned
 
-Cookie uses `__Host-` prefix but violates its requirements (`Secure`, `Path=/`, no `Domain`) — browser silently drops it, breaking functionality.
+Cookie uses `__Host-` prefix but violates its requirements (`Secure`, `Path=/`, no `Domain`) — browser silently drops
+it, breaking functionality.
 
 ### headers_cookie_prefix_secure_missing
 
