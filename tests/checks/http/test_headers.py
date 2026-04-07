@@ -74,12 +74,12 @@ class TestStrictTransportSecurityInvalid:
         assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
-    async def test_wrong_directive_order(self):
+    async def test_any_directive_order(self):
         response = Response(200, headers={"strict-transport-security": "includeSubDomains; max-age=31536000"})
         findings = await StrictTransportSecurityInvalid().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.CRITICAL
+        assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
     async def test_malformed_value(self):

@@ -59,9 +59,29 @@ def test_parse_strict_transport_security_header_invalid_missing_max_age():
         parse_strict_transport_security_header("includeSubDomains")
 
 
-def test_parse_strict_transport_security_header_invalid_wrong_directive_order():
-    with pytest.raises(ValueError):
-        parse_strict_transport_security_header("includeSubDomains; max-age=31536000")
+def test_parse_strict_transport_security_header_any_directive_order():
+    result = parse_strict_transport_security_header("includeSubDomains; preload; max-age=31536000")
+    assert result == StrictTransportSecurityHeader(max_age=31536000, include_subdomains=True, preload=True)
+
+
+def test_parse_strict_transport_security_header_no_space_after_semicolon():
+    result = parse_strict_transport_security_header("max-age=31536000;includeSubDomains;preload")
+    assert result == StrictTransportSecurityHeader(max_age=31536000, include_subdomains=True, preload=True)
+
+
+def test_parse_strict_transport_security_header_unknown_directives_ignored():
+    result = parse_strict_transport_security_header("max-age=31536000; unknownDirective; anotherUnknown=value")
+    assert result == StrictTransportSecurityHeader(max_age=31536000, include_subdomains=False, preload=False)
+
+
+def test_parse_strict_transport_security_header_trailing_semicolon():
+    result = parse_strict_transport_security_header("max-age=31536000; includeSubDomains;")
+    assert result == StrictTransportSecurityHeader(max_age=31536000, include_subdomains=True, preload=False)
+
+
+def test_parse_strict_transport_security_header_double_semicolon():
+    result = parse_strict_transport_security_header("max-age=31536000;; includeSubDomains")
+    assert result == StrictTransportSecurityHeader(max_age=31536000, include_subdomains=True, preload=False)
 
 
 def test_parse_strict_transport_security_header_invalid_whitespace_around_equals():
