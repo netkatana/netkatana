@@ -49,14 +49,6 @@ HSTS header contains `preload` but does not meet preload list requirements (`max
 
 CSP header missing — no restriction on which resources browsers load, increases XSS/data injection risk.
 
-### headers_content_security_policy_invalid
-
-> CRITICAL, skipped
-
-CSP header present but malformed — unlike HSTS, browsers are extremely lenient with CSP and silently ignore unknown
-directives or malformed source values rather than dropping the whole header, making a truly "browser-rejected" CSP
-nearly impossible to detect reliably; meaningful misconfigurations are caught by the content checks below.
-
 ### headers_content_security_policy_unsafe_inline
 
 > CRITICAL, implemented
