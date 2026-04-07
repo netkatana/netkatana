@@ -6,21 +6,22 @@ HTTP header, TLS certificate, and DNS security scanner.
 
 ```
 src/netkatana/
-├── models.py          # Core types: Severity, Finding, HostFinding, AbstractHttpCheck, AbstractTlsCheck, TlsResult
-├── scanners.py        # Orchestrators: HttpScanner, TlsScanner
-├── cli.py             # Click CLI: `http` and `tls` commands
+├── models.py          # Core types: Severity, Finding, HostFinding, StrictTransportSecurityHeader, AbstractHttpCheck, AbstractTlsCheck, TlsResult, DnsResult
+├── scanners.py        # Orchestrators: HttpScanner, TlsScanner, DnsScanner
+├── cli.py             # Click CLI: `http`, `tls`, and `dns` commands
 ├── formatters.py      # Output: VerboseFormatter, JsonlFormatter, JsonFormatter, TableFormatter
 ├── http.py            # HTTP client with manual redirect following and typed redirect exceptions
-├── utils.py           # extract_host() helper
+├── utils.py           # Helpers: extract_host(), parse_strict_transport_security_header()
 └── checks/
     ├── http/
     │   └── headers.py # HTTP header checks
-    └── tls.py         # TLS certificate and version checks
+    ├── tls.py         # TLS certificate and version checks
+    └── dns.py         # DNS checks (SPF, DMARC, ...)
 ```
 
 ## Checks
 
-`CHECKS.md` is the authoritative table of all implemented and planned checks across HTTP, TLS, DNS, and Response categories. Update it when adding or changing checks.
+`CHECKS.md` is the authoritative table of all implemented and planned checks across HTTP, TLS, DNS, and Response categories. It also contains a References section linking to the relevant RFCs — useful when verifying check behaviour against the spec. Update it when adding or changing checks.
 
 ## Key abstractions
 
@@ -44,9 +45,10 @@ src/netkatana/
 
 ## Adding a new check
 
-1. Subclass `AbstractHttpCheck` or `AbstractTlsCheck` in the relevant `checks/` file.
-2. Implement `async def check(...)` returning `list[Finding]`.
-3. Register the check in `cli.py`.
+1. Add the check to `CHECKS.md` first — it is the source of truth.
+2. Subclass `AbstractHttpCheck`, `AbstractTlsCheck`, or `AbstractDnsCheck` in the relevant `checks/` file.
+3. Implement `async def check(...)` returning `list[Finding]`.
+4. Register the check in `cli.py`.
 
 ## Formatters
 
@@ -59,3 +61,5 @@ make test      # run tests with coverage (uv run pytest -vv --cov=netkatana --co
 make lint      # check formatting and linting (ruff format --check + ruff check)
 make format    # auto-fix formatting and linting (ruff format + ruff check --fix)
 ```
+
+After making changes, always run `make format` followed by `make test` to ensure code is correctly formatted and all tests pass.
