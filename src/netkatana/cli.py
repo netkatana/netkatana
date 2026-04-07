@@ -4,7 +4,6 @@ import logging
 import click
 from rich.logging import RichHandler
 
-from netkatana.scanners import HttpScanner, TlsScanner
 from netkatana.checks.http.headers import ContentSecurityPolicyMissing, StrictTransportSecurityMissing
 from netkatana.checks.tls import (
     TlsCertExpired,
@@ -18,6 +17,7 @@ from netkatana.checks.tls import (
 )
 from netkatana.formatters import AbstractFormatter, JsonFormatter, JsonlFormatter, TableFormatter, VerboseFormatter
 from netkatana.http import Client
+from netkatana.scanners import HttpScanner, TlsScanner
 from netkatana.utils import extract_host
 
 _formatters: dict[str, type[AbstractFormatter]] = {

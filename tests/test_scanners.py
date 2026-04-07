@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from netkatana.scanners import HttpScanner
 from netkatana.http import Client, TooManyRedirects
+from netkatana.scanners import HttpScanner
 
 
 class TestHttpScanner:
