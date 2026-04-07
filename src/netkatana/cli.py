@@ -4,7 +4,7 @@ import logging
 import click
 from rich.logging import RichHandler
 
-from netkatana.checkers import HttpChecker, TlsChecker
+from netkatana.scanners import HttpScanner, TlsScanner
 from netkatana.checks.http.headers import ContentSecurityPolicyMissing, StrictTransportSecurityMissing
 from netkatana.checks.tls import (
     TlsCertExpired,
@@ -50,20 +50,21 @@ def _get_hosts(ctx: click.Context, param: click.Parameter, hosts: tuple[str, ...
 @click.argument("hosts", nargs=-1, callback=_get_hosts)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
-def http(hosts: list[str], concurrency: int, fmt: str) -> None:
-    asyncio.run(_http(hosts=hosts, concurrency=concurrency, fmt=fmt))
+@click.option("--show-passed", is_flag=True, default=False)
+def http(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_http(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _http(*, hosts: list[str], concurrency: int, fmt: str) -> None:
+async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     async with Client() as client:
-        checker = HttpChecker(
+        scanner = HttpScanner(
             checks=[StrictTransportSecurityMissing(), ContentSecurityPolicyMissing()],
             client=client,
             concurrency=concurrency,
         )
 
-        with _formatters[fmt]() as formatter:
-            async for host_finding in checker.check_hosts(hosts):
+        with _formatters[fmt](show_passed=show_passed) as formatter:
+            async for host_finding in scanner.check_hosts(hosts):
                 formatter.emit(host_finding)
 
 
@@ -71,12 +72,13 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str) -> None:
 @click.argument("hosts", nargs=-1, callback=_get_hosts)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
-def tls(hosts: list[str], concurrency: int, fmt: str) -> None:
-    asyncio.run(_tls(hosts=hosts, concurrency=concurrency, fmt=fmt))
+@click.option("--show-passed", is_flag=True, default=False)
+def tls(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_tls(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _tls(*, hosts: list[str], concurrency: int, fmt: str) -> None:
-    checker = TlsChecker(
+async def _tls(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    scanner = TlsScanner(
         checks=[
             TlsVersionDeprecated(),
             TlsVersionOutdated(),
@@ -90,6 +92,6 @@ async def _tls(*, hosts: list[str], concurrency: int, fmt: str) -> None:
         concurrency=concurrency,
     )
 
-    with _formatters[fmt]() as formatter:
-        async for host_finding in checker.run(hosts):
+    with _formatters[fmt](show_passed=show_passed) as formatter:
+        async for host_finding in scanner.run(hosts):
             formatter.emit(host_finding)

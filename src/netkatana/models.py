@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from httpx import Response
@@ -7,9 +7,10 @@ from pydantic import BaseModel
 
 
 class Severity(str, Enum):
-    CRITICAL = "critical"
-    WARNING = "warning"
+    PASS = "pass"
     NOTICE = "notice"
+    WARNING = "warning"
+    CRITICAL = "critical"
 
 
 @dataclass
@@ -18,6 +19,7 @@ class Finding:
     severity: Severity
     title: str
     detail: str
+    metadata: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass

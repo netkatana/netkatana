@@ -35,22 +35,21 @@
 
 ### TLS
 
-| Code                      | Severity | Status      | Description                                                                                           |
-|---------------------------|----------|-------------|-------------------------------------------------------------------------------------------------------|
-| `tls_cert_expired`        | CRITICAL | implemented | Certificate has passed its expiry date — clients will receive security warnings or refuse to connect  |
-| `tls_cert_self_signed`    | CRITICAL | implemented | Certificate not issued by a trusted CA — browsers and clients will reject or warn                     |
-| `tls_cert_mismatched`     | CRITICAL | implemented | Certificate does not cover the requested hostname — clients will reject the connection                |
-| `tls_cert_revoked`        | CRITICAL | implemented | Certificate has been revoked by the CA — clients that check revocation will reject it                 |
-| `tls_cert_untrusted`      | CRITICAL | implemented | Certificate chain cannot be verified against any trusted root CA                                      |
-| `tls_version_deprecated`  | CRITICAL | implemented | SSL 3.0, TLS 1.0, or TLS 1.1 in use — contains known vulnerabilities (BEAST, POODLE)                  |
-| `tls_cert_expiring`       | CRITICAL | planned     | Certificate expires within 7 days — renewal is urgent                                                 |
-| `tls_cipher_weak`         | WARNING  | implemented | Weak cipher suite negotiated (RC4, NULL, EXPORT, DES, 3DES, IDEA, SEED)                               |
-| `tls_cert_expiring`       | WARNING  | planned     | Certificate expires within 30 days — renewal required imminently                                      |
-| `tls_cert_key_size_small` | WARNING  | planned     | RSA key < 2048 bits or ECC key < 256 bits — insufficient cryptographic strength                       |
-| `tls_cert_weak_signature` | WARNING  | planned     | Certificate signed with MD5 or SHA-1 — vulnerable to collision attacks                                |
-| `tls_no_forward_secrecy`  | WARNING  | planned     | No ECDHE/DHE cipher suites offered — past sessions can be decrypted if the private key is compromised |
-| `tls_compression_enabled` | WARNING  | planned     | TLS compression enabled — vulnerable to CRIME attack                                                  |
-| `tls_version_outdated`    | NOTICE   | planned     | Server does not support TLS 1.3 — TLS 1.2-only offers weaker security and performance                 |
+| Code                      | Severity           | Status      | Description                                                                                           |
+|---------------------------|--------------------|-------------|-------------------------------------------------------------------------------------------------------|
+| `tls_cert_expired`        | CRITICAL           | implemented | Certificate has passed its expiry date — clients will receive security warnings or refuse to connect  |
+| `tls_cert_self_signed`    | CRITICAL           | implemented | Certificate not issued by a trusted CA — browsers and clients will reject or warn                     |
+| `tls_cert_mismatched`     | CRITICAL           | implemented | Certificate does not cover the requested hostname — clients will reject the connection                |
+| `tls_cert_revoked`        | CRITICAL           | implemented | Certificate has been revoked by the CA — clients that check revocation will reject it                 |
+| `tls_cert_untrusted`      | CRITICAL           | implemented | Certificate chain cannot be verified against any trusted root CA                                      |
+| `tls_version_deprecated`  | CRITICAL           | implemented | SSL 3.0, TLS 1.0, or TLS 1.1 in use — contains known vulnerabilities (BEAST, POODLE)                  |
+| `tls_cert_expiring`       | CRITICAL / WARNING | outdated    | Certificate expiring soon — CRITICAL if ≤7 days remain, WARNING if ≤30 days remain                    |
+| `tls_cipher_weak`         | WARNING            | implemented | Weak cipher suite negotiated (RC4, NULL, EXPORT, DES, 3DES, IDEA, SEED)                               |
+| `tls_cert_key_size_small` | WARNING            | planned     | RSA key < 2048 bits or ECC key < 256 bits — insufficient cryptographic strength                       |
+| `tls_cert_weak_signature` | WARNING            | planned     | Certificate signed with MD5 or SHA-1 — vulnerable to collision attacks                                |
+| `tls_no_forward_secrecy`  | WARNING            | planned     | No ECDHE/DHE cipher suites offered — past sessions can be decrypted if the private key is compromised |
+| `tls_compression_enabled` | WARNING            | planned     | TLS compression enabled — vulnerable to CRIME attack                                                  |
+| `tls_version_outdated`    | WARNING / NOTICE   | outdated    | TLS 1.2 negotiated — WARNING if TLS 1.3 is not supported at all, NOTICE if TLS 1.3 is also available  |
 
 ### DNS
 
