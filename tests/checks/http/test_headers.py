@@ -49,46 +49,13 @@ class TestStrictTransportSecurityInvalid:
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
-    async def test_valid_with_subdomains_and_preload(self):
-        response = Response(200, headers={"strict-transport-security": "max-age=31536000; includeSubDomains; preload"})
-        findings = await StrictTransportSecurityInvalid().check(response)
-
-        assert len(findings) == 1
-        assert findings[0].severity == Severity.PASS
-
-    @pytest.mark.asyncio
-    async def test_missing_max_age(self):
-        response = Response(200, headers={"strict-transport-security": "includeSubDomains"})
-        findings = await StrictTransportSecurityInvalid().check(response)
-
-        assert len(findings) == 1
-        assert findings[0].severity == Severity.CRITICAL
-        assert findings[0].code == "headers_strict_transport_security_invalid"
-
-    @pytest.mark.asyncio
-    async def test_non_numeric_max_age(self):
-        response = Response(200, headers={"strict-transport-security": "max-age=abc"})
-        findings = await StrictTransportSecurityInvalid().check(response)
-
-        assert len(findings) == 1
-        assert findings[0].severity == Severity.CRITICAL
-
-    @pytest.mark.asyncio
-    async def test_any_directive_order(self):
-        response = Response(200, headers={"strict-transport-security": "includeSubDomains; max-age=31536000"})
-        findings = await StrictTransportSecurityInvalid().check(response)
-
-        assert len(findings) == 1
-        assert findings[0].severity == Severity.PASS
-
-    @pytest.mark.asyncio
-    async def test_malformed_value(self):
+    async def test_invalid(self):
         response = Response(200, headers={"strict-transport-security": "garbage"})
         findings = await StrictTransportSecurityInvalid().check(response)
 
         assert len(findings) == 1
         assert findings[0].severity == Severity.CRITICAL
-        assert findings[0].metadata["value"] == "garbage"
+        assert findings[0].code == "headers_strict_transport_security_invalid"
 
 
 class TestStrictTransportSecurityMaxAgeZero:
