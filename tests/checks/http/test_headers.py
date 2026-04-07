@@ -21,6 +21,7 @@ class TestStrictTransportSecurityMissing:
 
         assert len(findings) == 1
         assert findings[0].code == "headers_strict_transport_security_missing"
+        assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
     async def test_present(self):
@@ -28,8 +29,8 @@ class TestStrictTransportSecurityMissing:
         findings = await StrictTransportSecurityMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.PASS
         assert findings[0].code == "headers_strict_transport_security_missing"
+        assert findings[0].severity == Severity.PASS
 
 
 class TestStrictTransportSecurityInvalid:
@@ -46,6 +47,7 @@ class TestStrictTransportSecurityInvalid:
         findings = await StrictTransportSecurityInvalid().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_invalid"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -54,8 +56,8 @@ class TestStrictTransportSecurityInvalid:
         findings = await StrictTransportSecurityInvalid().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.CRITICAL
         assert findings[0].code == "headers_strict_transport_security_invalid"
+        assert findings[0].severity == Severity.CRITICAL
 
 
 class TestStrictTransportSecurityMaxAgeZero:
@@ -79,8 +81,8 @@ class TestStrictTransportSecurityMaxAgeZero:
         findings = await StrictTransportSecurityMaxAgeZero().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.CRITICAL
         assert findings[0].code == "headers_strict_transport_security_max_age_zero"
+        assert findings[0].severity == Severity.CRITICAL
 
     @pytest.mark.asyncio
     async def test_max_age_nonzero(self):
@@ -88,6 +90,7 @@ class TestStrictTransportSecurityMaxAgeZero:
         findings = await StrictTransportSecurityMaxAgeZero().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_max_age_zero"
         assert findings[0].severity == Severity.PASS
 
 
@@ -119,8 +122,8 @@ class TestStrictTransportSecurityMaxAgeLow:
         findings = await StrictTransportSecurityMaxAgeLow().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.WARNING
         assert findings[0].code == "headers_strict_transport_security_max_age_low"
+        assert findings[0].severity == Severity.WARNING
         assert findings[0].metadata["max_age"] == "86400"
 
     @pytest.mark.asyncio
@@ -129,6 +132,7 @@ class TestStrictTransportSecurityMaxAgeLow:
         findings = await StrictTransportSecurityMaxAgeLow().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_max_age_low"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -137,6 +141,7 @@ class TestStrictTransportSecurityMaxAgeLow:
         findings = await StrictTransportSecurityMaxAgeLow().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_max_age_low"
         assert findings[0].severity == Severity.PASS
 
 
@@ -161,8 +166,8 @@ class TestStrictTransportSecurityIncludeSubdomainsMissing:
         findings = await StrictTransportSecurityIncludeSubdomainsMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.NOTICE
         assert findings[0].code == "headers_strict_transport_security_include_subdomains_missing"
+        assert findings[0].severity == Severity.NOTICE
 
     @pytest.mark.asyncio
     async def test_include_subdomains_present(self):
@@ -170,6 +175,7 @@ class TestStrictTransportSecurityIncludeSubdomainsMissing:
         findings = await StrictTransportSecurityIncludeSubdomainsMissing().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_include_subdomains_missing"
         assert findings[0].severity == Severity.PASS
 
 
@@ -194,8 +200,8 @@ class TestStrictTransportSecurityPreloadNotEligible:
         findings = await StrictTransportSecurityPreloadNotEligible().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.NOTICE
         assert findings[0].code == "headers_strict_transport_security_preload_not_eligible"
+        assert findings[0].severity == Severity.NOTICE
 
     @pytest.mark.asyncio
     async def test_include_subdomains_missing(self):
@@ -203,6 +209,7 @@ class TestStrictTransportSecurityPreloadNotEligible:
         findings = await StrictTransportSecurityPreloadNotEligible().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_preload_not_eligible"
         assert findings[0].severity == Severity.NOTICE
 
     @pytest.mark.asyncio
@@ -211,6 +218,7 @@ class TestStrictTransportSecurityPreloadNotEligible:
         findings = await StrictTransportSecurityPreloadNotEligible().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_preload_not_eligible"
         assert findings[0].severity == Severity.PASS
 
     @pytest.mark.asyncio
@@ -219,6 +227,7 @@ class TestStrictTransportSecurityPreloadNotEligible:
         findings = await StrictTransportSecurityPreloadNotEligible().check(response)
 
         assert len(findings) == 1
+        assert findings[0].code == "headers_strict_transport_security_preload_not_eligible"
         assert findings[0].severity == Severity.PASS
 
 
@@ -230,6 +239,7 @@ class TestContentSecurityPolicyMissing:
 
         assert len(findings) == 1
         assert findings[0].code == "headers_content_security_policy_missing"
+        assert findings[0].severity == Severity.WARNING
 
     @pytest.mark.asyncio
     async def test_present(self):
@@ -237,5 +247,5 @@ class TestContentSecurityPolicyMissing:
         findings = await ContentSecurityPolicyMissing().check(response)
 
         assert len(findings) == 1
-        assert findings[0].severity == Severity.PASS
         assert findings[0].code == "headers_content_security_policy_missing"
+        assert findings[0].severity == Severity.PASS
