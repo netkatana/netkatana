@@ -94,12 +94,47 @@ CSP policy lacks a `form-action` directive — form submissions are unrestricted
 data to any origin. Unlike fetch directives, `form-action` does not fall back to `default-src` and must be set
 explicitly.
 
-### headers_content_security_policy_wildcard_script_src
+### headers_content_security_policy_script_src_missing
+
+> CRITICAL, planned
+
+CSP present but neither `script-src` nor `default-src` is set — scripts are completely unrestricted, providing no XSS
+protection despite the header being present.
+
+### headers_content_security_policy_script_src_unrestricted
 
 > CRITICAL, planned
 
 CSP `script-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — scripts can be
-loaded from any origin, effectively negating XSS protection regardless of other restrictions.
+loaded from any origin, making the allowlist pointless.
+
+### headers_content_security_policy_style_src_missing
+
+> CRITICAL, planned
+
+CSP present but neither `style-src` nor `default-src` is set — stylesheets are completely unrestricted, enabling CSS
+injection attacks and data exfiltration via `url()` probes.
+
+### headers_content_security_policy_style_src_unrestricted
+
+> CRITICAL, planned
+
+CSP `style-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — stylesheets can
+be loaded from any origin, making the allowlist pointless.
+
+### headers_content_security_policy_connect_src_missing
+
+> CRITICAL, planned
+
+CSP present but neither `connect-src` nor `default-src` is set — fetch, XHR, and WebSocket connections are completely
+unrestricted, enabling data exfiltration to arbitrary origins.
+
+### headers_content_security_policy_connect_src_unrestricted
+
+> CRITICAL, planned
+
+CSP `connect-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — fetch, XHR, and
+WebSocket connections can target any origin, making the allowlist pointless.
 
 ### headers_content_security_policy_report_only_unsafe_inline
 
@@ -137,11 +172,41 @@ Same as `headers_content_security_policy_frame_ancestors_missing`, applied to `C
 
 Same as `headers_content_security_policy_form_action_missing`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_content_security_policy_report_only_wildcard_script_src
+### headers_content_security_policy_report_only_script_src_missing
 
 > CRITICAL, planned
 
-Same as `headers_content_security_policy_wildcard_script_src`, applied to `Content-Security-Policy-Report-Only`.
+Same as `headers_content_security_policy_script_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_script_src_unrestricted
+
+> CRITICAL, planned
+
+Same as `headers_content_security_policy_script_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_style_src_missing
+
+> CRITICAL, planned
+
+Same as `headers_content_security_policy_style_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_style_src_unrestricted
+
+> CRITICAL, planned
+
+Same as `headers_content_security_policy_style_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_connect_src_missing
+
+> CRITICAL, planned
+
+Same as `headers_content_security_policy_connect_src_missing`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_connect_src_unrestricted
+
+> CRITICAL, planned
+
+Same as `headers_content_security_policy_connect_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_cors_wildcard_origin
 
