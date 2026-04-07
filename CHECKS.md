@@ -56,23 +56,11 @@ CSP header present but malformed — unlike HSTS, browsers are extremely lenient
 
 CSP `script-src` (or `default-src` fallback) contains `'unsafe-inline'` without a nonce or hash to neutralize it — any inline script executes, directly defeating XSS protection.
 
-### headers_content_security_policy_report_only_unsafe_inline
-
-> CRITICAL, implemented
-
-Same as `headers_content_security_policy_unsafe_inline`, applied to `Content-Security-Policy-Report-Only`.
-
 ### headers_content_security_policy_unsafe_eval
 
 > CRITICAL, implemented
 
 CSP `script-src` (or `default-src` fallback) contains `'unsafe-eval'` — permits `eval()`, `new Function(string)`, and similar dynamic code execution, enabling code injection from any attacker-controlled string.
-
-### headers_content_security_policy_report_only_unsafe_eval
-
-> CRITICAL, implemented
-
-Same as `headers_content_security_policy_unsafe_eval`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_object_src_unsafe
 
@@ -80,17 +68,29 @@ Same as `headers_content_security_policy_unsafe_eval`, applied to `Content-Secur
 
 CSP `object-src` (or `default-src` fallback) is not restricted to `'none'` — plugin content (`<object>`, `<embed>`) is unrestricted, enabling potential code execution via Flash or Java applets.
 
-### headers_content_security_policy_report_only_object_src_unsafe
-
-> WARNING, implemented
-
-Same as `headers_content_security_policy_object_src_unsafe`, applied to `Content-Security-Policy-Report-Only`.
-
 ### headers_content_security_policy_base_uri_missing
 
 > WARNING, implemented
 
 CSP policy lacks a `base-uri` directive — attackers can inject `<base href='https://evil.com/'>` to redirect all relative resource loads, bypassing `script-src` allowlists; `base-uri` does not fall back to `default-src` and must be set explicitly.
+
+### headers_content_security_policy_report_only_unsafe_inline
+
+> CRITICAL, implemented
+
+Same as `headers_content_security_policy_unsafe_inline`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_unsafe_eval
+
+> CRITICAL, implemented
+
+Same as `headers_content_security_policy_unsafe_eval`, applied to `Content-Security-Policy-Report-Only`.
+
+### headers_content_security_policy_report_only_object_src_unsafe
+
+> WARNING, implemented
+
+Same as `headers_content_security_policy_object_src_unsafe`, applied to `Content-Security-Policy-Report-Only`.
 
 ### headers_content_security_policy_report_only_base_uri_missing
 
