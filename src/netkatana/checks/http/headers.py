@@ -190,7 +190,6 @@ class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
 
 
 class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
-    # TODO: Do not trigger a notice if "preload" directive is not present.
     _code = "headers_strict_transport_security_preload_not_eligible"
     _detail = (
         "Browser preload lists hardcode HSTS policies before a user's first visit, eliminating the window "
@@ -208,11 +207,14 @@ class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
         except ValueError:
             return []
 
+        if not parsed.preload:
+            return []
+
         if parsed.max_age < _HSTS_MIN_MAX_AGE or not parsed.include_subdomains:
             return [
                 Finding(
                     code=self._code,
-                    severity=Severity.NOTICE,
+                    severity=Severity.WARNING,
                     title="Strict-Transport-Security (HSTS) does not meet preload requirements",
                     detail=self._detail,
                 )
@@ -276,39 +278,10 @@ class ContentSecurityPolicyMissing(AbstractHttpCheck):
         ]
 
 
-class ContentSecurityPolicyReportOnlyNoEnforce(AbstractHttpCheck):
-    _code = "headers_content_security_policy_report_only_no_enforce"
-    _detail = (
-        "The `Content-Security-Policy-Report-Only` header instructs browsers to report violations to a "
-        "reporting endpoint but not block them. Without an accompanying enforcing "
-        "`Content-Security-Policy` header, the policy provides no actual protection — attackers can "
-        "still inject and execute scripts or load unauthorized resources."
-    )
-
-    async def check(self, response: Response) -> list[Finding]:
-        if _CSP_HEADER in response.headers:
-            return [
-                Finding(
-                    code=self._code,
-                    severity=Severity.PASS,
-                    title="Content-Security-Policy (CSP) is enforced",
-                    detail=self._detail,
-                )
-            ]
-        if _CSP_REPORT_ONLY_HEADER not in response.headers:
-            return []
-        return [
-            Finding(
-                code=self._code,
-                severity=Severity.WARNING,
-                title="Content-Security-Policy (CSP) is report-only and not enforced",
-                detail=self._detail,
-            )
-        ]
-
-
-class ContentSecurityPolicyUnsafeInline(AbstractHttpCheck):
-    _code = "headers_content_security_policy_unsafe_inline"
+class _CspUnsafeInlineCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
     _detail = (
         "The `'unsafe-inline'` keyword in `script-src` (or `default-src` fallback) permits all inline "
         "scripts, including `<script>` blocks, `javascript:` URLs, and event handler attributes such as "
@@ -318,10 +291,10 @@ class ContentSecurityPolicyUnsafeInline(AbstractHttpCheck):
     )
 
     async def check(self, response: Response) -> list[Finding]:
-        if _CSP_HEADER not in response.headers:
+        if self._header not in response.headers:
             return []
 
-        directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+        directives = parse_content_security_policy(response.headers[self._header])
         effective = _csp_effective_sources(directives, "script-src")
 
         if effective is None:
@@ -332,7 +305,7 @@ class ContentSecurityPolicyUnsafeInline(AbstractHttpCheck):
                 Finding(
                     code=self._code,
                     severity=Severity.PASS,
-                    title="Content-Security-Policy (CSP) script-src does not contain 'unsafe-inline'",
+                    title=f"{self._title_prefix} script-src does not contain 'unsafe-inline'",
                     detail=self._detail,
                 )
             ]
@@ -342,7 +315,7 @@ class ContentSecurityPolicyUnsafeInline(AbstractHttpCheck):
                 Finding(
                     code=self._code,
                     severity=Severity.PASS,
-                    title="Content-Security-Policy (CSP) 'unsafe-inline' is neutralized by nonce or hash",
+                    title=f"{self._title_prefix} 'unsafe-inline' is neutralized by nonce or hash",
                     detail=self._detail,
                 )
             ]
@@ -351,14 +324,28 @@ class ContentSecurityPolicyUnsafeInline(AbstractHttpCheck):
             Finding(
                 code=self._code,
                 severity=Severity.CRITICAL,
-                title="Content-Security-Policy (CSP) script-src contains 'unsafe-inline'",
+                title=f"{self._title_prefix} script-src contains 'unsafe-inline'",
                 detail=self._detail,
             )
         ]
 
 
-class ContentSecurityPolicyUnsafeEval(AbstractHttpCheck):
-    _code = "headers_content_security_policy_unsafe_eval"
+class ContentSecurityPolicyUnsafeInline(_CspUnsafeInlineCheck):
+    _code = "headers_content_security_policy_unsafe_inline"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyUnsafeInline(_CspUnsafeInlineCheck):
+    _code = "headers_content_security_policy_report_only_unsafe_inline"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspUnsafeEvalCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
     _detail = (
         "The `'unsafe-eval'` keyword in `script-src` (or `default-src` fallback) permits `eval()`, "
         "`new Function(string)`, `setTimeout(string)`, and `setInterval(string)`. These functions "
@@ -368,10 +355,10 @@ class ContentSecurityPolicyUnsafeEval(AbstractHttpCheck):
     )
 
     async def check(self, response: Response) -> list[Finding]:
-        if _CSP_HEADER not in response.headers:
+        if self._header not in response.headers:
             return []
 
-        directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+        directives = parse_content_security_policy(response.headers[self._header])
         effective = _csp_effective_sources(directives, "script-src")
 
         if effective is None:
@@ -382,7 +369,7 @@ class ContentSecurityPolicyUnsafeEval(AbstractHttpCheck):
                 Finding(
                     code=self._code,
                     severity=Severity.CRITICAL,
-                    title="Content-Security-Policy (CSP) script-src contains 'unsafe-eval'",
+                    title=f"{self._title_prefix} script-src contains 'unsafe-eval'",
                     detail=self._detail,
                 )
             ]
@@ -391,14 +378,28 @@ class ContentSecurityPolicyUnsafeEval(AbstractHttpCheck):
             Finding(
                 code=self._code,
                 severity=Severity.PASS,
-                title="Content-Security-Policy (CSP) script-src does not contain 'unsafe-eval'",
+                title=f"{self._title_prefix} script-src does not contain 'unsafe-eval'",
                 detail=self._detail,
             )
         ]
 
 
-class ContentSecurityPolicyObjectSrcUnsafe(AbstractHttpCheck):
-    _code = "headers_content_security_policy_object_src_unsafe"
+class ContentSecurityPolicyUnsafeEval(_CspUnsafeEvalCheck):
+    _code = "headers_content_security_policy_unsafe_eval"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyUnsafeEval(_CspUnsafeEvalCheck):
+    _code = "headers_content_security_policy_report_only_unsafe_eval"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspObjectSrcUnsafeCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
     _detail = (
         "The `object-src` directive (or `default-src` fallback) controls `<object>` and `<embed>` "
         "elements, which load plugin content such as Flash and Java applets. Plugin content runs "
@@ -407,10 +408,10 @@ class ContentSecurityPolicyObjectSrcUnsafe(AbstractHttpCheck):
     )
 
     async def check(self, response: Response) -> list[Finding]:
-        if _CSP_HEADER not in response.headers:
+        if self._header not in response.headers:
             return []
 
-        directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+        directives = parse_content_security_policy(response.headers[self._header])
         effective = _csp_effective_sources(directives, "object-src")
 
         if effective == ["'none'"]:
@@ -418,7 +419,7 @@ class ContentSecurityPolicyObjectSrcUnsafe(AbstractHttpCheck):
                 Finding(
                     code=self._code,
                     severity=Severity.PASS,
-                    title="Content-Security-Policy (CSP) object-src is restricted to 'none'",
+                    title=f"{self._title_prefix} object-src is restricted to 'none'",
                     detail=self._detail,
                 )
             ]
@@ -427,14 +428,28 @@ class ContentSecurityPolicyObjectSrcUnsafe(AbstractHttpCheck):
             Finding(
                 code=self._code,
                 severity=Severity.WARNING,
-                title="Content-Security-Policy (CSP) object-src is not restricted to 'none'",
+                title=f"{self._title_prefix} object-src is not restricted to 'none'",
                 detail=self._detail,
             )
         ]
 
 
-class ContentSecurityPolicyBaseUriMissing(AbstractHttpCheck):
-    _code = "headers_content_security_policy_base_uri_missing"
+class ContentSecurityPolicyObjectSrcUnsafe(_CspObjectSrcUnsafeCheck):
+    _code = "headers_content_security_policy_object_src_unsafe"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyObjectSrcUnsafe(_CspObjectSrcUnsafeCheck):
+    _code = "headers_content_security_policy_report_only_object_src_unsafe"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+class _CspBaseUriMissingCheck(AbstractHttpCheck):
+    _code: str
+    _header: str
+    _title_prefix: str
     _detail = (
         "The `base-uri` directive restricts what values the `<base>` element's `href` attribute can "
         "take. Without it, an attacker who can inject `<base href='https://evil.com/'>` redirects all "
@@ -444,17 +459,17 @@ class ContentSecurityPolicyBaseUriMissing(AbstractHttpCheck):
     )
 
     async def check(self, response: Response) -> list[Finding]:
-        if _CSP_HEADER not in response.headers:
+        if self._header not in response.headers:
             return []
 
-        directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+        directives = parse_content_security_policy(response.headers[self._header])
 
         if "base-uri" not in directives:
             return [
                 Finding(
                     code=self._code,
                     severity=Severity.WARNING,
-                    title="Content-Security-Policy (CSP) base-uri directive is missing",
+                    title=f"{self._title_prefix} base-uri directive is missing",
                     detail=self._detail,
                 )
             ]
@@ -463,7 +478,19 @@ class ContentSecurityPolicyBaseUriMissing(AbstractHttpCheck):
             Finding(
                 code=self._code,
                 severity=Severity.PASS,
-                title="Content-Security-Policy (CSP) base-uri directive is present",
+                title=f"{self._title_prefix} base-uri directive is present",
                 detail=self._detail,
             )
         ]
+
+
+class ContentSecurityPolicyBaseUriMissing(_CspBaseUriMissingCheck):
+    _code = "headers_content_security_policy_base_uri_missing"
+    _header = _CSP_HEADER
+    _title_prefix = "Content-Security-Policy (CSP)"
+
+
+class ContentSecurityPolicyReportOnlyBaseUriMissing(_CspBaseUriMissingCheck):
+    _code = "headers_content_security_policy_report_only_base_uri_missing"
+    _header = _CSP_REPORT_ONLY_HEADER
+    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
