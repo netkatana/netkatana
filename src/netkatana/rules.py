@@ -1,5 +1,17 @@
 from netkatana.types import HttpRule, Severity
-from netkatana.validators.http.headers import strict_transport_security_missing
+from netkatana.validators.http.headers import (
+    content_security_policy_missing,
+    content_security_policy_report_only_unsafe_eval,
+    content_security_policy_report_only_unsafe_inline,
+    content_security_policy_unsafe_eval,
+    content_security_policy_unsafe_inline,
+    strict_transport_security_include_subdomains_missing,
+    strict_transport_security_invalid,
+    strict_transport_security_max_age_low,
+    strict_transport_security_max_age_zero,
+    strict_transport_security_missing,
+    strict_transport_security_preload_not_eligible,
+)
 
 http_rules = [
     HttpRule(
@@ -7,5 +19,65 @@ http_rules = [
         severity=Severity.CRITICAL,
         detail="The 'Strict-Transport-Security' header instructs browsers to always use HTTPS for this domain, preventing protocol downgrade and SSL stripping attacks.",
         validator=strict_transport_security_missing,
-    )
+    ),
+    HttpRule(
+        code="headers_hsts_invalid",
+        severity=Severity.CRITICAL,
+        detail="The 'Strict-Transport-Security' header requires a valid 'max-age' directive; a malformed header is silently ignored by browsers.",
+        validator=strict_transport_security_invalid,
+    ),
+    HttpRule(
+        code="headers_hsts_max_age_zero",
+        severity=Severity.CRITICAL,
+        detail="'max-age=0' instructs browsers to delete the cached HSTS policy, removing HTTPS enforcement for returning users.",
+        validator=strict_transport_security_max_age_zero,
+    ),
+    HttpRule(
+        code="headers_hsts_max_age_low",
+        severity=Severity.WARNING,
+        detail="The 'max-age' directive controls how long browsers enforce HTTPS for this domain; values below one year (31,536,000 s) leave a wider window for downgrade attacks between visits.",
+        validator=strict_transport_security_max_age_low,
+    ),
+    HttpRule(
+        code="headers_hsts_include_subdomains_missing",
+        severity=Severity.NOTICE,
+        detail="The 'includeSubDomains' directive extends HSTS to all subdomains; without it, subdomains are reachable over plain HTTP and parent-domain cookies may be intercepted.",
+        validator=strict_transport_security_include_subdomains_missing,
+    ),
+    HttpRule(
+        code="headers_hsts_preload_not_eligible",
+        severity=Severity.WARNING,
+        detail="The 'preload' directive signals intent to join browser preload lists, which hardcode the HSTS policy before a user's first visit; qualifying requires 'max-age' ≥ 31,536,000 s and 'includeSubDomains'.",
+        validator=strict_transport_security_preload_not_eligible,
+    ),
+    HttpRule(
+        code="headers_csp_missing",
+        severity=Severity.WARNING,
+        detail="The 'Content-Security-Policy' header restricts which resources browsers can load, reducing the risk of XSS and data injection attacks.",
+        validator=content_security_policy_missing,
+    ),
+    HttpRule(
+        code="headers_csp_unsafe_inline",
+        severity=Severity.CRITICAL,
+        detail="'unsafe-inline' in 'script-src' (or 'default-src') permits all inline scripts; a nonce or hash neutralizes it and restores XSS protection in CSP Level 2+ browsers.",
+        validator=content_security_policy_unsafe_inline,
+    ),
+    HttpRule(
+        code="headers_csp_report_only_unsafe_inline",
+        severity=Severity.CRITICAL,
+        detail="'unsafe-inline' in 'script-src' (or 'default-src') permits all inline scripts; a nonce or hash neutralizes it and restores XSS protection in CSP Level 2+ browsers.",
+        validator=content_security_policy_report_only_unsafe_inline,
+    ),
+    HttpRule(
+        code="headers_csp_unsafe_eval",
+        severity=Severity.CRITICAL,
+        detail="'unsafe-eval' in 'script-src' (or 'default-src') permits eval(), new Function(string), and similar dynamic code execution from strings.",
+        validator=content_security_policy_unsafe_eval,
+    ),
+    HttpRule(
+        code="headers_csp_report_only_unsafe_eval",
+        severity=Severity.CRITICAL,
+        detail="'unsafe-eval' in 'script-src' (or 'default-src') permits eval(), new Function(string), and similar dynamic code execution from strings.",
+        validator=content_security_policy_report_only_unsafe_eval,
+    ),
 ]
