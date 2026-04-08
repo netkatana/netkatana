@@ -1,4 +1,4 @@
-from netkatana.models import AbstractTlsCheck, Finding, Severity, TlsResult
+from netkatana.types import AbstractTlsCheck, Finding, Severity, TlsResult
 
 _DEPRECATED_TLS_VERSIONS = {"ssl30", "tls10", "tls11"}
 _OUTDATED_TLS_VERSIONS = {"tls12"}

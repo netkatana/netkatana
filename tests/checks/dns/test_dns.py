@@ -1,7 +1,7 @@
 import pytest
 
 from netkatana.checks.dns import DmarcMissing, SpfMissing, SpfPermissive
-from netkatana.models import DnsResult, Severity
+from netkatana.types import DnsResult, Severity
 
 
 class TestSpfMissing:

@@ -1,4 +1,4 @@
-from netkatana.models import AbstractDnsCheck, DnsResult, Finding, Severity
+from netkatana.types import AbstractDnsCheck, DnsResult, Finding, Severity
 
 
 class SpfMissing(AbstractDnsCheck):

@@ -1,0 +1,3 @@
+[headers_hsts_missing]
+severity = "critical"
+detail = "The 'Strict-Transport-Security' header instructs browsers to always use HTTPS for this domain, preventing protocol downgrade and SSL stripping attacks."

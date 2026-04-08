@@ -3,7 +3,8 @@ from typing import ClassVar
 
 from httpx import Response
 
-from netkatana.models import AbstractHttpCheck, Finding, Severity
+from netkatana.checks.config import get_detail, get_severity
+from netkatana.types import AbstractHttpCheck, Finding, Severity
 from netkatana.utils import parse_content_security_policy, parse_strict_transport_security_header
 
 _HSTS_MIN_MAX_AGE = 31_536_000  # one year
@@ -11,9 +12,6 @@ _HSTS_MIN_MAX_AGE = 31_536_000  # one year
 
 class StrictTransportSecurityMissing(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_missing"
-    _DETAIL: ClassVar[str] = (
-        "The 'Strict-Transport-Security' header instructs browsers to always use HTTPS for this domain, preventing protocol downgrade and SSL stripping attacks."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if "strict-transport-security" in response.headers:
@@ -22,16 +20,16 @@ class StrictTransportSecurityMissing(AbstractHttpCheck):
                     code=self._CODE,
                     severity=Severity.PASS,
                     title="Strict-Transport-Security (HSTS) present",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
                 code=self._CODE,
-                severity=Severity.CRITICAL,
+                severity=get_severity(self._CODE),
                 title="Strict-Transport-Security (HSTS) missing",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 

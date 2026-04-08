@@ -8,7 +8,7 @@ import httpx
 from pydantic import ValidationError
 
 from netkatana.http import Client, RedirectError
-from netkatana.models import (
+from netkatana.types import (
     AbstractDnsCheck,
     AbstractHttpCheck,
     AbstractTlsCheck,

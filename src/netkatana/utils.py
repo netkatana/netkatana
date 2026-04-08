@@ -1,7 +1,7 @@
 import re
 from urllib.parse import urlparse
 
-from netkatana.models import StrictTransportSecurityHeader
+from netkatana.types import StrictTransportSecurityHeader
 
 
 def extract_host(target: str) -> str:

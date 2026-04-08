@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from netkatana.models import HostFinding, Severity
+from netkatana.types import HostFinding, Severity
 
 _SEVERITY_SYMBOL: dict[Severity, tuple[str, str]] = {
     Severity.PASS: ("P", "bold green"),

@@ -5,56 +5,7 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 
-from netkatana.checks.dns import DmarcMissing, SpfMissing, SpfPermissive
-from netkatana.checks.http.headers import (
-    AccessControlAllowCredentialsInvalid,
-    AccessControlAllowCredentialsWildcard,
-    AccessControlAllowMethodsUnsafe,
-    AccessControlAllowOriginNull,
-    AccessControlAllowOriginWildcard,
-    AccessControlMaxAgeExcessive,
-    ContentSecurityPolicyBaseUriMissing,
-    ContentSecurityPolicyConnectSrcMissing,
-    ContentSecurityPolicyConnectSrcUnrestricted,
-    ContentSecurityPolicyFormActionMissing,
-    ContentSecurityPolicyFrameAncestorsMissing,
-    ContentSecurityPolicyMissing,
-    ContentSecurityPolicyObjectSrcUnsafe,
-    ContentSecurityPolicyReportOnlyBaseUriMissing,
-    ContentSecurityPolicyReportOnlyConnectSrcMissing,
-    ContentSecurityPolicyReportOnlyConnectSrcUnrestricted,
-    ContentSecurityPolicyReportOnlyFormActionMissing,
-    ContentSecurityPolicyReportOnlyFrameAncestorsMissing,
-    ContentSecurityPolicyReportOnlyObjectSrcUnsafe,
-    ContentSecurityPolicyReportOnlyScriptSrcMissing,
-    ContentSecurityPolicyReportOnlyScriptSrcUnrestricted,
-    ContentSecurityPolicyReportOnlyStyleSrcMissing,
-    ContentSecurityPolicyReportOnlyStyleSrcUnrestricted,
-    ContentSecurityPolicyReportOnlyUnsafeEval,
-    ContentSecurityPolicyReportOnlyUnsafeInline,
-    ContentSecurityPolicyScriptSrcMissing,
-    ContentSecurityPolicyScriptSrcUnrestricted,
-    ContentSecurityPolicyStyleSrcMissing,
-    ContentSecurityPolicyStyleSrcUnrestricted,
-    ContentSecurityPolicyUnsafeEval,
-    ContentSecurityPolicyUnsafeInline,
-    StrictTransportSecurityIncludeSubdomainsMissing,
-    StrictTransportSecurityInvalid,
-    StrictTransportSecurityMaxAgeLow,
-    StrictTransportSecurityMaxAgeZero,
-    StrictTransportSecurityMissing,
-    StrictTransportSecurityPreloadNotEligible,
-)
-from netkatana.checks.tls import (
-    TlsCertExpired,
-    TlsCertMismatched,
-    TlsCertRevoked,
-    TlsCertSelfSigned,
-    TlsCertUntrusted,
-    TlsCipherWeak,
-    TlsVersionDeprecated,
-    TlsVersionOutdated,
-)
+from netkatana.checks import dns_checks, http_checks, tls_checks
 from netkatana.formatters import AbstractFormatter, JsonFormatter, JsonlFormatter, TableFormatter, VerboseFormatter
 from netkatana.http import Client
 from netkatana.scanners import DnsScanner, HttpScanner, TlsScanner
@@ -98,45 +49,7 @@ def http(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> Non
 async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     async with Client() as client:
         scanner = HttpScanner(
-            checks=[
-                StrictTransportSecurityMissing(),
-                StrictTransportSecurityInvalid(),
-                StrictTransportSecurityMaxAgeZero(),
-                StrictTransportSecurityMaxAgeLow(),
-                StrictTransportSecurityIncludeSubdomainsMissing(),
-                StrictTransportSecurityPreloadNotEligible(),
-                ContentSecurityPolicyMissing(),
-                ContentSecurityPolicyUnsafeInline(),
-                ContentSecurityPolicyUnsafeEval(),
-                ContentSecurityPolicyObjectSrcUnsafe(),
-                ContentSecurityPolicyBaseUriMissing(),
-                ContentSecurityPolicyFrameAncestorsMissing(),
-                ContentSecurityPolicyFormActionMissing(),
-                ContentSecurityPolicyScriptSrcMissing(),
-                ContentSecurityPolicyScriptSrcUnrestricted(),
-                ContentSecurityPolicyStyleSrcMissing(),
-                ContentSecurityPolicyStyleSrcUnrestricted(),
-                ContentSecurityPolicyConnectSrcMissing(),
-                ContentSecurityPolicyConnectSrcUnrestricted(),
-                ContentSecurityPolicyReportOnlyUnsafeInline(),
-                ContentSecurityPolicyReportOnlyUnsafeEval(),
-                ContentSecurityPolicyReportOnlyObjectSrcUnsafe(),
-                ContentSecurityPolicyReportOnlyBaseUriMissing(),
-                ContentSecurityPolicyReportOnlyFrameAncestorsMissing(),
-                ContentSecurityPolicyReportOnlyFormActionMissing(),
-                ContentSecurityPolicyReportOnlyScriptSrcMissing(),
-                ContentSecurityPolicyReportOnlyScriptSrcUnrestricted(),
-                ContentSecurityPolicyReportOnlyStyleSrcMissing(),
-                ContentSecurityPolicyReportOnlyStyleSrcUnrestricted(),
-                ContentSecurityPolicyReportOnlyConnectSrcMissing(),
-                ContentSecurityPolicyReportOnlyConnectSrcUnrestricted(),
-                AccessControlAllowOriginWildcard(),
-                AccessControlAllowOriginNull(),
-                AccessControlAllowCredentialsWildcard(),
-                AccessControlAllowCredentialsInvalid(),
-                AccessControlAllowMethodsUnsafe(),
-                AccessControlMaxAgeExcessive(),
-            ],
+            checks=http_checks,
             client=client,
             concurrency=concurrency,
         )
@@ -157,16 +70,7 @@ def tls(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None
 
 async def _tls(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     scanner = TlsScanner(
-        checks=[
-            TlsVersionDeprecated(),
-            TlsVersionOutdated(),
-            TlsCertExpired(),
-            TlsCertSelfSigned(),
-            TlsCertMismatched(),
-            TlsCertRevoked(),
-            TlsCertUntrusted(),
-            TlsCipherWeak(),
-        ],
+        checks=tls_checks,
         concurrency=concurrency,
     )
 
@@ -186,7 +90,7 @@ def dns(domains: list[str], concurrency: int, fmt: str, show_passed: bool) -> No
 
 async def _dns(*, domains: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     scanner = DnsScanner(
-        checks=[SpfMissing(), SpfPermissive(), DmarcMissing()],
+        checks=dns_checks,
         concurrency=concurrency,
     )
 

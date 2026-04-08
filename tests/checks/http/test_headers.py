@@ -40,7 +40,7 @@ from netkatana.checks.http.headers import (
     StrictTransportSecurityMissing,
     StrictTransportSecurityPreloadNotEligible,
 )
-from netkatana.models import Severity
+from netkatana.types import Severity
 
 
 class TestStrictTransportSecurityMissing:
