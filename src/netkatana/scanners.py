@@ -81,11 +81,14 @@ class TlsScanner:
         )
 
         async def _write_stdin() -> None:
+            assert proc.stdin is not None
             proc.stdin.write("\n".join(hosts).encode())
             await proc.stdin.drain()
             proc.stdin.close()
 
         write_task = asyncio.create_task(_write_stdin())
+
+        assert proc.stdout is not None
 
         async for line in proc.stdout:
             line = line.strip()

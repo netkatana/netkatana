@@ -46,6 +46,7 @@ class Client:
                 return response
 
             next_request = response.next_request
+            assert next_request is not None
             next_url = str(next_request.url)
 
             if next_url in visited:
