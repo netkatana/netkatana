@@ -12,9 +12,7 @@ _HSTS_MIN_MAX_AGE = 31_536_000  # one year
 class StrictTransportSecurityMissing(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_missing"
     _DETAIL: ClassVar[str] = (
-        "The `Strict-Transport-Security` header instructs browsers to always use HTTPS for this domain, "
-        "refusing plain HTTP connections. Without it, users are vulnerable to protocol downgrade and SSL "
-        "stripping attacks. A `max-age` of at least one year (31,536,000 seconds) is widely recommended."
+        "The 'Strict-Transport-Security' header instructs browsers to always use HTTPS for this domain, preventing protocol downgrade and SSL stripping attacks."
     )
 
     async def check(self, response: Response) -> list[Finding]:
@@ -41,9 +39,7 @@ class StrictTransportSecurityMissing(AbstractHttpCheck):
 class StrictTransportSecurityInvalid(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_invalid"
     _DETAIL: ClassVar[str] = (
-        "The `Strict-Transport-Security` header requires a valid `max-age` directive with a non-negative "
-        "integer value (e.g. `max-age=31536000`). A malformed header is silently ignored by browsers, "
-        "providing the same level of protection as if the header were absent entirely."
+        "The 'Strict-Transport-Security' header requires a valid 'max-age' directive; a malformed header is silently ignored by browsers."
     )
 
     async def check(self, response: Response) -> list[Finding]:
@@ -78,9 +74,7 @@ class StrictTransportSecurityInvalid(AbstractHttpCheck):
 class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_max_age_zero"
     _DETAIL: ClassVar[str] = (
-        "A `max-age` of 0 instructs browsers to immediately delete the cached HSTS policy for this domain, "
-        "removing enforcement of HTTPS for all future visits. This is only appropriate when intentionally "
-        "decommissioning HSTS, as it leaves all returning users unprotected."
+        "'max-age=0' instructs browsers to delete the cached HSTS policy, removing HTTPS enforcement for returning users."
     )
 
     async def check(self, response: Response) -> list[Finding]:
@@ -115,10 +109,7 @@ class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
 class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_max_age_low"
     _DETAIL: ClassVar[str] = (
-        "The `max-age` directive controls how long browsers remember to enforce HTTPS for this domain, "
-        "in seconds. Short values leave a larger window where returning users may connect over HTTP "
-        "between visits. One year (31,536,000 seconds) is the widely recommended minimum; the HSTS "
-        "preload list requires at least 18 weeks (10,886,400 seconds)."
+        "The 'max-age' directive controls how long browsers enforce HTTPS for this domain; values below one year (31,536,000 s) leave a wider window for downgrade attacks between visits."
     )
 
     async def check(self, response: Response) -> list[Finding]:
@@ -157,10 +148,7 @@ class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
 class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_include_subdomains_missing"
     _DETAIL: ClassVar[str] = (
-        "The `includeSubDomains` directive extends the HSTS policy to all subdomains of the current host. "
-        "Without it, subdomains are reachable over plain HTTP, which can allow cookies scoped to the parent "
-        "domain to be intercepted. Omit this directive only if HTTP access is intentionally permitted on "
-        "one or more subdomains."
+        "The 'includeSubDomains' directive extends HSTS to all subdomains; without it, subdomains are reachable over plain HTTP and parent-domain cookies may be intercepted."
     )
 
     async def check(self, response: Response) -> list[Finding]:
@@ -195,10 +183,7 @@ class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
 class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_preload_not_eligible"
     _DETAIL: ClassVar[str] = (
-        "Browser preload lists hardcode HSTS policies before a user's first visit, eliminating the window "
-        "where an attacker could intercept the initial plain HTTP connection. To qualify, the header must "
-        "specify a `max-age` of at least 31,536,000 seconds (one year) and include the `includeSubDomains` "
-        "directive. Submission is done via hstspreload.org."
+        "The 'preload' directive signals intent to join browser preload lists, which hardcode the HSTS policy before a user's first visit; qualifying requires 'max-age' ≥ 31,536,000 s and 'includeSubDomains'."
     )
 
     async def check(self, response: Response) -> list[Finding]:
@@ -262,7 +247,7 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
 class ContentSecurityPolicyMissing(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_csp_missing"
     _DETAIL: ClassVar[str] = (
-        "Without CSP, browsers have no restrictions on which resources they load, increasing the risk of XSS and data injection attacks."
+        "The 'Content-Security-Policy' header restricts which resources browsers can load, reducing the risk of XSS and data injection attacks."
     )
 
     async def check(self, response: Response) -> list[Finding]:
@@ -288,11 +273,7 @@ class ContentSecurityPolicyMissing(AbstractHttpCheck):
 
 class _CspUnsafeInlineCheck(AbstractHttpCheck):
     _DETAIL: ClassVar[str] = (
-        "The `'unsafe-inline'` keyword in `script-src` (or `default-src` fallback) permits all inline "
-        "scripts, including `<script>` blocks, `javascript:` URLs, and event handler attributes such as "
-        "`onclick`. This directly negates XSS protection: any injected HTML can execute arbitrary code. "
-        "Use nonces (`'nonce-...'`) or hashes (`'sha256-...'`) for specific inline scripts instead — "
-        "when present, CSP Level 2+ browsers ignore `'unsafe-inline'`."
+        "'unsafe-inline' in 'script-src' (or 'default-src') permits all inline scripts; a nonce or hash neutralizes it and restores XSS protection in CSP Level 2+ browsers."
     )
 
     @property
@@ -364,11 +345,7 @@ class ContentSecurityPolicyReportOnlyUnsafeInline(_CspUnsafeInlineCheck):
 
 class _CspUnsafeEvalCheck(AbstractHttpCheck):
     _DETAIL: ClassVar[str] = (
-        "The `'unsafe-eval'` keyword in `script-src` (or `default-src` fallback) permits `eval()`, "
-        "`new Function(string)`, `setTimeout(string)`, and `setInterval(string)`. These functions "
-        "execute arbitrary code from strings, so an attacker who controls any string in the page can "
-        "achieve JavaScript execution. Remove `'unsafe-eval'` and refactor code to avoid dynamic "
-        "code evaluation."
+        "'unsafe-eval' in 'script-src' (or 'default-src') permits eval(), new Function(string), and similar dynamic code execution from strings."
     )
 
     @property
@@ -430,10 +407,7 @@ class ContentSecurityPolicyReportOnlyUnsafeEval(_CspUnsafeEvalCheck):
 
 class _CspObjectSrcUnsafeCheck(AbstractHttpCheck):
     _DETAIL: ClassVar[str] = (
-        "The `object-src` directive (or `default-src` fallback) controls `<object>` and `<embed>` "
-        "elements, which load plugin content such as Flash and Java applets. Plugin content runs "
-        "outside the browser's normal security model and has historically been a vector for code "
-        "execution. `object-src 'none'` should be set in all modern CSP policies."
+        "'object-src' (or 'default-src') controls <object> and <embed> elements; plugin content runs outside the browser's normal security model and has historically enabled code execution."
     )
 
     @property
@@ -492,11 +466,7 @@ class ContentSecurityPolicyReportOnlyObjectSrcUnsafe(_CspObjectSrcUnsafeCheck):
 
 class _CspBaseUriMissingCheck(AbstractHttpCheck):
     _DETAIL: ClassVar[str] = (
-        "The `base-uri` directive restricts what values the `<base>` element's `href` attribute can "
-        "take. Without it, an attacker who can inject `<base href='https://evil.com/'>` redirects all "
-        "relative URLs in the page — including relative `<script src>` references — to an "
-        "attacker-controlled origin, bypassing `script-src` allowlists. Unlike fetch directives, "
-        "`base-uri` does not fall back to `default-src` and must be set explicitly."
+        "'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and bypassing 'script-src'; it does not fall back to 'default-src'."
     )
 
     @property
@@ -554,11 +524,7 @@ class ContentSecurityPolicyReportOnlyBaseUriMissing(_CspBaseUriMissingCheck):
 
 class _CspFrameAncestorsMissingCheck(AbstractHttpCheck):
     _DETAIL: ClassVar[str] = (
-        "The `frame-ancestors` directive controls which origins may embed this page in a frame, "
-        "iframe, object, or embed element. Without it, any origin can frame the page, enabling "
-        "clickjacking attacks. Unlike fetch directives, `frame-ancestors` does not fall back to "
-        "`default-src` and must be set explicitly. Use `frame-ancestors 'none'` or "
-        "`frame-ancestors 'self'` as appropriate."
+        "'frame-ancestors' controls which origins can embed this page in a frame or iframe, preventing clickjacking; it does not fall back to 'default-src'."
     )
 
     @property
@@ -616,10 +582,7 @@ class ContentSecurityPolicyReportOnlyFrameAncestorsMissing(_CspFrameAncestorsMis
 
 class _CspFormActionMissingCheck(AbstractHttpCheck):
     _DETAIL: ClassVar[str] = (
-        "The `form-action` directive restricts the URLs to which forms on the page may submit. "
-        "Without it, a form can submit to any origin, which an attacker who can inject HTML "
-        "can exploit to exfiltrate data. Unlike fetch directives, `form-action` does not fall "
-        "back to `default-src` and must be set explicitly."
+        "'form-action' restricts which URLs forms may submit to, preventing data exfiltration via injected forms; it does not fall back to 'default-src'."
     )
 
     @property
@@ -733,10 +696,7 @@ class _CspFetchDirectiveMissingCheck(AbstractHttpCheck):
 
 class _CspScriptSrcMissingCheck(_CspFetchDirectiveMissingCheck):
     directive = "script-src"
-    detail = (
-        "CSP is present but neither `script-src` nor `default-src` is set — scripts are completely "
-        "unrestricted, providing no XSS protection despite the header being present."
-    )
+    detail = "'script-src' (falling back to 'default-src') restricts which scripts browsers execute; without either directive, scripts are completely unrestricted."
 
 
 class ContentSecurityPolicyScriptSrcMissing(_CspScriptSrcMissingCheck):
@@ -753,10 +713,7 @@ class ContentSecurityPolicyReportOnlyScriptSrcMissing(_CspScriptSrcMissingCheck)
 
 class _CspStyleSrcMissingCheck(_CspFetchDirectiveMissingCheck):
     directive = "style-src"
-    detail = (
-        "CSP is present but neither `style-src` nor `default-src` is set — stylesheets are completely "
-        "unrestricted, enabling CSS injection attacks and data exfiltration via `url()` probes."
-    )
+    detail = "'style-src' (falling back to 'default-src') restricts which stylesheets browsers load; without either directive, CSS injection and data exfiltration via url() probes are possible."
 
 
 class ContentSecurityPolicyStyleSrcMissing(_CspStyleSrcMissingCheck):
@@ -773,10 +730,7 @@ class ContentSecurityPolicyReportOnlyStyleSrcMissing(_CspStyleSrcMissingCheck):
 
 class _CspConnectSrcMissingCheck(_CspFetchDirectiveMissingCheck):
     directive = "connect-src"
-    detail = (
-        "CSP is present but neither `connect-src` nor `default-src` is set — fetch, XHR, and "
-        "WebSocket connections are completely unrestricted, enabling data exfiltration to arbitrary origins."
-    )
+    detail = "'connect-src' (falling back to 'default-src') restricts fetch, XHR, and WebSocket destinations; without either directive, connections to arbitrary origins are unrestricted."
 
 
 class ContentSecurityPolicyConnectSrcMissing(_CspConnectSrcMissingCheck):
@@ -849,11 +803,7 @@ class _CspFetchDirectiveUnrestrictedCheck(AbstractHttpCheck):
 
 class _CspScriptSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
     directive = "script-src"
-    detail = (
-        "The `script-src` directive (or `default-src` fallback) contains a wildcard source (`*`, "
-        "`https:`, or `http:`) — scripts can be loaded from any matching origin, making the "
-        "allowlist pointless and providing no XSS protection."
-    )
+    detail = "A wildcard source (*, 'https:', or 'http:') in 'script-src' (or 'default-src') allows scripts from any origin, making the allowlist pointless."
 
 
 class ContentSecurityPolicyScriptSrcUnrestricted(_CspScriptSrcUnrestrictedCheck):
@@ -870,11 +820,7 @@ class ContentSecurityPolicyReportOnlyScriptSrcUnrestricted(_CspScriptSrcUnrestri
 
 class _CspStyleSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
     directive = "style-src"
-    detail = (
-        "The `style-src` directive (or `default-src` fallback) contains a wildcard source (`*`, "
-        "`https:`, or `http:`) — stylesheets can be loaded from any matching origin, enabling "
-        "CSS injection attacks and data exfiltration via `url()` probes."
-    )
+    detail = "A wildcard source (*, 'https:', or 'http:') in 'style-src' (or 'default-src') allows stylesheets from any origin, making the allowlist pointless."
 
 
 class ContentSecurityPolicyStyleSrcUnrestricted(_CspStyleSrcUnrestrictedCheck):
@@ -891,11 +837,7 @@ class ContentSecurityPolicyReportOnlyStyleSrcUnrestricted(_CspStyleSrcUnrestrict
 
 class _CspConnectSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
     directive = "connect-src"
-    detail = (
-        "The `connect-src` directive (or `default-src` fallback) contains a wildcard source (`*`, "
-        "`https:`, or `http:`) — fetch, XHR, and WebSocket connections can target any matching "
-        "origin, enabling data exfiltration."
-    )
+    detail = "A wildcard source (*, 'https:', or 'http:') in 'connect-src' (or 'default-src') allows fetch, XHR, and WebSocket connections to any origin, making the allowlist pointless."
 
 
 class ContentSecurityPolicyConnectSrcUnrestricted(_CspConnectSrcUnrestrictedCheck):
