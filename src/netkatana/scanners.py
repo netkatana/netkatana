@@ -31,7 +31,7 @@ def _make_finding(target: str, rule: Rule[object], error: ValidationError) -> Fi
         host=target,
         code=rule.code,
         severity=rule.severity,
-        title=error.message,
+        message=error.message,
         detail=rule.detail,
         metadata=error.metadata,
     )
@@ -48,7 +48,7 @@ async def _run_rule(target: str, rule: Rule[T], result: T) -> list[Finding]:
     if message is None:
         return []
 
-    return [Finding(host=target, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
+    return [Finding(host=target, code=rule.code, severity=Severity.PASS, message=message, detail=rule.detail)]
 
 
 async def _run_rules(target: str, rules: Sequence[Rule[T]], result: T) -> list[Finding]:

@@ -20,7 +20,7 @@ class Finding:
     host: str
     code: str
     severity: Severity
-    title: str
+    message: str
     detail: str
     metadata: dict[str, str] = field(default_factory=dict)
 

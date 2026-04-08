@@ -33,7 +33,7 @@ src/netkatana/
 
 ## Key abstractions
 
-**`Finding`** — result of a single rule evaluation. Fields: `host`, `code`, `severity`, `title`, `detail`, `metadata`.
+**`Finding`** — result of a single rule evaluation. Fields: `host`, `code`, `severity`, `message`, `detail`, `metadata`.
 
 **`Severity`** — `PASS | NOTICE | WARNING | CRITICAL`. `PASS` means the check ran and found no issue. `return []` means the check was irrelevant or couldn't run.
 
@@ -45,7 +45,7 @@ src/netkatana/
 
 ## How validators work
 
-- If the validator passes: return a PASS title string.
+- If the validator passes: return a PASS message string.
 - If the validator is irrelevant or can't run: return `None`.
 - If the validator finds one issue: raise `ValidationError`.
 - If the validator finds multiple issues for the same rule: raise `ValidationErrors`.

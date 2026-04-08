@@ -51,7 +51,7 @@ class VerboseFormatter(AbstractFormatter):
         header.append(" ")
         header.append(finding.host, style="white")
         header.append(" - ")
-        header.append(finding.title)
+        header.append(finding.message)
         header.append(f" [{finding.code}]", style="dim")
         self._console.print(header)
 
@@ -64,7 +64,7 @@ def _serialize(finding: Finding) -> dict[str, object]:
         "host": finding.host,
         "code": finding.code,
         "severity": finding.severity.value,
-        "title": finding.title,
+        "message": finding.message,
         "detail": finding.detail,
         "metadata": finding.metadata,
     }
@@ -117,7 +117,7 @@ class TableFormatter(AbstractFormatter):
             table.add_row(
                 Text(finding.severity, style=style),
                 finding.host,
-                finding.title,
+                finding.message,
                 finding.code,
             )
 
