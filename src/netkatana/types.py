@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Awaitable, Callable
 
 from httpx import Response
 from pydantic import BaseModel
@@ -70,3 +71,11 @@ class AbstractDnsCheck(ABC):
     @abstractmethod
     async def check(self, result: DnsResult) -> list[Finding]:
         pass
+
+
+@dataclass(kw_only=True)
+class HttpRule:
+    code: str
+    severity: Severity
+    detail: str
+    validator: Callable[[Response], Awaitable[str | None]]

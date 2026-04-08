@@ -12,4 +12,4 @@ def get_severity(code: str) -> Severity:
 
 
 def get_detail(code: str) -> str:
-    return _config[code]["detail"]
+    return str(_config[code]["detail"])

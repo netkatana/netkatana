@@ -8,7 +8,8 @@ from rich.logging import RichHandler
 from netkatana.checks import dns_checks, http_checks, tls_checks
 from netkatana.formatters import AbstractFormatter, JsonFormatter, JsonlFormatter, TableFormatter, VerboseFormatter
 from netkatana.http import Client
-from netkatana.scanners import DnsScanner, HttpScanner, TlsScanner
+from netkatana.rules import http_rules
+from netkatana.scanners import DnsScanner, HttpScanner, HttpScanner2, TlsScanner
 from netkatana.utils import extract_host
 
 _formatters: dict[str, type[AbstractFormatter]] = {
@@ -50,6 +51,28 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bo
     async with Client() as client:
         scanner = HttpScanner(
             checks=http_checks,
+            client=client,
+            concurrency=concurrency,
+        )
+
+        with _formatters[fmt](show_passed=show_passed) as formatter:
+            async for host_finding in scanner.check_hosts(hosts):
+                formatter.emit(host_finding)
+
+
+@cli.command()
+@click.argument("hosts", nargs=-1, callback=_get_hosts)
+@click.option("-c", "--concurrency", default=10, show_default=True, type=int)
+@click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
+@click.option("--show-passed", is_flag=True, default=False)
+def http2(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_http(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+
+
+async def _http2(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    async with Client() as client:
+        scanner = HttpScanner2(
+            rules=http_rules,
             client=client,
             concurrency=concurrency,
         )

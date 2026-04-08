@@ -5,8 +5,9 @@ from collections.abc import AsyncIterator, Sequence
 import dns.asyncresolver
 import dns.exception
 import httpx
-from pydantic import ValidationError
+from pydantic import ValidationError as PydanticValidationError
 
+from netkatana.exceptions import ValidationError
 from netkatana.http import Client, RedirectError
 from netkatana.types import (
     AbstractDnsCheck,
@@ -15,6 +16,8 @@ from netkatana.types import (
     DnsResult,
     Finding,
     HostFinding,
+    HttpRule,
+    Severity,
     TlsResult,
 )
 
@@ -52,6 +55,61 @@ class HttpScanner:
 
         results = await asyncio.gather(*(c.check(response) for c in self._checks))
         findings: list[Finding] = [f for findings in results for f in findings]
+
+        return [HostFinding(host=host, finding=f) for f in findings]
+
+
+class HttpScanner2:
+    def __init__(
+        self,
+        rules: list[HttpRule],
+        client: Client,
+        concurrency: int = 10,
+    ) -> None:
+        self._rules = rules
+        self._client = client
+        self._semaphore = asyncio.Semaphore(concurrency)
+
+    async def check_hosts(self, hosts: Sequence[str]) -> AsyncIterator[HostFinding]:
+        tasks = [asyncio.create_task(self.check_host(host)) for host in hosts]
+
+        for done in asyncio.as_completed(tasks):
+            host_findings = await done
+            for host_finding in host_findings:
+                yield host_finding
+
+    async def check_host(self, host: str) -> list[HostFinding]:
+        async with self._semaphore:
+            try:
+                response = await self._client.get(f"https://{host}")
+            except RedirectError as e:
+                _logger.warning("%s: %r", host, e)
+                response = e.response
+            except httpx.TransportError as e:
+                _logger.warning("%s: %r", host, e)
+                return []
+
+        findings = []
+
+        for rule in self._rules:
+            try:
+                message = await rule.validator(response)
+
+                if message is None:
+                    continue
+
+                findings.append(Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail))
+            except ValidationError as e:
+                for error in e.errors():
+                    findings.append(
+                        Finding(
+                            code=rule.code,
+                            severity=rule.severity,
+                            title=error.message,
+                            detail=rule.detail,
+                            metadata=error.metadata,
+                        )
+                    )
 
         return [HostFinding(host=host, finding=f) for f in findings]
 
@@ -96,7 +154,7 @@ class TlsScanner:
                 continue
             try:
                 result = TlsResult.model_validate_json(line)
-            except ValidationError:
+            except PydanticValidationError:
                 _logger.warning("Failed to parse tlsx output: %s", line)
                 continue
             check_results = await asyncio.gather(*(c.check(result) for c in self._checks))
