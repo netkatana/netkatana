@@ -17,6 +17,8 @@ _WEAK_CIPHER_SUBSTRINGS = (
 
 
 class TlsVersionDeprecated(AbstractTlsCheck):
+    _DETAIL = "SSL 3.0, TLS 1.0, and TLS 1.1 contain known vulnerabilities (BEAST, POODLE) and are rejected by modern clients."
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if result.tls_version not in _DEPRECATED_TLS_VERSIONS:
             return [
@@ -24,10 +26,7 @@ class TlsVersionDeprecated(AbstractTlsCheck):
                     code="tls_version_deprecated",
                     severity=Severity.PASS,
                     title="TLS version is not deprecated",
-                    detail=(
-                        "Deprecated TLS versions (SSLv3, TLS 1.0, TLS 1.1) contain known vulnerabilities "
-                        "(e.g. BEAST, POODLE). Upgrade to TLS 1.3 or at minimum TLS 1.2."
-                    ),
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -36,15 +35,15 @@ class TlsVersionDeprecated(AbstractTlsCheck):
                 code="tls_version_deprecated",
                 severity=Severity.CRITICAL,
                 title=f"Deprecated TLS version in use ({result.tls_version.upper()})",
-                detail=(
-                    f"{result.tls_version.upper()} is deprecated and contains known vulnerabilities "
-                    "(e.g. BEAST, POODLE). Upgrade to TLS 1.3 or at minimum TLS 1.2."
-                ),
+                detail=self._DETAIL,
+                metadata={"tls_version": result.tls_version},
             )
         ]
 
 
 class TlsVersionOutdated(AbstractTlsCheck):
+    _DETAIL = "TLS 1.3 offers improved security and performance over TLS 1.2."
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if result.tls_version not in _OUTDATED_TLS_VERSIONS:
             return [
@@ -52,7 +51,7 @@ class TlsVersionOutdated(AbstractTlsCheck):
                     code="tls_version_outdated",
                     severity=Severity.PASS,
                     title="TLS version is current",
-                    detail="TLS 1.2 is functional but TLS 1.3 offers better security and performance. Consider upgrading.",
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -61,12 +60,14 @@ class TlsVersionOutdated(AbstractTlsCheck):
                 code="tls_version_outdated",
                 severity=Severity.NOTICE,
                 title="Outdated TLS version in use (TLS 1.2)",
-                detail="TLS 1.2 is functional but TLS 1.3 offers better security and performance. Consider upgrading.",
+                detail=self._DETAIL,
             )
         ]
 
 
 class TlsCertExpired(AbstractTlsCheck):
+    _DETAIL = "TLS certificates have an expiry date; after that date, clients will reject the connection or display a security warning."
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.expired:
             return [
@@ -74,7 +75,7 @@ class TlsCertExpired(AbstractTlsCheck):
                     code="tls_cert_expired",
                     severity=Severity.PASS,
                     title="Certificate is not expired",
-                    detail="The TLS certificate has passed its expiry date. Clients will receive security warnings and may refuse to connect.",
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -83,12 +84,14 @@ class TlsCertExpired(AbstractTlsCheck):
                 code="tls_cert_expired",
                 severity=Severity.CRITICAL,
                 title="Certificate is expired",
-                detail="The TLS certificate has passed its expiry date. Clients will receive security warnings and may refuse to connect.",
+                detail=self._DETAIL,
             )
         ]
 
 
 class TlsCertSelfSigned(AbstractTlsCheck):
+    _DETAIL = "TLS certificates must be issued by a CA trusted by the client; self-signed certificates are rejected or warned about by browsers."
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.self_signed:
             return [
@@ -96,7 +99,7 @@ class TlsCertSelfSigned(AbstractTlsCheck):
                     code="tls_cert_self_signed",
                     severity=Severity.PASS,
                     title="Certificate is CA-signed",
-                    detail="The certificate was not issued by a trusted CA. Browsers and clients will display security warnings or refuse the connection.",
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -105,12 +108,16 @@ class TlsCertSelfSigned(AbstractTlsCheck):
                 code="tls_cert_self_signed",
                 severity=Severity.CRITICAL,
                 title="Certificate is self-signed",
-                detail="The certificate was not issued by a trusted CA. Browsers and clients will display security warnings or refuse the connection.",
+                detail=self._DETAIL,
             )
         ]
 
 
 class TlsCertMismatched(AbstractTlsCheck):
+    _DETAIL = (
+        "A TLS certificate must cover the hostname being accessed; a mismatch causes clients to reject the connection."
+    )
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.mismatched:
             return [
@@ -118,7 +125,7 @@ class TlsCertMismatched(AbstractTlsCheck):
                     code="tls_cert_mismatched",
                     severity=Severity.PASS,
                     title="Certificate hostname matches",
-                    detail="The certificate does not cover the requested hostname. Clients will reject the connection.",
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -127,12 +134,14 @@ class TlsCertMismatched(AbstractTlsCheck):
                 code="tls_cert_mismatched",
                 severity=Severity.CRITICAL,
                 title="Certificate hostname mismatch",
-                detail="The certificate does not cover the requested hostname. Clients will reject the connection.",
+                detail=self._DETAIL,
             )
         ]
 
 
 class TlsCertRevoked(AbstractTlsCheck):
+    _DETAIL = "CAs can revoke certificates before they expire; clients that check revocation status will reject a revoked certificate."
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.revoked:
             return [
@@ -140,7 +149,7 @@ class TlsCertRevoked(AbstractTlsCheck):
                     code="tls_cert_revoked",
                     severity=Severity.PASS,
                     title="Certificate is not revoked",
-                    detail="The certificate authority has revoked this certificate, often due to key compromise. Clients that check revocation will reject it.",
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -149,12 +158,14 @@ class TlsCertRevoked(AbstractTlsCheck):
                 code="tls_cert_revoked",
                 severity=Severity.CRITICAL,
                 title="Certificate has been revoked",
-                detail="The certificate authority has revoked this certificate, often due to key compromise. Clients that check revocation will reject it.",
+                detail=self._DETAIL,
             )
         ]
 
 
 class TlsCertUntrusted(AbstractTlsCheck):
+    _DETAIL = "The TLS certificate chain must be traceable to a root CA trusted by the client; an unverifiable chain causes connection rejection."
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.untrusted:
             return [
@@ -162,7 +173,7 @@ class TlsCertUntrusted(AbstractTlsCheck):
                     code="tls_cert_untrusted",
                     severity=Severity.PASS,
                     title="Certificate is trusted",
-                    detail="The certificate chain cannot be verified against any trusted root CA. Clients will display security warnings or refuse to connect.",
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -171,12 +182,14 @@ class TlsCertUntrusted(AbstractTlsCheck):
                 code="tls_cert_untrusted",
                 severity=Severity.CRITICAL,
                 title="Certificate is not trusted",
-                detail="The certificate chain cannot be verified against any trusted root CA. Clients will display security warnings or refuse to connect.",
+                detail=self._DETAIL,
             )
         ]
 
 
 class TlsCipherWeak(AbstractTlsCheck):
+    _DETAIL = "Cipher suites such as RC4, NULL, EXPORT, DES, 3DES, IDEA, and SEED have known weaknesses and should not be negotiated."
+
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.cipher:
             return []
@@ -188,10 +201,7 @@ class TlsCipherWeak(AbstractTlsCheck):
                     code="tls_cipher_weak",
                     severity=Severity.PASS,
                     title="Cipher suite is strong",
-                    detail=(
-                        "Weak cipher suites can be vulnerable to decryption attacks. "
-                        "Configure the server to prefer strong ciphers."
-                    ),
+                    detail=self._DETAIL,
                 )
             ]
 
@@ -200,9 +210,7 @@ class TlsCipherWeak(AbstractTlsCheck):
                 code="tls_cipher_weak",
                 severity=Severity.WARNING,
                 title=f"Weak cipher negotiated ({result.cipher})",
-                detail=(
-                    f"The negotiated cipher suite '{result.cipher}' is considered weak. "
-                    "Weak ciphers can be vulnerable to decryption attacks. Configure the server to prefer strong ciphers."
-                ),
+                detail=self._DETAIL,
+                metadata={"cipher": result.cipher},
             )
         ]

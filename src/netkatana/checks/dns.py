@@ -3,10 +3,7 @@ from netkatana.models import AbstractDnsCheck, DnsResult, Finding, Severity
 
 class SpfMissing(AbstractDnsCheck):
     _code = "dns_spf_missing"
-    _detail = (
-        "Without an SPF record, any server can send email claiming to be from this domain. "
-        "Add a TXT record like 'v=spf1 include:... ~all' to declare authorized senders."
-    )
+    _detail = "An SPF TXT record lists the servers authorized to send email for this domain; without it, mail servers cannot verify sender authenticity."
 
     async def check(self, result: DnsResult) -> list[Finding]:
         if any(record for record in result.txt if record.startswith("v=spf1")):
@@ -17,10 +14,7 @@ class SpfMissing(AbstractDnsCheck):
 
 class SpfPermissive(AbstractDnsCheck):
     _code = "dns_spf_permissive"
-    _detail = (
-        "The SPF record ends with '+all', which authorizes every server on the internet to send email "
-        "as this domain. Change to '~all' (softfail) or '-all' (fail) to restrict authorized senders."
-    )
+    _detail = "The '+all' mechanism in an SPF record authorizes any server on the internet to send email for this domain, negating anti-spoofing protection."
 
     async def check(self, result: DnsResult) -> list[Finding]:
         spf_records = [record for record in result.txt if record.startswith("v=spf1")]
@@ -56,10 +50,7 @@ class SpfPermissive(AbstractDnsCheck):
 
 class DmarcMissing(AbstractDnsCheck):
     _code = "dns_dmarc_missing"
-    _detail = (
-        "Without a DMARC record at _dmarc.<domain>, there is no policy instructing receivers how to handle "
-        "emails that fail SPF/DKIM alignment. Add a TXT record like 'v=DMARC1; p=reject; ...' to enforce protection."
-    )
+    _detail = "A DMARC record at '_dmarc.<domain>' specifies how mail receivers should handle messages that fail SPF or DKIM checks."
 
     async def check(self, result: DnsResult) -> list[Finding]:
         if any(record for record in result.dmarc_txt if record.startswith("v=DMARC1")):
