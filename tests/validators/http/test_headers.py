@@ -3,18 +3,31 @@ from httpx import Response
 
 from netkatana.exceptions import ValidationError
 from netkatana.validators.http.headers import (
+    access_control_allow_origin_null,
+    access_control_allow_origin_wildcard,
     content_security_policy_base_uri_missing,
+    content_security_policy_connect_src_missing,
+    content_security_policy_connect_src_unrestricted,
     content_security_policy_form_action_missing,
     content_security_policy_frame_ancestors_missing,
     content_security_policy_missing,
     content_security_policy_object_src_unsafe,
     content_security_policy_report_only_base_uri_missing,
+    content_security_policy_report_only_connect_src_missing,
+    content_security_policy_report_only_connect_src_unrestricted,
     content_security_policy_report_only_form_action_missing,
     content_security_policy_report_only_frame_ancestors_missing,
     content_security_policy_report_only_object_src_unsafe,
+    content_security_policy_report_only_script_src_missing,
+    content_security_policy_report_only_script_src_unrestricted,
+    content_security_policy_report_only_style_src_missing,
+    content_security_policy_report_only_style_src_unrestricted,
     content_security_policy_report_only_unsafe_eval,
     content_security_policy_report_only_unsafe_inline,
     content_security_policy_script_src_missing,
+    content_security_policy_script_src_unrestricted,
+    content_security_policy_style_src_missing,
+    content_security_policy_style_src_unrestricted,
     content_security_policy_unsafe_eval,
     content_security_policy_unsafe_inline,
     strict_transport_security_include_subdomains_missing,
@@ -822,3 +835,520 @@ async def test_content_security_policy_script_src_missing_default_src_fallback()
     message = await content_security_policy_script_src_missing(response)
 
     assert message == "Content-Security-Policy (CSP) script-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_script_src_missing_no_header():
+    response = Response(200)
+
+    message = await content_security_policy_report_only_script_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_script_src_missing_no_script_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "img-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_report_only_script_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) script-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_script_src_missing_script_src_present():
+    response = Response(200, headers={"content-security-policy-report-only": "script-src 'self'"})
+
+    message = await content_security_policy_report_only_script_src_missing(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) script-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_no_csp():
+    response = Response(200)
+
+    message = await content_security_policy_script_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_no_script_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+
+    message = await content_security_policy_script_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy": "script-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_script_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_wildcard_https():
+    response = Response(200, headers={"content-security-policy": "script-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_script_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_wildcard_http():
+    response = Response(200, headers={"content-security-policy": "script-src http:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_script_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_wildcard_via_default_src():
+    response = Response(200, headers={"content-security-policy": "default-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_script_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_clean_script_src():
+    response = Response(200, headers={"content-security-policy": "script-src 'self'"})
+
+    message = await content_security_policy_script_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy (CSP) script-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_script_src_unrestricted_wildcard_only_in_other_directive():
+    response = Response(200, headers={"content-security-policy": "script-src 'self'; img-src *"})
+
+    message = await content_security_policy_script_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy (CSP) script-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_script_src_unrestricted_no_header():
+    response = Response(200)
+
+    message = await content_security_policy_report_only_script_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_script_src_unrestricted_no_script_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "img-src 'self'"})
+
+    message = await content_security_policy_report_only_script_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_script_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy-report-only": "script-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_report_only_script_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) script-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_script_src_unrestricted_clean_script_src():
+    response = Response(200, headers={"content-security-policy-report-only": "script-src 'self'"})
+
+    message = await content_security_policy_report_only_script_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) script-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_missing_no_csp():
+    response = Response(200)
+
+    message = await content_security_policy_style_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_missing_no_style_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_style_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_missing_style_src_present():
+    response = Response(200, headers={"content-security-policy": "style-src 'self'"})
+
+    message = await content_security_policy_style_src_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) style-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_missing_default_src_fallback():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+
+    message = await content_security_policy_style_src_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) style-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_unrestricted_no_csp():
+    response = Response(200)
+
+    message = await content_security_policy_style_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_unrestricted_no_style_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+
+    message = await content_security_policy_style_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy": "style-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_style_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_unrestricted_wildcard_https():
+    response = Response(200, headers={"content-security-policy": "style-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_style_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_unrestricted_wildcard_via_default_src():
+    response = Response(200, headers={"content-security-policy": "default-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_style_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_style_src_unrestricted_clean_style_src():
+    response = Response(200, headers={"content-security-policy": "style-src 'self'"})
+
+    message = await content_security_policy_style_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy (CSP) style-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_style_src_missing_no_header():
+    response = Response(200)
+
+    message = await content_security_policy_report_only_style_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_style_src_missing_no_style_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "img-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_report_only_style_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) style-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_style_src_missing_style_src_present():
+    response = Response(200, headers={"content-security-policy-report-only": "style-src 'self'"})
+
+    message = await content_security_policy_report_only_style_src_missing(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) style-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_style_src_unrestricted_no_header():
+    response = Response(200)
+
+    message = await content_security_policy_report_only_style_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_style_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy-report-only": "style-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_report_only_style_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) style-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_style_src_unrestricted_clean_style_src():
+    response = Response(200, headers={"content-security-policy-report-only": "style-src 'self'"})
+
+    message = await content_security_policy_report_only_style_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) style-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_missing_no_csp():
+    response = Response(200)
+
+    message = await content_security_policy_connect_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_missing_no_connect_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_connect_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) connect-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_missing_connect_src_present():
+    response = Response(200, headers={"content-security-policy": "connect-src 'self'"})
+
+    message = await content_security_policy_connect_src_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) connect-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_missing_default_src_fallback():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+
+    message = await content_security_policy_connect_src_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) connect-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_unrestricted_no_csp():
+    response = Response(200)
+
+    message = await content_security_policy_connect_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_unrestricted_no_connect_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+
+    message = await content_security_policy_connect_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy": "connect-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_connect_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) connect-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_unrestricted_wildcard_https():
+    response = Response(200, headers={"content-security-policy": "connect-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_connect_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) connect-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_unrestricted_wildcard_via_default_src():
+    response = Response(200, headers={"content-security-policy": "default-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_connect_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) connect-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_connect_src_unrestricted_clean_connect_src():
+    response = Response(200, headers={"content-security-policy": "connect-src 'self'"})
+
+    message = await content_security_policy_connect_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy (CSP) connect-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_connect_src_missing_no_header():
+    response = Response(200)
+
+    message = await content_security_policy_report_only_connect_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_connect_src_missing_no_connect_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "img-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_report_only_connect_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) connect-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_connect_src_missing_connect_src_present():
+    response = Response(200, headers={"content-security-policy-report-only": "connect-src 'self'"})
+
+    message = await content_security_policy_report_only_connect_src_missing(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) connect-src is present"
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_connect_src_unrestricted_no_header():
+    response = Response(200)
+
+    message = await content_security_policy_report_only_connect_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_connect_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy-report-only": "connect-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await content_security_policy_report_only_connect_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) connect-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_content_security_policy_report_only_connect_src_unrestricted_clean_connect_src():
+    response = Response(200, headers={"content-security-policy-report-only": "connect-src 'self'"})
+
+    message = await content_security_policy_report_only_connect_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) connect-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_origin_wildcard_header_absent():
+    response = Response(200)
+
+    message = await access_control_allow_origin_wildcard(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_origin_wildcard_wildcard():
+    response = Response(200, headers={"access-control-allow-origin": "*"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_allow_origin_wildcard(response)
+
+    assert exc_info.value.message == "Access-Control-Allow-Origin is wildcard (*)"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_origin_wildcard_specific_origin():
+    response = Response(200, headers={"access-control-allow-origin": "https://example.com"})
+
+    message = await access_control_allow_origin_wildcard(response)
+
+    assert message == "Access-Control-Allow-Origin is not wildcard"
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_origin_null_header_absent():
+    response = Response(200)
+
+    message = await access_control_allow_origin_null(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_origin_null_null():
+    response = Response(200, headers={"access-control-allow-origin": "null"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_allow_origin_null(response)
+
+    assert exc_info.value.message == "Access-Control-Allow-Origin is null"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_origin_null_specific_origin():
+    response = Response(200, headers={"access-control-allow-origin": "https://example.com"})
+
+    message = await access_control_allow_origin_null(response)
+
+    assert message == "Access-Control-Allow-Origin is not null"

@@ -6,6 +6,7 @@ from netkatana.utils import parse_content_security_policy, parse_strict_transpor
 _HSTS_MIN_MAX_AGE = 31_536_000  # one year
 _CSP_HEADER = "content-security-policy"
 _CSP_REPORT_ONLY_HEADER = "content-security-policy-report-only"
+_CORS_ALLOW_ORIGIN_HEADER = "access-control-allow-origin"
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -310,3 +311,184 @@ async def content_security_policy_script_src_missing(response: Response) -> str 
         raise ValidationError("Content-Security-Policy (CSP) script-src is missing")
 
     return "Content-Security-Policy (CSP) script-src is present"
+
+
+async def content_security_policy_report_only_script_src_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "script-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) script-src is present"
+
+
+async def content_security_policy_script_src_unrestricted(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "script-src")
+
+    if effective is None:
+        return None
+
+    if "*" in effective or "https:" in effective or "http:" in effective:
+        raise ValidationError("Content-Security-Policy (CSP) script-src is unrestricted")
+
+    return "Content-Security-Policy (CSP) script-src is restricted"
+
+
+async def content_security_policy_report_only_script_src_unrestricted(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "script-src")
+
+    if effective is None:
+        return None
+
+    if "*" in effective or "https:" in effective or "http:" in effective:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src is unrestricted")
+
+    return "Content-Security-Policy-Report-Only (CSP) script-src is restricted"
+
+
+async def content_security_policy_style_src_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "style-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy (CSP) style-src is missing")
+
+    return "Content-Security-Policy (CSP) style-src is present"
+
+
+async def content_security_policy_style_src_unrestricted(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "style-src")
+
+    if effective is None:
+        return None
+
+    if "*" in effective or "https:" in effective or "http:" in effective:
+        raise ValidationError("Content-Security-Policy (CSP) style-src is unrestricted")
+
+    return "Content-Security-Policy (CSP) style-src is restricted"
+
+
+async def content_security_policy_report_only_style_src_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "style-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) style-src is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) style-src is present"
+
+
+async def content_security_policy_report_only_style_src_unrestricted(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "style-src")
+
+    if effective is None:
+        return None
+
+    if "*" in effective or "https:" in effective or "http:" in effective:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) style-src is unrestricted")
+
+    return "Content-Security-Policy-Report-Only (CSP) style-src is restricted"
+
+
+async def content_security_policy_connect_src_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "connect-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy (CSP) connect-src is missing")
+
+    return "Content-Security-Policy (CSP) connect-src is present"
+
+
+async def content_security_policy_connect_src_unrestricted(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "connect-src")
+
+    if effective is None:
+        return None
+
+    if "*" in effective or "https:" in effective or "http:" in effective:
+        raise ValidationError("Content-Security-Policy (CSP) connect-src is unrestricted")
+
+    return "Content-Security-Policy (CSP) connect-src is restricted"
+
+
+async def content_security_policy_report_only_connect_src_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "connect-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) connect-src is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) connect-src is present"
+
+
+async def content_security_policy_report_only_connect_src_unrestricted(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "connect-src")
+
+    if effective is None:
+        return None
+
+    if "*" in effective or "https:" in effective or "http:" in effective:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) connect-src is unrestricted")
+
+    return "Content-Security-Policy-Report-Only (CSP) connect-src is restricted"
+
+
+async def access_control_allow_origin_wildcard(response: Response) -> str | None:
+    if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
+        return None
+
+    if response.headers[_CORS_ALLOW_ORIGIN_HEADER].strip() == "*":
+        raise ValidationError("Access-Control-Allow-Origin is wildcard (*)")
+
+    return "Access-Control-Allow-Origin is not wildcard"
+
+
+async def access_control_allow_origin_null(response: Response) -> str | None:
+    if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
+        return None
+
+    if response.headers[_CORS_ALLOW_ORIGIN_HEADER].strip() == "null":
+        raise ValidationError("Access-Control-Allow-Origin is null")
+
+    return "Access-Control-Allow-Origin is not null"
