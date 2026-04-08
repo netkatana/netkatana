@@ -66,7 +66,7 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bo
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
 def http2(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
-    asyncio.run(_http(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+    asyncio.run(_http2(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
 async def _http2(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
