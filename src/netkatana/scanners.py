@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Sequence
 from itertools import chain
+from typing import TypeVar
 
 import dns.asyncresolver
 import dns.exception
@@ -16,12 +17,44 @@ from netkatana.types import (
     DnsRule,
     Finding,
     HttpRule,
+    Rule,
     Severity,
     TlsResult,
     TlsRule,
 )
 
 _logger = logging.getLogger(__name__)
+T = TypeVar("T")
+
+
+def _make_finding(target: str, rule: Rule[object], error: ValidationError) -> Finding:
+    return Finding(
+        host=target,
+        code=rule.code,
+        severity=rule.severity,
+        title=error.message,
+        detail=rule.detail,
+        metadata=error.metadata,
+    )
+
+
+async def _run_rule(target: str, rule: Rule[T], result: T) -> list[Finding]:
+    try:
+        message = await rule.validator(result)
+    except ValidationErrors as e:
+        return [_make_finding(target, rule, error) for error in e.errors]
+    except ValidationError as e:
+        return [_make_finding(target, rule, e)]
+
+    if message is None:
+        return []
+
+    return [Finding(host=target, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
+
+
+async def _run_rules(target: str, rules: Sequence[Rule[T]], result: T) -> list[Finding]:
+    finding_batches = await asyncio.gather(*(_run_rule(target, rule, result) for rule in rules))
+    return list(chain.from_iterable(finding_batches))
 
 
 class HttpScanner:
@@ -53,34 +86,7 @@ class HttpScanner:
                 _logger.warning("%s: %r", host, e)
                 return []
 
-        return await self._run_rules(host, response)
-
-    async def _run_rules(self, host: str, response: Response) -> list[Finding]:
-        finding_batches = await asyncio.gather(*(self._run_rule(host, rule, response) for rule in self._rules))
-        return list(chain.from_iterable(finding_batches))
-
-    async def _run_rule(self, host: str, rule: HttpRule, response: Response) -> list[Finding]:
-        try:
-            message = await rule.validator(response)
-        except ValidationErrors as e:
-            return [self._make_finding(host, rule, error) for error in e.errors]
-        except ValidationError as e:
-            return [self._make_finding(host, rule, e)]
-
-        if message is None:
-            return []
-
-        return [Finding(host=host, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
-
-    def _make_finding(self, host: str, rule: HttpRule, error: ValidationError) -> Finding:
-        return Finding(
-            host=host,
-            code=rule.code,
-            severity=rule.severity,
-            title=error.message,
-            detail=rule.detail,
-            metadata=error.metadata,
-        )
+        return await _run_rules(host, self._rules, response)
 
 
 class TlsScanner:
@@ -126,38 +132,11 @@ class TlsScanner:
             except PydanticValidationError:
                 _logger.warning("Failed to parse tlsx output: %s", line)
                 continue
-            for finding in await self._run_rules(result.host, result):
+            for finding in await _run_rules(result.host, self._rules, result):
                 yield finding
 
         await write_task
         await proc.wait()
-
-    async def _run_rules(self, host: str, result: TlsResult) -> list[Finding]:
-        finding_batches = await asyncio.gather(*(self._run_rule(host, rule, result) for rule in self._rules))
-        return list(chain.from_iterable(finding_batches))
-
-    async def _run_rule(self, host: str, rule: TlsRule, result: TlsResult) -> list[Finding]:
-        try:
-            message = await rule.validator(result)
-        except ValidationErrors as e:
-            return [self._make_finding(host, rule, error) for error in e.errors]
-        except ValidationError as e:
-            return [self._make_finding(host, rule, e)]
-
-        if message is None:
-            return []
-
-        return [Finding(host=host, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
-
-    def _make_finding(self, host: str, rule: TlsRule, error: ValidationError) -> Finding:
-        return Finding(
-            host=host,
-            code=rule.code,
-            severity=rule.severity,
-            title=error.message,
-            detail=rule.detail,
-            metadata=error.metadata,
-        )
 
 
 class DnsScanner:
@@ -177,34 +156,7 @@ class DnsScanner:
             dmarc_txt = await self._query_txt(f"_dmarc.{domain}")
 
         result = DnsResult(domain=domain, txt=txt, dmarc_txt=dmarc_txt)
-        return await self._run_rules(domain, result)
-
-    async def _run_rules(self, domain: str, result: DnsResult) -> list[Finding]:
-        finding_batches = await asyncio.gather(*(self._run_rule(domain, rule, result) for rule in self._rules))
-        return list(chain.from_iterable(finding_batches))
-
-    async def _run_rule(self, domain: str, rule: DnsRule, result: DnsResult) -> list[Finding]:
-        try:
-            message = await rule.validator(result)
-        except ValidationErrors as e:
-            return [self._make_finding(domain, rule, error) for error in e.errors]
-        except ValidationError as e:
-            return [self._make_finding(domain, rule, e)]
-
-        if message is None:
-            return []
-
-        return [Finding(host=domain, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
-
-    def _make_finding(self, domain: str, rule: DnsRule, error: ValidationError) -> Finding:
-        return Finding(
-            host=domain,
-            code=rule.code,
-            severity=rule.severity,
-            title=error.message,
-            detail=rule.detail,
-            metadata=error.metadata,
-        )
+        return await _run_rules(domain, self._rules, result)
 
     async def _query_txt(self, name: str) -> list[str]:
         try:
