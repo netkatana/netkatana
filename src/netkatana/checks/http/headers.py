@@ -295,23 +295,26 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
         "when present, CSP Level 2+ browsers ignore `'unsafe-inline'`."
     )
 
+    @property
     @abstractmethod
-    def get_code(self) -> str:
+    def code(self) -> str:
         pass
 
+    @property
     @abstractmethod
-    def get_header(self) -> str:
+    def header(self) -> str:
         pass
 
+    @property
     @abstractmethod
-    def get_title_prefix(self) -> str:
+    def title_prefix(self) -> str:
         pass
 
     async def check(self, response: Response) -> list[Finding]:
-        if self.get_header() not in response.headers:
+        if self.header not in response.headers:
             return []
 
-        directives = parse_content_security_policy(response.headers[self.get_header()])
+        directives = parse_content_security_policy(response.headers[self.header])
         effective = _csp_effective_sources(directives, "script-src")
 
         if effective is None:
@@ -320,9 +323,9 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
         if "'unsafe-inline'" not in effective:
             return [
                 Finding(
-                    code=self.get_code(),
+                    code=self.code,
                     severity=Severity.PASS,
-                    title=f"{self.get_title_prefix()} script-src does not contain 'unsafe-inline'",
+                    title=f"{self.title_prefix} script-src does not contain 'unsafe-inline'",
                     detail=self._DETAIL,
                 )
             ]
@@ -330,43 +333,33 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
         if _neutralizes_unsafe_inline(effective):
             return [
                 Finding(
-                    code=self.get_code(),
+                    code=self.code,
                     severity=Severity.PASS,
-                    title=f"{self.get_title_prefix()} 'unsafe-inline' is neutralized by nonce or hash",
+                    title=f"{self.title_prefix} 'unsafe-inline' is neutralized by nonce or hash",
                     detail=self._DETAIL,
                 )
             ]
 
         return [
             Finding(
-                code=self.get_code(),
+                code=self.code,
                 severity=Severity.CRITICAL,
-                title=f"{self.get_title_prefix()} script-src contains 'unsafe-inline'",
+                title=f"{self.title_prefix} script-src contains 'unsafe-inline'",
                 detail=self._DETAIL,
             )
         ]
 
 
 class ContentSecurityPolicyUnsafeInline(_CspUnsafeInlineCheck):
-    def get_code(self) -> str:
-        return "headers_csp_unsafe_inline"
-
-    def get_header(self) -> str:
-        return _CSP_HEADER
-
-    def get_title_prefix(self) -> str:
-        return "Content-Security-Policy (CSP)"
+    code = "headers_csp_unsafe_inline"
+    header = _CSP_HEADER
+    title_prefix = "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyUnsafeInline(_CspUnsafeInlineCheck):
-    def get_code(self) -> str:
-        return "headers_csp_report_only_unsafe_inline"
-
-    def get_header(self) -> str:
-        return _CSP_REPORT_ONLY_HEADER
-
-    def get_title_prefix(self) -> str:
-        return "Content-Security-Policy-Report-Only (CSP)"
+    code = "headers_csp_report_only_unsafe_inline"
+    header = _CSP_REPORT_ONLY_HEADER
+    title_prefix = "Content-Security-Policy-Report-Only (CSP)"
 
 
 class _CspUnsafeEvalCheck(AbstractHttpCheck):
