@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Generic, TypeVar
 
 from httpx import Response
 from pydantic import BaseModel
+
+T = TypeVar("T")
 
 
 class Severity(str, Enum):
@@ -50,24 +52,13 @@ class DnsResult(BaseModel):
 
 
 @dataclass(kw_only=True)
-class HttpRule:
+class Rule(Generic[T]):
     code: str
     severity: Severity
     detail: str
-    validator: Callable[[Response], Awaitable[str | None]]
+    validator: Callable[[T], Awaitable[str | None]]
 
 
-@dataclass(kw_only=True)
-class TlsRule:
-    code: str
-    severity: Severity
-    detail: str
-    validator: Callable[[TlsResult], Awaitable[str | None]]
-
-
-@dataclass(kw_only=True)
-class DnsRule:
-    code: str
-    severity: Severity
-    detail: str
-    validator: Callable[[DnsResult], Awaitable[str | None]]
+HttpRule = Rule[Response]
+TlsRule = Rule[TlsResult]
+DnsRule = Rule[DnsResult]

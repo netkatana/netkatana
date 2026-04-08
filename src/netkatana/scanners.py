@@ -39,8 +39,8 @@ class HttpScanner:
         tasks = [asyncio.create_task(self.check_host(host)) for host in hosts]
 
         for done in asyncio.as_completed(tasks):
-            for findings in await done:
-                yield findings
+            for finding in await done:
+                yield finding
 
     async def check_host(self, host: str) -> list[Finding]:
         async with self._semaphore:
