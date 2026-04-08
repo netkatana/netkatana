@@ -1,3 +1,6 @@
+from typing import ClassVar
+
+from netkatana.checks.config import get_detail, get_severity
 from netkatana.types import AbstractTlsCheck, Finding, Severity, TlsResult
 
 _DEPRECATED_TLS_VERSIONS = {"ssl30", "tls10", "tls11"}
@@ -17,178 +20,176 @@ _WEAK_CIPHER_SUBSTRINGS = (
 
 
 class TlsVersionDeprecated(AbstractTlsCheck):
-    _DETAIL = "SSL 3.0, TLS 1.0, and TLS 1.1 contain known vulnerabilities (BEAST, POODLE) and are rejected by modern clients."
+    _CODE: ClassVar[str] = "tls_version_deprecated"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if result.tls_version not in _DEPRECATED_TLS_VERSIONS:
             return [
                 Finding(
-                    code="tls_version_deprecated",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="TLS version is not deprecated",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_version_deprecated",
-                severity=Severity.CRITICAL,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title=f"Deprecated TLS version in use ({result.tls_version.upper()})",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
                 metadata={"tls_version": result.tls_version},
             )
         ]
 
 
 class TlsVersionOutdated(AbstractTlsCheck):
-    _DETAIL = "TLS 1.3 offers improved security and performance over TLS 1.2."
+    _CODE: ClassVar[str] = "tls_version_outdated"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if result.tls_version not in _OUTDATED_TLS_VERSIONS:
             return [
                 Finding(
-                    code="tls_version_outdated",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="TLS version is current",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_version_outdated",
-                severity=Severity.NOTICE,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title="Outdated TLS version in use (TLS 1.2)",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class TlsCertExpired(AbstractTlsCheck):
-    _DETAIL = "TLS certificates have an expiry date; after that date, clients will reject the connection or display a security warning."
+    _CODE: ClassVar[str] = "tls_cert_expired"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.expired:
             return [
                 Finding(
-                    code="tls_cert_expired",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Certificate is not expired",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_cert_expired",
-                severity=Severity.CRITICAL,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title="Certificate is expired",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class TlsCertSelfSigned(AbstractTlsCheck):
-    _DETAIL = "TLS certificates must be issued by a CA trusted by the client; self-signed certificates are rejected or warned about by browsers."
+    _CODE: ClassVar[str] = "tls_cert_self_signed"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.self_signed:
             return [
                 Finding(
-                    code="tls_cert_self_signed",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Certificate is CA-signed",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_cert_self_signed",
-                severity=Severity.CRITICAL,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title="Certificate is self-signed",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class TlsCertMismatched(AbstractTlsCheck):
-    _DETAIL = (
-        "A TLS certificate must cover the hostname being accessed; a mismatch causes clients to reject the connection."
-    )
+    _CODE: ClassVar[str] = "tls_cert_mismatched"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.mismatched:
             return [
                 Finding(
-                    code="tls_cert_mismatched",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Certificate hostname matches",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_cert_mismatched",
-                severity=Severity.CRITICAL,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title="Certificate hostname mismatch",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class TlsCertRevoked(AbstractTlsCheck):
-    _DETAIL = "CAs can revoke certificates before they expire; clients that check revocation status will reject a revoked certificate."
+    _CODE: ClassVar[str] = "tls_cert_revoked"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.revoked:
             return [
                 Finding(
-                    code="tls_cert_revoked",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Certificate is not revoked",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_cert_revoked",
-                severity=Severity.CRITICAL,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title="Certificate has been revoked",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class TlsCertUntrusted(AbstractTlsCheck):
-    _DETAIL = "The TLS certificate chain must be traceable to a root CA trusted by the client; an unverifiable chain causes connection rejection."
+    _CODE: ClassVar[str] = "tls_cert_untrusted"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.untrusted:
             return [
                 Finding(
-                    code="tls_cert_untrusted",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Certificate is trusted",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_cert_untrusted",
-                severity=Severity.CRITICAL,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title="Certificate is not trusted",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class TlsCipherWeak(AbstractTlsCheck):
-    _DETAIL = "Cipher suites such as RC4, NULL, EXPORT, DES, 3DES, IDEA, and SEED have known weaknesses and should not be negotiated."
+    _CODE: ClassVar[str] = "tls_cipher_weak"
 
     async def check(self, result: TlsResult) -> list[Finding]:
         if not result.cipher:
@@ -198,19 +199,19 @@ class TlsCipherWeak(AbstractTlsCheck):
         if not any(s.upper() in cipher_upper for s in _WEAK_CIPHER_SUBSTRINGS):
             return [
                 Finding(
-                    code="tls_cipher_weak",
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Cipher suite is strong",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
-                code="tls_cipher_weak",
-                severity=Severity.WARNING,
+                code=self._CODE,
+                severity=get_severity(self._CODE),
                 title=f"Weak cipher negotiated ({result.cipher})",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
                 metadata={"cipher": result.cipher},
             )
         ]

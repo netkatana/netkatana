@@ -36,9 +36,6 @@ class StrictTransportSecurityMissing(AbstractHttpCheck):
 
 class StrictTransportSecurityInvalid(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_invalid"
-    _DETAIL: ClassVar[str] = (
-        "The 'Strict-Transport-Security' header requires a valid 'max-age' directive; a malformed header is silently ignored by browsers."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if "strict-transport-security" not in response.headers:
@@ -52,9 +49,9 @@ class StrictTransportSecurityInvalid(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.CRITICAL,
+                    severity=get_severity(self._CODE),
                     title="Strict-Transport-Security (HSTS) header is malformed",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                     metadata={"value": value},
                 )
             ]
@@ -64,16 +61,13 @@ class StrictTransportSecurityInvalid(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) header is valid",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_max_age_zero"
-    _DETAIL: ClassVar[str] = (
-        "'max-age=0' instructs browsers to delete the cached HSTS policy, removing HTTPS enforcement for returning users."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if "strict-transport-security" not in response.headers:
@@ -88,9 +82,9 @@ class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.CRITICAL,
+                    severity=get_severity(self._CODE),
                     title="Strict-Transport-Security (HSTS) max-age is zero",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
@@ -99,16 +93,13 @@ class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) max-age is non-zero",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_max_age_low"
-    _DETAIL: ClassVar[str] = (
-        "The 'max-age' directive controls how long browsers enforce HTTPS for this domain; values below one year (31,536,000 s) leave a wider window for downgrade attacks between visits."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if "strict-transport-security" not in response.headers:
@@ -126,9 +117,9 @@ class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.WARNING,
+                    severity=get_severity(self._CODE),
                     title="Strict-Transport-Security (HSTS) max-age is less than one year",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                     metadata={"max_age": str(parsed.max_age)},
                 )
             ]
@@ -138,16 +129,13 @@ class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) max-age meets minimum",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_include_subdomains_missing"
-    _DETAIL: ClassVar[str] = (
-        "The 'includeSubDomains' directive extends HSTS to all subdomains; without it, subdomains are reachable over plain HTTP and parent-domain cookies may be intercepted."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if "strict-transport-security" not in response.headers:
@@ -162,9 +150,9 @@ class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.NOTICE,
+                    severity=get_severity(self._CODE),
                     title="Strict-Transport-Security (HSTS) includeSubDomains missing",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
@@ -173,16 +161,13 @@ class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) includeSubDomains present",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_hsts_preload_not_eligible"
-    _DETAIL: ClassVar[str] = (
-        "The 'preload' directive signals intent to join browser preload lists, which hardcode the HSTS policy before a user's first visit; qualifying requires 'max-age' ≥ 31,536,000 s and 'includeSubDomains'."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if "strict-transport-security" not in response.headers:
@@ -200,9 +185,9 @@ class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.WARNING,
+                    severity=get_severity(self._CODE),
                     title="Strict-Transport-Security (HSTS) does not meet preload requirements",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
@@ -211,7 +196,7 @@ class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) meets preload requirements",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
@@ -244,9 +229,6 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
 
 class ContentSecurityPolicyMissing(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_csp_missing"
-    _DETAIL: ClassVar[str] = (
-        "The 'Content-Security-Policy' header restricts which resources browsers can load, reducing the risk of XSS and data injection attacks."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CSP_HEADER in response.headers:
@@ -255,25 +237,21 @@ class ContentSecurityPolicyMissing(AbstractHttpCheck):
                     code=self._CODE,
                     severity=Severity.PASS,
                     title="Content-Security-Policy (CSP) present",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
                 code=self._CODE,
-                severity=Severity.WARNING,
+                severity=get_severity(self._CODE),
                 title="Content-Security-Policy (CSP) missing",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class _CspUnsafeInlineCheck(AbstractHttpCheck):
-    _DETAIL: ClassVar[str] = (
-        "'unsafe-inline' in 'script-src' (or 'default-src') permits all inline scripts; a nonce or hash neutralizes it and restores XSS protection in CSP Level 2+ browsers."
-    )
-
     @property
     @abstractmethod
     def code(self) -> str:
@@ -305,7 +283,7 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
                     code=self.code,
                     severity=Severity.PASS,
                     title=f"{self.title_prefix} script-src does not contain 'unsafe-inline'",
-                    detail=self._DETAIL,
+                    detail=get_detail(self.code),
                 )
             ]
 
@@ -315,16 +293,16 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
                     code=self.code,
                     severity=Severity.PASS,
                     title=f"{self.title_prefix} 'unsafe-inline' is neutralized by nonce or hash",
-                    detail=self._DETAIL,
+                    detail=get_detail(self.code),
                 )
             ]
 
         return [
             Finding(
                 code=self.code,
-                severity=Severity.CRITICAL,
+                severity=get_severity(self.code),
                 title=f"{self.title_prefix} script-src contains 'unsafe-inline'",
-                detail=self._DETAIL,
+                detail=get_detail(self.code),
             )
         ]
 
@@ -342,10 +320,6 @@ class ContentSecurityPolicyReportOnlyUnsafeInline(_CspUnsafeInlineCheck):
 
 
 class _CspUnsafeEvalCheck(AbstractHttpCheck):
-    _DETAIL: ClassVar[str] = (
-        "'unsafe-eval' in 'script-src' (or 'default-src') permits eval(), new Function(string), and similar dynamic code execution from strings."
-    )
-
     @property
     @abstractmethod
     def code(self) -> str:
@@ -375,9 +349,9 @@ class _CspUnsafeEvalCheck(AbstractHttpCheck):
             return [
                 Finding(
                     code=self.code,
-                    severity=Severity.CRITICAL,
+                    severity=get_severity(self.code),
                     title=f"{self.title_prefix} script-src contains 'unsafe-eval'",
-                    detail=self._DETAIL,
+                    detail=get_detail(self.code),
                 )
             ]
 
@@ -386,7 +360,7 @@ class _CspUnsafeEvalCheck(AbstractHttpCheck):
                 code=self.code,
                 severity=Severity.PASS,
                 title=f"{self.title_prefix} script-src does not contain 'unsafe-eval'",
-                detail=self._DETAIL,
+                detail=get_detail(self.code),
             )
         ]
 
@@ -404,10 +378,6 @@ class ContentSecurityPolicyReportOnlyUnsafeEval(_CspUnsafeEvalCheck):
 
 
 class _CspObjectSrcUnsafeCheck(AbstractHttpCheck):
-    _DETAIL: ClassVar[str] = (
-        "'object-src' (or 'default-src') controls <object> and <embed> elements; plugin content runs outside the browser's normal security model and has historically enabled code execution."
-    )
-
     @property
     @abstractmethod
     def code(self) -> str:
@@ -436,16 +406,16 @@ class _CspObjectSrcUnsafeCheck(AbstractHttpCheck):
                     code=self.code,
                     severity=Severity.PASS,
                     title=f"{self.title_prefix} object-src is restricted to 'none'",
-                    detail=self._DETAIL,
+                    detail=get_detail(self.code),
                 )
             ]
 
         return [
             Finding(
                 code=self.code,
-                severity=Severity.WARNING,
+                severity=get_severity(self.code),
                 title=f"{self.title_prefix} object-src is not restricted to 'none'",
-                detail=self._DETAIL,
+                detail=get_detail(self.code),
             )
         ]
 
@@ -463,10 +433,6 @@ class ContentSecurityPolicyReportOnlyObjectSrcUnsafe(_CspObjectSrcUnsafeCheck):
 
 
 class _CspBaseUriMissingCheck(AbstractHttpCheck):
-    _DETAIL: ClassVar[str] = (
-        "'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and bypassing 'script-src'; it does not fall back to 'default-src'."
-    )
-
     @property
     @abstractmethod
     def code(self) -> str:
@@ -492,9 +458,9 @@ class _CspBaseUriMissingCheck(AbstractHttpCheck):
             return [
                 Finding(
                     code=self.code,
-                    severity=Severity.WARNING,
+                    severity=get_severity(self.code),
                     title=f"{self.title_prefix} base-uri directive is missing",
-                    detail=self._DETAIL,
+                    detail=get_detail(self.code),
                 )
             ]
 
@@ -503,7 +469,7 @@ class _CspBaseUriMissingCheck(AbstractHttpCheck):
                 code=self.code,
                 severity=Severity.PASS,
                 title=f"{self.title_prefix} base-uri directive is present",
-                detail=self._DETAIL,
+                detail=get_detail(self.code),
             )
         ]
 
@@ -521,10 +487,6 @@ class ContentSecurityPolicyReportOnlyBaseUriMissing(_CspBaseUriMissingCheck):
 
 
 class _CspFrameAncestorsMissingCheck(AbstractHttpCheck):
-    _DETAIL: ClassVar[str] = (
-        "'frame-ancestors' controls which origins can embed this page in a frame or iframe, preventing clickjacking; it does not fall back to 'default-src'."
-    )
-
     @property
     @abstractmethod
     def code(self) -> str:
@@ -550,9 +512,9 @@ class _CspFrameAncestorsMissingCheck(AbstractHttpCheck):
             return [
                 Finding(
                     code=self.code,
-                    severity=Severity.WARNING,
+                    severity=get_severity(self.code),
                     title=f"{self.title_prefix} frame-ancestors directive is missing",
-                    detail=self._DETAIL,
+                    detail=get_detail(self.code),
                 )
             ]
 
@@ -561,7 +523,7 @@ class _CspFrameAncestorsMissingCheck(AbstractHttpCheck):
                 code=self.code,
                 severity=Severity.PASS,
                 title=f"{self.title_prefix} frame-ancestors directive is present",
-                detail=self._DETAIL,
+                detail=get_detail(self.code),
             )
         ]
 
@@ -579,10 +541,6 @@ class ContentSecurityPolicyReportOnlyFrameAncestorsMissing(_CspFrameAncestorsMis
 
 
 class _CspFormActionMissingCheck(AbstractHttpCheck):
-    _DETAIL: ClassVar[str] = (
-        "'form-action' restricts which URLs forms may submit to, preventing data exfiltration via injected forms; it does not fall back to 'default-src'."
-    )
-
     @property
     @abstractmethod
     def code(self) -> str:
@@ -608,9 +566,9 @@ class _CspFormActionMissingCheck(AbstractHttpCheck):
             return [
                 Finding(
                     code=self.code,
-                    severity=Severity.WARNING,
+                    severity=get_severity(self.code),
                     title=f"{self.title_prefix} form-action directive is missing",
-                    detail=self._DETAIL,
+                    detail=get_detail(self.code),
                 )
             ]
 
@@ -619,7 +577,7 @@ class _CspFormActionMissingCheck(AbstractHttpCheck):
                 code=self.code,
                 severity=Severity.PASS,
                 title=f"{self.title_prefix} form-action directive is present",
-                detail=self._DETAIL,
+                detail=get_detail(self.code),
             )
         ]
 
@@ -660,11 +618,6 @@ class _CspFetchDirectiveMissingCheck(AbstractHttpCheck):
     def directive(self) -> str:
         pass
 
-    @property
-    @abstractmethod
-    def detail(self) -> str:
-        pass
-
     async def check(self, response: Response) -> list[Finding]:
         if self.header not in response.headers:
             return []
@@ -676,9 +629,9 @@ class _CspFetchDirectiveMissingCheck(AbstractHttpCheck):
             return [
                 Finding(
                     code=self.code,
-                    severity=Severity.CRITICAL,
+                    severity=get_severity(self.code),
                     title=f"{self.title_prefix} {self.directive} is unrestricted (no {self.directive} or default-src)",
-                    detail=self.detail,
+                    detail=get_detail(self.code),
                 )
             ]
 
@@ -687,14 +640,13 @@ class _CspFetchDirectiveMissingCheck(AbstractHttpCheck):
                 code=self.code,
                 severity=Severity.PASS,
                 title=f"{self.title_prefix} {self.directive} is set",
-                detail=self.detail,
+                detail=get_detail(self.code),
             )
         ]
 
 
 class _CspScriptSrcMissingCheck(_CspFetchDirectiveMissingCheck):
     directive = "script-src"
-    detail = "'script-src' (falling back to 'default-src') restricts which scripts browsers execute; without either directive, scripts are completely unrestricted."
 
 
 class ContentSecurityPolicyScriptSrcMissing(_CspScriptSrcMissingCheck):
@@ -711,7 +663,6 @@ class ContentSecurityPolicyReportOnlyScriptSrcMissing(_CspScriptSrcMissingCheck)
 
 class _CspStyleSrcMissingCheck(_CspFetchDirectiveMissingCheck):
     directive = "style-src"
-    detail = "'style-src' (falling back to 'default-src') restricts which stylesheets browsers load; without either directive, CSS injection and data exfiltration via url() probes are possible."
 
 
 class ContentSecurityPolicyStyleSrcMissing(_CspStyleSrcMissingCheck):
@@ -728,7 +679,6 @@ class ContentSecurityPolicyReportOnlyStyleSrcMissing(_CspStyleSrcMissingCheck):
 
 class _CspConnectSrcMissingCheck(_CspFetchDirectiveMissingCheck):
     directive = "connect-src"
-    detail = "'connect-src' (falling back to 'default-src') restricts fetch, XHR, and WebSocket destinations; without either directive, connections to arbitrary origins are unrestricted."
 
 
 class ContentSecurityPolicyConnectSrcMissing(_CspConnectSrcMissingCheck):
@@ -764,11 +714,6 @@ class _CspFetchDirectiveUnrestrictedCheck(AbstractHttpCheck):
     def directive(self) -> str:
         pass
 
-    @property
-    @abstractmethod
-    def detail(self) -> str:
-        pass
-
     async def check(self, response: Response) -> list[Finding]:
         if self.header not in response.headers:
             return []
@@ -783,9 +728,9 @@ class _CspFetchDirectiveUnrestrictedCheck(AbstractHttpCheck):
             return [
                 Finding(
                     code=self.code,
-                    severity=Severity.CRITICAL,
+                    severity=get_severity(self.code),
                     title=f"{self.title_prefix} {self.directive} contains a wildcard source",
-                    detail=self.detail,
+                    detail=get_detail(self.code),
                 )
             ]
 
@@ -794,14 +739,13 @@ class _CspFetchDirectiveUnrestrictedCheck(AbstractHttpCheck):
                 code=self.code,
                 severity=Severity.PASS,
                 title=f"{self.title_prefix} {self.directive} does not contain a wildcard source",
-                detail=self.detail,
+                detail=get_detail(self.code),
             )
         ]
 
 
 class _CspScriptSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
     directive = "script-src"
-    detail = "A wildcard source (*, 'https:', or 'http:') in 'script-src' (or 'default-src') allows scripts from any origin, making the allowlist pointless."
 
 
 class ContentSecurityPolicyScriptSrcUnrestricted(_CspScriptSrcUnrestrictedCheck):
@@ -818,7 +762,6 @@ class ContentSecurityPolicyReportOnlyScriptSrcUnrestricted(_CspScriptSrcUnrestri
 
 class _CspStyleSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
     directive = "style-src"
-    detail = "A wildcard source (*, 'https:', or 'http:') in 'style-src' (or 'default-src') allows stylesheets from any origin, making the allowlist pointless."
 
 
 class ContentSecurityPolicyStyleSrcUnrestricted(_CspStyleSrcUnrestrictedCheck):
@@ -835,7 +778,6 @@ class ContentSecurityPolicyReportOnlyStyleSrcUnrestricted(_CspStyleSrcUnrestrict
 
 class _CspConnectSrcUnrestrictedCheck(_CspFetchDirectiveUnrestrictedCheck):
     directive = "connect-src"
-    detail = "A wildcard source (*, 'https:', or 'http:') in 'connect-src' (or 'default-src') allows fetch, XHR, and WebSocket connections to any origin, making the allowlist pointless."
 
 
 class ContentSecurityPolicyConnectSrcUnrestricted(_CspConnectSrcUnrestrictedCheck):
@@ -860,10 +802,6 @@ _CORS_UNSAFE_METHODS = {"DELETE", "PUT", "PATCH"}
 
 class AccessControlAllowOriginWildcard(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_cors_allow_origin_wildcard"
-    _DETAIL: ClassVar[str] = (
-        "The 'Access-Control-Allow-Origin' header controls which origins can read the response via JavaScript; "
-        "a wildcard value ('*') grants read access to any origin on the internet."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
@@ -873,9 +811,9 @@ class AccessControlAllowOriginWildcard(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.WARNING,
+                    severity=get_severity(self._CODE),
                     title="Access-Control-Allow-Origin is wildcard (*)",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
@@ -884,17 +822,13 @@ class AccessControlAllowOriginWildcard(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Access-Control-Allow-Origin is not wildcard",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class AccessControlAllowOriginNull(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_cors_allow_origin_null"
-    _DETAIL: ClassVar[str] = (
-        "An 'Access-Control-Allow-Origin' value of 'null' grants read access to sandboxed iframes, 'data:' URLs, "
-        "and local files, all of which an attacker controls; the null origin is not a safe substitute for a specific origin."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
@@ -904,9 +838,9 @@ class AccessControlAllowOriginNull(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.CRITICAL,
+                    severity=get_severity(self._CODE),
                     title="Access-Control-Allow-Origin is null",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
@@ -915,18 +849,13 @@ class AccessControlAllowOriginNull(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Access-Control-Allow-Origin is not null",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class AccessControlAllowCredentialsWildcard(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_cors_allow_credentials_wildcard"
-    _DETAIL: ClassVar[str] = (
-        "Combining 'Access-Control-Allow-Origin: *' with 'Access-Control-Allow-Credentials: true' is rejected by browsers, "
-        "but its presence indicates a likely misconfiguration where the server may be dynamically reflecting the 'Origin' header, "
-        "granting any origin credentialed access."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
@@ -940,9 +869,9 @@ class AccessControlAllowCredentialsWildcard(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.CRITICAL,
+                    severity=get_severity(self._CODE),
                     title="Access-Control-Allow-Origin is wildcard with credentials enabled",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
@@ -951,17 +880,13 @@ class AccessControlAllowCredentialsWildcard(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Access-Control-Allow-Origin wildcard does not enable credentials",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class AccessControlAllowCredentialsInvalid(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_cors_allow_credentials_invalid"
-    _DETAIL: ClassVar[str] = (
-        "The 'Access-Control-Allow-Credentials' header only takes effect when its value is exactly 'true' "
-        "(ASCII case-insensitive); any other value is treated as absent by browsers."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CORS_ALLOW_CREDENTIALS_HEADER not in response.headers:
@@ -974,16 +899,16 @@ class AccessControlAllowCredentialsInvalid(AbstractHttpCheck):
                     code=self._CODE,
                     severity=Severity.PASS,
                     title="Access-Control-Allow-Credentials has a valid value",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                 )
             ]
 
         return [
             Finding(
                 code=self._CODE,
-                severity=Severity.WARNING,
+                severity=get_severity(self._CODE),
                 title="Access-Control-Allow-Credentials has an invalid value",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
                 metadata={"value": value},
             )
         ]
@@ -991,10 +916,6 @@ class AccessControlAllowCredentialsInvalid(AbstractHttpCheck):
 
 class AccessControlAllowMethodsUnsafe(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_cors_allow_methods_unsafe"
-    _DETAIL: ClassVar[str] = (
-        "The 'Access-Control-Allow-Methods' header lists the HTTP methods permitted for cross-origin requests; "
-        "including mutating methods such as 'DELETE', 'PUT', or 'PATCH' broadens the attack surface for cross-origin state modification."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CORS_ALLOW_METHODS_HEADER not in response.headers:
@@ -1007,9 +928,9 @@ class AccessControlAllowMethodsUnsafe(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.NOTICE,
+                    severity=get_severity(self._CODE),
                     title="Access-Control-Allow-Methods includes unsafe methods",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                     metadata={"methods": ", ".join(sorted(unsafe))},
                 )
             ]
@@ -1019,17 +940,13 @@ class AccessControlAllowMethodsUnsafe(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Access-Control-Allow-Methods does not include unsafe methods",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
 
 
 class AccessControlMaxAgeExcessive(AbstractHttpCheck):
     _CODE: ClassVar[str] = "headers_cors_max_age_excessive"
-    _DETAIL: ClassVar[str] = (
-        "The 'Access-Control-Max-Age' header controls how long preflight results can be cached; "
-        "values above 86,400 seconds exceed the Firefox cap, and values above 7,200 seconds exceed the Chromium (v76+) cap."
-    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CORS_MAX_AGE_HEADER not in response.headers:
@@ -1044,9 +961,9 @@ class AccessControlMaxAgeExcessive(AbstractHttpCheck):
             return [
                 Finding(
                     code=self._CODE,
-                    severity=Severity.NOTICE,
+                    severity=get_severity(self._CODE),
                     title="Access-Control-Max-Age exceeds browser cache limits",
-                    detail=self._DETAIL,
+                    detail=get_detail(self._CODE),
                     metadata={"max_age": str(max_age)},
                 )
             ]
@@ -1056,6 +973,6 @@ class AccessControlMaxAgeExcessive(AbstractHttpCheck):
                 code=self._CODE,
                 severity=Severity.PASS,
                 title="Access-Control-Max-Age is within browser cache limits",
-                detail=self._DETAIL,
+                detail=get_detail(self._CODE),
             )
         ]
