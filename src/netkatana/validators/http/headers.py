@@ -199,3 +199,114 @@ async def content_security_policy_report_only_unsafe_eval(response: Response) ->
         raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-eval'")
 
     return "Content-Security-Policy-Report-Only (CSP) script-src does not contain 'unsafe-eval'"
+
+
+async def content_security_policy_object_src_unsafe(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "object-src")
+
+    if effective == ["'none'"]:
+        return "Content-Security-Policy (CSP) object-src is restricted to 'none'"
+
+    raise ValidationError("Content-Security-Policy (CSP) object-src is not restricted to 'none'")
+
+
+async def content_security_policy_report_only_object_src_unsafe(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "object-src")
+
+    if effective == ["'none'"]:
+        return "Content-Security-Policy-Report-Only (CSP) object-src is restricted to 'none'"
+
+    raise ValidationError("Content-Security-Policy-Report-Only (CSP) object-src is not restricted to 'none'")
+
+
+async def content_security_policy_base_uri_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+
+    if "base-uri" not in directives:
+        raise ValidationError("Content-Security-Policy (CSP) base-uri is missing")
+
+    return "Content-Security-Policy (CSP) base-uri is present"
+
+
+async def content_security_policy_report_only_base_uri_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+
+    if "base-uri" not in directives:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) base-uri is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) base-uri is present"
+
+
+async def content_security_policy_frame_ancestors_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+
+    if "frame-ancestors" not in directives:
+        raise ValidationError("Content-Security-Policy (CSP) frame-ancestors is missing")
+
+    return "Content-Security-Policy (CSP) frame-ancestors is present"
+
+
+async def content_security_policy_report_only_frame_ancestors_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+
+    if "frame-ancestors" not in directives:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) frame-ancestors is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) frame-ancestors is present"
+
+
+async def content_security_policy_form_action_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+
+    if "form-action" not in directives:
+        raise ValidationError("Content-Security-Policy (CSP) form-action is missing")
+
+    return "Content-Security-Policy (CSP) form-action is present"
+
+
+async def content_security_policy_report_only_form_action_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+
+    if "form-action" not in directives:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) form-action is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) form-action is present"
+
+
+async def content_security_policy_script_src_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "script-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy (CSP) script-src is missing")
+
+    return "Content-Security-Policy (CSP) script-src is present"
