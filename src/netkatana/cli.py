@@ -5,58 +5,9 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 
-from netkatana.checks.dns import DmarcMissing, SpfMissing, SpfPermissive
-from netkatana.checks.http.headers import (
-    AccessControlAllowCredentialsInvalid,
-    AccessControlAllowCredentialsWildcard,
-    AccessControlAllowMethodsUnsafe,
-    AccessControlAllowOriginNull,
-    AccessControlAllowOriginWildcard,
-    AccessControlMaxAgeExcessive,
-    ContentSecurityPolicyBaseUriMissing,
-    ContentSecurityPolicyConnectSrcMissing,
-    ContentSecurityPolicyConnectSrcUnrestricted,
-    ContentSecurityPolicyFormActionMissing,
-    ContentSecurityPolicyFrameAncestorsMissing,
-    ContentSecurityPolicyMissing,
-    ContentSecurityPolicyObjectSrcUnsafe,
-    ContentSecurityPolicyReportOnlyBaseUriMissing,
-    ContentSecurityPolicyReportOnlyConnectSrcMissing,
-    ContentSecurityPolicyReportOnlyConnectSrcUnrestricted,
-    ContentSecurityPolicyReportOnlyFormActionMissing,
-    ContentSecurityPolicyReportOnlyFrameAncestorsMissing,
-    ContentSecurityPolicyReportOnlyObjectSrcUnsafe,
-    ContentSecurityPolicyReportOnlyScriptSrcMissing,
-    ContentSecurityPolicyReportOnlyScriptSrcUnrestricted,
-    ContentSecurityPolicyReportOnlyStyleSrcMissing,
-    ContentSecurityPolicyReportOnlyStyleSrcUnrestricted,
-    ContentSecurityPolicyReportOnlyUnsafeEval,
-    ContentSecurityPolicyReportOnlyUnsafeInline,
-    ContentSecurityPolicyScriptSrcMissing,
-    ContentSecurityPolicyScriptSrcUnrestricted,
-    ContentSecurityPolicyStyleSrcMissing,
-    ContentSecurityPolicyStyleSrcUnrestricted,
-    ContentSecurityPolicyUnsafeEval,
-    ContentSecurityPolicyUnsafeInline,
-    StrictTransportSecurityIncludeSubdomainsMissing,
-    StrictTransportSecurityInvalid,
-    StrictTransportSecurityMaxAgeLow,
-    StrictTransportSecurityMaxAgeZero,
-    StrictTransportSecurityMissing,
-    StrictTransportSecurityPreloadNotEligible,
-)
-from netkatana.checks.tls import (
-    TlsCertExpired,
-    TlsCertMismatched,
-    TlsCertRevoked,
-    TlsCertSelfSigned,
-    TlsCertUntrusted,
-    TlsCipherWeak,
-    TlsVersionDeprecated,
-    TlsVersionOutdated,
-)
 from netkatana.formatters import AbstractFormatter, JsonFormatter, JsonlFormatter, TableFormatter, VerboseFormatter
 from netkatana.http import Client
+from netkatana.rules import dns_rules, http_rules, tls_rules
 from netkatana.scanners import DnsScanner, HttpScanner, TlsScanner
 from netkatana.utils import extract_host
 
@@ -73,8 +24,8 @@ def cli() -> None:
     logging.basicConfig(handlers=[RichHandler(console=Console(stderr=True))], format="%(message)s")
 
 
-def _get_hosts(ctx: click.Context, param: click.Parameter, hosts: tuple[str, ...]) -> list[str]:
-    targets = list(hosts)
+def _get_targets(ctx: click.Context, param: click.Parameter, values: tuple[str, ...]) -> list[str]:
+    targets = list(values)
 
     stdin = click.get_text_stream("stdin")
     if not stdin.isatty():
@@ -87,109 +38,62 @@ def _get_hosts(ctx: click.Context, param: click.Parameter, hosts: tuple[str, ...
 
 
 @cli.command()
-@click.argument("hosts", nargs=-1, callback=_get_hosts)
+@click.argument("targets", nargs=-1, callback=_get_targets)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
-def http(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
-    asyncio.run(_http(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+def http(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_http(targets=targets, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+async def _http(*, targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     async with Client() as client:
         scanner = HttpScanner(
-            checks=[
-                StrictTransportSecurityMissing(),
-                StrictTransportSecurityInvalid(),
-                StrictTransportSecurityMaxAgeZero(),
-                StrictTransportSecurityMaxAgeLow(),
-                StrictTransportSecurityIncludeSubdomainsMissing(),
-                StrictTransportSecurityPreloadNotEligible(),
-                ContentSecurityPolicyMissing(),
-                ContentSecurityPolicyUnsafeInline(),
-                ContentSecurityPolicyUnsafeEval(),
-                ContentSecurityPolicyObjectSrcUnsafe(),
-                ContentSecurityPolicyBaseUriMissing(),
-                ContentSecurityPolicyFrameAncestorsMissing(),
-                ContentSecurityPolicyFormActionMissing(),
-                ContentSecurityPolicyScriptSrcMissing(),
-                ContentSecurityPolicyScriptSrcUnrestricted(),
-                ContentSecurityPolicyStyleSrcMissing(),
-                ContentSecurityPolicyStyleSrcUnrestricted(),
-                ContentSecurityPolicyConnectSrcMissing(),
-                ContentSecurityPolicyConnectSrcUnrestricted(),
-                ContentSecurityPolicyReportOnlyUnsafeInline(),
-                ContentSecurityPolicyReportOnlyUnsafeEval(),
-                ContentSecurityPolicyReportOnlyObjectSrcUnsafe(),
-                ContentSecurityPolicyReportOnlyBaseUriMissing(),
-                ContentSecurityPolicyReportOnlyFrameAncestorsMissing(),
-                ContentSecurityPolicyReportOnlyFormActionMissing(),
-                ContentSecurityPolicyReportOnlyScriptSrcMissing(),
-                ContentSecurityPolicyReportOnlyScriptSrcUnrestricted(),
-                ContentSecurityPolicyReportOnlyStyleSrcMissing(),
-                ContentSecurityPolicyReportOnlyStyleSrcUnrestricted(),
-                ContentSecurityPolicyReportOnlyConnectSrcMissing(),
-                ContentSecurityPolicyReportOnlyConnectSrcUnrestricted(),
-                AccessControlAllowOriginWildcard(),
-                AccessControlAllowOriginNull(),
-                AccessControlAllowCredentialsWildcard(),
-                AccessControlAllowCredentialsInvalid(),
-                AccessControlAllowMethodsUnsafe(),
-                AccessControlMaxAgeExcessive(),
-            ],
+            rules=http_rules,
             client=client,
             concurrency=concurrency,
         )
 
         with _formatters[fmt](show_passed=show_passed) as formatter:
-            async for host_finding in scanner.check_hosts(hosts):
-                formatter.emit(host_finding)
+            async for finding in scanner.scan(targets):
+                formatter.emit(finding)
 
 
 @cli.command()
-@click.argument("hosts", nargs=-1, callback=_get_hosts)
+@click.argument("targets", nargs=-1, callback=_get_targets)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
-def tls(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
-    asyncio.run(_tls(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+def tls(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_tls(targets=targets, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _tls(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+async def _tls(*, targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     scanner = TlsScanner(
-        checks=[
-            TlsVersionDeprecated(),
-            TlsVersionOutdated(),
-            TlsCertExpired(),
-            TlsCertSelfSigned(),
-            TlsCertMismatched(),
-            TlsCertRevoked(),
-            TlsCertUntrusted(),
-            TlsCipherWeak(),
-        ],
+        rules=tls_rules,
         concurrency=concurrency,
     )
 
     with _formatters[fmt](show_passed=show_passed) as formatter:
-        async for host_finding in scanner.run(hosts):
-            formatter.emit(host_finding)
+        async for finding in scanner.scan(targets):
+            formatter.emit(finding)
 
 
 @cli.command()
-@click.argument("domains", nargs=-1, callback=_get_hosts)
+@click.argument("targets", nargs=-1, callback=_get_targets)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
-def dns(domains: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
-    asyncio.run(_dns(domains=domains, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+def dns(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_dns(targets=targets, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _dns(*, domains: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+async def _dns(*, targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     scanner = DnsScanner(
-        checks=[SpfMissing(), SpfPermissive(), DmarcMissing()],
+        rules=dns_rules,
         concurrency=concurrency,
     )
 
     with _formatters[fmt](show_passed=show_passed) as formatter:
-        async for host_finding in scanner.run(domains):
-            formatter.emit(host_finding)
+        async for finding in scanner.scan(targets):
+            formatter.emit(finding)

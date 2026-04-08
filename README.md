@@ -44,3 +44,27 @@ Implemented checks:
 - headers_csp_report_only_style_src_unrestricted
 - headers_csp_report_only_connect_src_missing
 - headers_csp_report_only_connect_src_unrestricted
+- headers_cors_allow_origin_wildcard
+- headers_cors_allow_origin_null
+- headers_cors_allow_credentials_wildcard
+- headers_cors_allow_credentials_invalid
+- headers_cors_allow_methods_unsafe
+- headers_cors_max_age_excessive
+- tls_version_deprecated
+- tls_version_outdated
+- tls_cert_expired
+- tls_cert_self_signed
+- tls_cert_mismatched
+- tls_cert_revoked
+- tls_cert_untrusted
+- tls_cipher_weak
+- dns_spf_missing
+- dns_spf_multiple
+- dns_spf_permissive
+- dns_dmarc_missing
+- dns_dmarc_multiple
+
+Architecture notes:
+
+- rules are defined in [src/netkatana/rules.py](src/netkatana/rules.py)
+- validators live under [src/netkatana/validators](src/netkatana/validators)

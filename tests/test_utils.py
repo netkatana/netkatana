@@ -1,6 +1,6 @@
 import pytest
 
-from netkatana.models import StrictTransportSecurityHeader
+from netkatana.types import StrictTransportSecurityHeader
 from netkatana.utils import extract_host, parse_strict_transport_security_header
 
 

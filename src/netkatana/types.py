@@ -1,9 +1,11 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Awaitable, Callable, Generic, TypeVar
 
 from httpx import Response
 from pydantic import BaseModel
+
+T = TypeVar("T")
 
 
 class Severity(str, Enum):
@@ -15,17 +17,12 @@ class Severity(str, Enum):
 
 @dataclass
 class Finding:
+    host: str
     code: str
     severity: Severity
-    title: str
+    message: str
     detail: str
     metadata: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
-class HostFinding:
-    host: str
-    finding: Finding
 
 
 @dataclass(frozen=True)
@@ -33,12 +30,6 @@ class StrictTransportSecurityHeader:
     max_age: int
     include_subdomains: bool
     preload: bool
-
-
-class AbstractHttpCheck(ABC):
-    @abstractmethod
-    async def check(self, response: Response) -> list[Finding]:
-        pass
 
 
 class TlsResult(BaseModel):
@@ -54,19 +45,20 @@ class TlsResult(BaseModel):
     untrusted: bool = False
 
 
-class AbstractTlsCheck(ABC):
-    @abstractmethod
-    async def check(self, result: TlsResult) -> list[Finding]:
-        pass
-
-
 class DnsResult(BaseModel):
     domain: str
     txt: list[str]
     dmarc_txt: list[str]
 
 
-class AbstractDnsCheck(ABC):
-    @abstractmethod
-    async def check(self, result: DnsResult) -> list[Finding]:
-        pass
+@dataclass(kw_only=True)
+class Rule(Generic[T]):
+    code: str
+    severity: Severity
+    detail: str
+    validator: Callable[[T], Awaitable[str | None]]
+
+
+HttpRule = Rule[Response]
+TlsRule = Rule[TlsResult]
+DnsRule = Rule[DnsResult]
