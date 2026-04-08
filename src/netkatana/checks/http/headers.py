@@ -850,3 +850,214 @@ class ContentSecurityPolicyReportOnlyConnectSrcUnrestricted(_CspConnectSrcUnrest
     code = "headers_csp_report_only_connect_src_unrestricted"
     header = _CSP_REPORT_ONLY_HEADER
     title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+
+
+_CORS_ALLOW_ORIGIN_HEADER = "access-control-allow-origin"
+_CORS_ALLOW_CREDENTIALS_HEADER = "access-control-allow-credentials"
+_CORS_ALLOW_METHODS_HEADER = "access-control-allow-methods"
+_CORS_MAX_AGE_HEADER = "access-control-max-age"
+_CORS_MAX_AGE_EXCESSIVE = 86_400
+_CORS_UNSAFE_METHODS = {"DELETE", "PUT", "PATCH"}
+
+
+class AccessControlAllowOriginWildcard(AbstractHttpCheck):
+    _CODE: ClassVar[str] = "headers_cors_allow_origin_wildcard"
+    _DETAIL: ClassVar[str] = (
+        "The 'Access-Control-Allow-Origin' header controls which origins can read the response via JavaScript; "
+        "a wildcard value ('*') grants read access to any origin on the internet."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
+            return []
+
+        if response.headers[_CORS_ALLOW_ORIGIN_HEADER].strip() == "*":
+            return [
+                Finding(
+                    code=self._CODE,
+                    severity=Severity.WARNING,
+                    title="Access-Control-Allow-Origin is wildcard (*)",
+                    detail=self._DETAIL,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._CODE,
+                severity=Severity.PASS,
+                title="Access-Control-Allow-Origin is not wildcard",
+                detail=self._DETAIL,
+            )
+        ]
+
+
+class AccessControlAllowOriginNull(AbstractHttpCheck):
+    _CODE: ClassVar[str] = "headers_cors_allow_origin_null"
+    _DETAIL: ClassVar[str] = (
+        "An 'Access-Control-Allow-Origin' value of 'null' grants read access to sandboxed iframes, 'data:' URLs, "
+        "and local files, all of which an attacker controls; the null origin is not a safe substitute for a specific origin."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
+            return []
+
+        if response.headers[_CORS_ALLOW_ORIGIN_HEADER].strip() == "null":
+            return [
+                Finding(
+                    code=self._CODE,
+                    severity=Severity.CRITICAL,
+                    title="Access-Control-Allow-Origin is null",
+                    detail=self._DETAIL,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._CODE,
+                severity=Severity.PASS,
+                title="Access-Control-Allow-Origin is not null",
+                detail=self._DETAIL,
+            )
+        ]
+
+
+class AccessControlAllowCredentialsWildcard(AbstractHttpCheck):
+    _CODE: ClassVar[str] = "headers_cors_allow_credentials_wildcard"
+    _DETAIL: ClassVar[str] = (
+        "Combining 'Access-Control-Allow-Origin: *' with 'Access-Control-Allow-Credentials: true' is rejected by browsers, "
+        "but its presence indicates a likely misconfiguration where the server may be dynamically reflecting the 'Origin' header, "
+        "granting any origin credentialed access."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
+            return []
+
+        if response.headers[_CORS_ALLOW_ORIGIN_HEADER].strip() != "*":
+            return []
+
+        credentials = response.headers.get(_CORS_ALLOW_CREDENTIALS_HEADER, "").strip().lower()
+        if credentials == "true":
+            return [
+                Finding(
+                    code=self._CODE,
+                    severity=Severity.CRITICAL,
+                    title="Access-Control-Allow-Origin is wildcard with credentials enabled",
+                    detail=self._DETAIL,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._CODE,
+                severity=Severity.PASS,
+                title="Access-Control-Allow-Origin wildcard does not enable credentials",
+                detail=self._DETAIL,
+            )
+        ]
+
+
+class AccessControlAllowCredentialsInvalid(AbstractHttpCheck):
+    _CODE: ClassVar[str] = "headers_cors_allow_credentials_invalid"
+    _DETAIL: ClassVar[str] = (
+        "The 'Access-Control-Allow-Credentials' header only takes effect when its value is exactly 'true' "
+        "(ASCII case-insensitive); any other value is treated as absent by browsers."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if _CORS_ALLOW_CREDENTIALS_HEADER not in response.headers:
+            return []
+
+        value = response.headers[_CORS_ALLOW_CREDENTIALS_HEADER].strip()
+        if value.lower() == "true":
+            return [
+                Finding(
+                    code=self._CODE,
+                    severity=Severity.PASS,
+                    title="Access-Control-Allow-Credentials has a valid value",
+                    detail=self._DETAIL,
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._CODE,
+                severity=Severity.WARNING,
+                title="Access-Control-Allow-Credentials has an invalid value",
+                detail=self._DETAIL,
+                metadata={"value": value},
+            )
+        ]
+
+
+class AccessControlAllowMethodsUnsafe(AbstractHttpCheck):
+    _CODE: ClassVar[str] = "headers_cors_allow_methods_unsafe"
+    _DETAIL: ClassVar[str] = (
+        "The 'Access-Control-Allow-Methods' header lists the HTTP methods permitted for cross-origin requests; "
+        "including mutating methods such as 'DELETE', 'PUT', or 'PATCH' broadens the attack surface for cross-origin state modification."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if _CORS_ALLOW_METHODS_HEADER not in response.headers:
+            return []
+
+        methods = {m.strip().upper() for m in response.headers[_CORS_ALLOW_METHODS_HEADER].split(",")}
+        unsafe = methods & _CORS_UNSAFE_METHODS
+
+        if unsafe:
+            return [
+                Finding(
+                    code=self._CODE,
+                    severity=Severity.NOTICE,
+                    title="Access-Control-Allow-Methods includes unsafe methods",
+                    detail=self._DETAIL,
+                    metadata={"methods": ", ".join(sorted(unsafe))},
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._CODE,
+                severity=Severity.PASS,
+                title="Access-Control-Allow-Methods does not include unsafe methods",
+                detail=self._DETAIL,
+            )
+        ]
+
+
+class AccessControlMaxAgeExcessive(AbstractHttpCheck):
+    _CODE: ClassVar[str] = "headers_cors_max_age_excessive"
+    _DETAIL: ClassVar[str] = (
+        "The 'Access-Control-Max-Age' header controls how long preflight results can be cached; "
+        "values above 86,400 seconds exceed the Firefox cap, and values above 7,200 seconds exceed the Chromium (v76+) cap."
+    )
+
+    async def check(self, response: Response) -> list[Finding]:
+        if _CORS_MAX_AGE_HEADER not in response.headers:
+            return []
+
+        try:
+            max_age = int(response.headers[_CORS_MAX_AGE_HEADER].strip())
+        except ValueError:
+            return []
+
+        if max_age > _CORS_MAX_AGE_EXCESSIVE:
+            return [
+                Finding(
+                    code=self._CODE,
+                    severity=Severity.NOTICE,
+                    title="Access-Control-Max-Age exceeds browser cache limits",
+                    detail=self._DETAIL,
+                    metadata={"max_age": str(max_age)},
+                )
+            ]
+
+        return [
+            Finding(
+                code=self._CODE,
+                severity=Severity.PASS,
+                title="Access-Control-Max-Age is within browser cache limits",
+                detail=self._DETAIL,
+            )
+        ]

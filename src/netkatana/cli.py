@@ -7,6 +7,12 @@ from rich.logging import RichHandler
 
 from netkatana.checks.dns import DmarcMissing, SpfMissing, SpfPermissive
 from netkatana.checks.http.headers import (
+    AccessControlAllowCredentialsInvalid,
+    AccessControlAllowCredentialsWildcard,
+    AccessControlAllowMethodsUnsafe,
+    AccessControlAllowOriginNull,
+    AccessControlAllowOriginWildcard,
+    AccessControlMaxAgeExcessive,
     ContentSecurityPolicyBaseUriMissing,
     ContentSecurityPolicyConnectSrcMissing,
     ContentSecurityPolicyConnectSrcUnrestricted,
@@ -124,6 +130,12 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bo
                 ContentSecurityPolicyReportOnlyStyleSrcUnrestricted(),
                 ContentSecurityPolicyReportOnlyConnectSrcMissing(),
                 ContentSecurityPolicyReportOnlyConnectSrcUnrestricted(),
+                AccessControlAllowOriginWildcard(),
+                AccessControlAllowOriginNull(),
+                AccessControlAllowCredentialsWildcard(),
+                AccessControlAllowCredentialsInvalid(),
+                AccessControlAllowMethodsUnsafe(),
+                AccessControlMaxAgeExcessive(),
             ],
             client=client,
             concurrency=concurrency,

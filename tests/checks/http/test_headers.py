@@ -2,6 +2,12 @@ import pytest
 from httpx import Response
 
 from netkatana.checks.http.headers import (
+    AccessControlAllowCredentialsInvalid,
+    AccessControlAllowCredentialsWildcard,
+    AccessControlAllowMethodsUnsafe,
+    AccessControlAllowOriginNull,
+    AccessControlAllowOriginWildcard,
+    AccessControlMaxAgeExcessive,
     ContentSecurityPolicyBaseUriMissing,
     ContentSecurityPolicyConnectSrcMissing,
     ContentSecurityPolicyConnectSrcUnrestricted,
@@ -1187,3 +1193,231 @@ class TestContentSecurityPolicyReportOnlyConnectSrcUnrestricted:
         assert len(findings) == 1
         assert findings[0].code == "headers_csp_report_only_connect_src_unrestricted"
         assert findings[0].severity == Severity.PASS
+
+
+class TestAccessControlAllowOriginWildcard:
+    @pytest.mark.asyncio
+    async def test_header_absent(self):
+        response = Response(200)
+        findings = await AccessControlAllowOriginWildcard().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_wildcard(self):
+        response = Response(200, headers={"access-control-allow-origin": "*"})
+        findings = await AccessControlAllowOriginWildcard().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_origin_wildcard"
+        assert findings[0].severity == Severity.WARNING
+
+    @pytest.mark.asyncio
+    async def test_specific_origin(self):
+        response = Response(200, headers={"access-control-allow-origin": "https://example.com"})
+        findings = await AccessControlAllowOriginWildcard().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_origin_wildcard"
+        assert findings[0].severity == Severity.PASS
+
+
+class TestAccessControlAllowOriginNull:
+    @pytest.mark.asyncio
+    async def test_header_absent(self):
+        response = Response(200)
+        findings = await AccessControlAllowOriginNull().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_null(self):
+        response = Response(200, headers={"access-control-allow-origin": "null"})
+        findings = await AccessControlAllowOriginNull().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_origin_null"
+        assert findings[0].severity == Severity.CRITICAL
+
+    @pytest.mark.asyncio
+    async def test_specific_origin(self):
+        response = Response(200, headers={"access-control-allow-origin": "https://example.com"})
+        findings = await AccessControlAllowOriginNull().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_origin_null"
+        assert findings[0].severity == Severity.PASS
+
+
+class TestAccessControlAllowCredentialsWildcard:
+    @pytest.mark.asyncio
+    async def test_no_cors_header(self):
+        response = Response(200)
+        findings = await AccessControlAllowCredentialsWildcard().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_specific_origin_with_credentials(self):
+        response = Response(
+            200,
+            headers={
+                "access-control-allow-origin": "https://example.com",
+                "access-control-allow-credentials": "true",
+            },
+        )
+        findings = await AccessControlAllowCredentialsWildcard().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_wildcard_without_credentials(self):
+        response = Response(200, headers={"access-control-allow-origin": "*"})
+        findings = await AccessControlAllowCredentialsWildcard().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_credentials_wildcard"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_wildcard_with_credentials(self):
+        response = Response(
+            200,
+            headers={
+                "access-control-allow-origin": "*",
+                "access-control-allow-credentials": "true",
+            },
+        )
+        findings = await AccessControlAllowCredentialsWildcard().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_credentials_wildcard"
+        assert findings[0].severity == Severity.CRITICAL
+
+
+class TestAccessControlAllowCredentialsInvalid:
+    @pytest.mark.asyncio
+    async def test_header_absent(self):
+        response = Response(200)
+        findings = await AccessControlAllowCredentialsInvalid().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_valid_lowercase(self):
+        response = Response(200, headers={"access-control-allow-credentials": "true"})
+        findings = await AccessControlAllowCredentialsInvalid().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_credentials_invalid"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_valid_uppercase(self):
+        response = Response(200, headers={"access-control-allow-credentials": "TRUE"})
+        findings = await AccessControlAllowCredentialsInvalid().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_credentials_invalid"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_invalid_value(self):
+        response = Response(200, headers={"access-control-allow-credentials": "1"})
+        findings = await AccessControlAllowCredentialsInvalid().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_credentials_invalid"
+        assert findings[0].severity == Severity.WARNING
+        assert findings[0].metadata == {"value": "1"}
+
+    @pytest.mark.asyncio
+    async def test_false_value(self):
+        response = Response(200, headers={"access-control-allow-credentials": "false"})
+        findings = await AccessControlAllowCredentialsInvalid().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_credentials_invalid"
+        assert findings[0].severity == Severity.WARNING
+
+
+class TestAccessControlAllowMethodsUnsafe:
+    @pytest.mark.asyncio
+    async def test_header_absent(self):
+        response = Response(200)
+        findings = await AccessControlAllowMethodsUnsafe().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_safe_methods(self):
+        response = Response(200, headers={"access-control-allow-methods": "GET, POST, OPTIONS"})
+        findings = await AccessControlAllowMethodsUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_methods_unsafe"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_delete(self):
+        response = Response(200, headers={"access-control-allow-methods": "GET, DELETE"})
+        findings = await AccessControlAllowMethodsUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_methods_unsafe"
+        assert findings[0].severity == Severity.NOTICE
+        assert findings[0].metadata == {"methods": "DELETE"}
+
+    @pytest.mark.asyncio
+    async def test_multiple_unsafe(self):
+        response = Response(200, headers={"access-control-allow-methods": "GET, PUT, DELETE, PATCH"})
+        findings = await AccessControlAllowMethodsUnsafe().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_allow_methods_unsafe"
+        assert findings[0].severity == Severity.NOTICE
+        assert findings[0].metadata == {"methods": "DELETE, PATCH, PUT"}
+
+
+class TestAccessControlMaxAgeExcessive:
+    @pytest.mark.asyncio
+    async def test_header_absent(self):
+        response = Response(200)
+        findings = await AccessControlMaxAgeExcessive().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_invalid_value(self):
+        response = Response(200, headers={"access-control-max-age": "notanumber"})
+        findings = await AccessControlMaxAgeExcessive().check(response)
+
+        assert findings == []
+
+    @pytest.mark.asyncio
+    async def test_within_limit(self):
+        response = Response(200, headers={"access-control-max-age": "7200"})
+        findings = await AccessControlMaxAgeExcessive().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_max_age_excessive"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_at_limit(self):
+        response = Response(200, headers={"access-control-max-age": "86400"})
+        findings = await AccessControlMaxAgeExcessive().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_max_age_excessive"
+        assert findings[0].severity == Severity.PASS
+
+    @pytest.mark.asyncio
+    async def test_excessive(self):
+        response = Response(200, headers={"access-control-max-age": "86401"})
+        findings = await AccessControlMaxAgeExcessive().check(response)
+
+        assert len(findings) == 1
+        assert findings[0].code == "headers_cors_max_age_excessive"
+        assert findings[0].severity == Severity.NOTICE
+        assert findings[0].metadata == {"max_age": "86401"}
