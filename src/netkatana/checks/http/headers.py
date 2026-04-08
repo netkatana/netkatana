@@ -1,3 +1,6 @@
+from abc import abstractmethod
+from typing import ClassVar
+
 from httpx import Response
 
 from netkatana.models import AbstractHttpCheck, Finding, Severity
@@ -7,8 +10,8 @@ _HSTS_MIN_MAX_AGE = 31_536_000  # one year
 
 
 class StrictTransportSecurityMissing(AbstractHttpCheck):
-    _code = "headers_hsts_missing"
-    _detail = (
+    _CODE: ClassVar[str] = "headers_hsts_missing"
+    _DETAIL: ClassVar[str] = (
         "The `Strict-Transport-Security` header instructs browsers to always use HTTPS for this domain, "
         "refusing plain HTTP connections. Without it, users are vulnerable to protocol downgrade and SSL "
         "stripping attacks. A `max-age` of at least one year (31,536,000 seconds) is widely recommended."
@@ -18,26 +21,26 @@ class StrictTransportSecurityMissing(AbstractHttpCheck):
         if "strict-transport-security" in response.headers:
             return [
                 Finding(
-                    code=self._code,
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Strict-Transport-Security (HSTS) present",
-                    detail=self._detail,
+                    detail=self._DETAIL,
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self._CODE,
                 severity=Severity.CRITICAL,
                 title="Strict-Transport-Security (HSTS) missing",
-                detail=self._detail,
+                detail=self._DETAIL,
             )
         ]
 
 
 class StrictTransportSecurityInvalid(AbstractHttpCheck):
-    _code = "headers_hsts_invalid"
-    _detail = (
+    _CODE: ClassVar[str] = "headers_hsts_invalid"
+    _DETAIL: ClassVar[str] = (
         "The `Strict-Transport-Security` header requires a valid `max-age` directive with a non-negative "
         "integer value (e.g. `max-age=31536000`). A malformed header is silently ignored by browsers, "
         "providing the same level of protection as if the header were absent entirely."
@@ -54,27 +57,27 @@ class StrictTransportSecurityInvalid(AbstractHttpCheck):
         except ValueError:
             return [
                 Finding(
-                    code=self._code,
+                    code=self._CODE,
                     severity=Severity.CRITICAL,
                     title="Strict-Transport-Security (HSTS) header is malformed",
-                    detail=self._detail,
+                    detail=self._DETAIL,
                     metadata={"value": value},
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) header is valid",
-                detail=self._detail,
+                detail=self._DETAIL,
             )
         ]
 
 
 class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
-    _code = "headers_hsts_max_age_zero"
-    _detail = (
+    _CODE: ClassVar[str] = "headers_hsts_max_age_zero"
+    _DETAIL: ClassVar[str] = (
         "A `max-age` of 0 instructs browsers to immediately delete the cached HSTS policy for this domain, "
         "removing enforcement of HTTPS for all future visits. This is only appropriate when intentionally "
         "decommissioning HSTS, as it leaves all returning users unprotected."
@@ -92,26 +95,26 @@ class StrictTransportSecurityMaxAgeZero(AbstractHttpCheck):
         if parsed.max_age == 0:
             return [
                 Finding(
-                    code=self._code,
+                    code=self._CODE,
                     severity=Severity.CRITICAL,
                     title="Strict-Transport-Security (HSTS) max-age is zero",
-                    detail=self._detail,
+                    detail=self._DETAIL,
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) max-age is non-zero",
-                detail=self._detail,
+                detail=self._DETAIL,
             )
         ]
 
 
 class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
-    _code = "headers_hsts_max_age_low"
-    _detail = (
+    _CODE: ClassVar[str] = "headers_hsts_max_age_low"
+    _DETAIL: ClassVar[str] = (
         "The `max-age` directive controls how long browsers remember to enforce HTTPS for this domain, "
         "in seconds. Short values leave a larger window where returning users may connect over HTTP "
         "between visits. One year (31,536,000 seconds) is the widely recommended minimum; the HSTS "
@@ -133,27 +136,27 @@ class StrictTransportSecurityMaxAgeLow(AbstractHttpCheck):
         if parsed.max_age < _HSTS_MIN_MAX_AGE:
             return [
                 Finding(
-                    code=self._code,
+                    code=self._CODE,
                     severity=Severity.WARNING,
                     title="Strict-Transport-Security (HSTS) max-age is less than one year",
-                    detail=self._detail,
+                    detail=self._DETAIL,
                     metadata={"max_age": str(parsed.max_age)},
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) max-age meets minimum",
-                detail=self._detail,
+                detail=self._DETAIL,
             )
         ]
 
 
 class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
-    _code = "headers_hsts_include_subdomains_missing"
-    _detail = (
+    _CODE: ClassVar[str] = "headers_hsts_include_subdomains_missing"
+    _DETAIL: ClassVar[str] = (
         "The `includeSubDomains` directive extends the HSTS policy to all subdomains of the current host. "
         "Without it, subdomains are reachable over plain HTTP, which can allow cookies scoped to the parent "
         "domain to be intercepted. Omit this directive only if HTTP access is intentionally permitted on "
@@ -172,26 +175,26 @@ class StrictTransportSecurityIncludeSubdomainsMissing(AbstractHttpCheck):
         if not parsed.include_subdomains:
             return [
                 Finding(
-                    code=self._code,
+                    code=self._CODE,
                     severity=Severity.NOTICE,
                     title="Strict-Transport-Security (HSTS) includeSubDomains missing",
-                    detail=self._detail,
+                    detail=self._DETAIL,
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) includeSubDomains present",
-                detail=self._detail,
+                detail=self._DETAIL,
             )
         ]
 
 
 class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
-    _code = "headers_hsts_preload_not_eligible"
-    _detail = (
+    _CODE: ClassVar[str] = "headers_hsts_preload_not_eligible"
+    _DETAIL: ClassVar[str] = (
         "Browser preload lists hardcode HSTS policies before a user's first visit, eliminating the window "
         "where an attacker could intercept the initial plain HTTP connection. To qualify, the header must "
         "specify a `max-age` of at least 31,536,000 seconds (one year) and include the `includeSubDomains` "
@@ -213,19 +216,19 @@ class StrictTransportSecurityPreloadNotEligible(AbstractHttpCheck):
         if parsed.max_age < _HSTS_MIN_MAX_AGE or not parsed.include_subdomains:
             return [
                 Finding(
-                    code=self._code,
+                    code=self._CODE,
                     severity=Severity.WARNING,
                     title="Strict-Transport-Security (HSTS) does not meet preload requirements",
-                    detail=self._detail,
+                    detail=self._DETAIL,
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self._CODE,
                 severity=Severity.PASS,
                 title="Strict-Transport-Security (HSTS) meets preload requirements",
-                detail=self._detail,
+                detail=self._DETAIL,
             )
         ]
 
@@ -236,13 +239,16 @@ _CSP_REPORT_ONLY_HEADER = "content-security-policy-report-only"
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
     """Return effective source list for `directive`, falling back to default-src. None means unrestricted."""
+
     if directive in directives:
         return directives[directive]
+
     return directives.get("default-src")
 
 
 def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
     """True if a nonce, hash, or strict-dynamic is present — causing CSP Level 2+ browsers to ignore unsafe-inline."""
+
     return any(
         s.startswith("'nonce-")
         or s.startswith("'sha256-")
@@ -254,35 +260,34 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
 
 
 class ContentSecurityPolicyMissing(AbstractHttpCheck):
-    _code = "headers_csp_missing"
-    _detail = "Without CSP, browsers have no restrictions on which resources they load, increasing the risk of XSS and data injection attacks."
+    _CODE: ClassVar[str] = "headers_csp_missing"
+    _DETAIL: ClassVar[str] = (
+        "Without CSP, browsers have no restrictions on which resources they load, increasing the risk of XSS and data injection attacks."
+    )
 
     async def check(self, response: Response) -> list[Finding]:
         if _CSP_HEADER in response.headers:
             return [
                 Finding(
-                    code=self._code,
+                    code=self._CODE,
                     severity=Severity.PASS,
                     title="Content-Security-Policy (CSP) present",
-                    detail=self._detail,
+                    detail=self._DETAIL,
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self._CODE,
                 severity=Severity.WARNING,
                 title="Content-Security-Policy (CSP) missing",
-                detail=self._detail,
+                detail=self._DETAIL,
             )
         ]
 
 
 class _CspUnsafeInlineCheck(AbstractHttpCheck):
-    _code: str
-    _header: str
-    _title_prefix: str
-    _detail = (
+    _DETAIL: ClassVar[str] = (
         "The `'unsafe-inline'` keyword in `script-src` (or `default-src` fallback) permits all inline "
         "scripts, including `<script>` blocks, `javascript:` URLs, and event handler attributes such as "
         "`onclick`. This directly negates XSS protection: any injected HTML can execute arbitrary code. "
@@ -290,11 +295,23 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
         "when present, CSP Level 2+ browsers ignore `'unsafe-inline'`."
     )
 
+    @abstractmethod
+    def get_code(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_header(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_title_prefix(self) -> str:
+        pass
+
     async def check(self, response: Response) -> list[Finding]:
-        if self._header not in response.headers:
+        if self.get_header() not in response.headers:
             return []
 
-        directives = parse_content_security_policy(response.headers[self._header])
+        directives = parse_content_security_policy(response.headers[self.get_header()])
         effective = _csp_effective_sources(directives, "script-src")
 
         if effective is None:
@@ -303,43 +320,53 @@ class _CspUnsafeInlineCheck(AbstractHttpCheck):
         if "'unsafe-inline'" not in effective:
             return [
                 Finding(
-                    code=self._code,
+                    code=self.get_code(),
                     severity=Severity.PASS,
-                    title=f"{self._title_prefix} script-src does not contain 'unsafe-inline'",
-                    detail=self._detail,
+                    title=f"{self.get_title_prefix()} script-src does not contain 'unsafe-inline'",
+                    detail=self._DETAIL,
                 )
             ]
 
         if _neutralizes_unsafe_inline(effective):
             return [
                 Finding(
-                    code=self._code,
+                    code=self.get_code(),
                     severity=Severity.PASS,
-                    title=f"{self._title_prefix} 'unsafe-inline' is neutralized by nonce or hash",
-                    detail=self._detail,
+                    title=f"{self.get_title_prefix()} 'unsafe-inline' is neutralized by nonce or hash",
+                    detail=self._DETAIL,
                 )
             ]
 
         return [
             Finding(
-                code=self._code,
+                code=self.get_code(),
                 severity=Severity.CRITICAL,
-                title=f"{self._title_prefix} script-src contains 'unsafe-inline'",
-                detail=self._detail,
+                title=f"{self.get_title_prefix()} script-src contains 'unsafe-inline'",
+                detail=self._DETAIL,
             )
         ]
 
 
 class ContentSecurityPolicyUnsafeInline(_CspUnsafeInlineCheck):
-    _code = "headers_csp_unsafe_inline"
-    _header = _CSP_HEADER
-    _title_prefix = "Content-Security-Policy (CSP)"
+    def get_code(self) -> str:
+        return "headers_csp_unsafe_inline"
+
+    def get_header(self) -> str:
+        return _CSP_HEADER
+
+    def get_title_prefix(self) -> str:
+        return "Content-Security-Policy (CSP)"
 
 
 class ContentSecurityPolicyReportOnlyUnsafeInline(_CspUnsafeInlineCheck):
-    _code = "headers_csp_report_only_unsafe_inline"
-    _header = _CSP_REPORT_ONLY_HEADER
-    _title_prefix = "Content-Security-Policy-Report-Only (CSP)"
+    def get_code(self) -> str:
+        return "headers_csp_report_only_unsafe_inline"
+
+    def get_header(self) -> str:
+        return _CSP_REPORT_ONLY_HEADER
+
+    def get_title_prefix(self) -> str:
+        return "Content-Security-Policy-Report-Only (CSP)"
 
 
 class _CspUnsafeEvalCheck(AbstractHttpCheck):
