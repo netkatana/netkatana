@@ -15,11 +15,13 @@ from netkatana.types import (
     AbstractHttpCheck,
     AbstractTlsCheck,
     DnsResult,
+    DnsRule,
     Finding,
     HostFinding,
     HttpRule,
     Severity,
     TlsResult,
+    TlsRule,
 )
 
 _logger = logging.getLogger(__name__)
@@ -175,6 +177,88 @@ class TlsScanner:
         await proc.wait()
 
 
+class TlsScanner2:
+    def __init__(self, rules: list[TlsRule], concurrency: int = 10) -> None:
+        self._rules = rules
+        self._concurrency = concurrency
+
+    async def run(self, hosts: Sequence[str]) -> AsyncIterator[HostFinding]:
+        proc = await asyncio.create_subprocess_exec(
+            "tlsx",
+            "-json",
+            "-tls-version",
+            "-cipher",
+            "-expired",
+            "-self-signed",
+            "-mismatched",
+            "-revoked",
+            "-untrusted",
+            "-silent",
+            "-concurrency",
+            str(self._concurrency),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+
+        async def _write_stdin() -> None:
+            assert proc.stdin is not None
+            proc.stdin.write("\n".join(hosts).encode())
+            await proc.stdin.drain()
+            proc.stdin.close()
+
+        write_task = asyncio.create_task(_write_stdin())
+
+        assert proc.stdout is not None
+
+        async for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                result = TlsResult.model_validate_json(line)
+            except PydanticValidationError:
+                _logger.warning("Failed to parse tlsx output: %s", line)
+                continue
+            for host_finding in await self._run_rules(result.host, result):
+                yield host_finding
+
+        await write_task
+        await proc.wait()
+
+    async def _run_rules(self, host: str, result: TlsResult) -> list[HostFinding]:
+        findings = await asyncio.gather(*(self._run_rule(host, rule, result) for rule in self._rules))
+        return [hf for group in findings for hf in group]
+
+    async def _run_rule(self, host: str, rule: TlsRule, result: TlsResult) -> list[HostFinding]:
+        try:
+            message = await rule.validator(result)
+        except ValidationErrors as e:
+            return [self._make_finding(host, rule, error) for error in e.errors]
+        except ValidationError as e:
+            return [self._make_finding(host, rule, e)]
+        if message is None:
+            return []
+        return [
+            HostFinding(
+                host=host,
+                finding=Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail),
+            )
+        ]
+
+    def _make_finding(self, host: str, rule: TlsRule, error: ValidationError) -> HostFinding:
+        return HostFinding(
+            host=host,
+            finding=Finding(
+                code=rule.code,
+                severity=rule.severity,
+                title=error.message,
+                detail=rule.detail,
+                metadata=error.metadata,
+            ),
+        )
+
+
 class DnsScanner:
     def __init__(self, checks: list[AbstractDnsCheck], concurrency: int = 10) -> None:
         self._checks = checks
@@ -195,6 +279,66 @@ class DnsScanner:
         check_results = await asyncio.gather(*(c.check(result) for c in self._checks))
         findings: list[Finding] = [f for findings in check_results for f in findings]
         return [HostFinding(host=domain, finding=f) for f in findings]
+
+    async def _query_txt(self, name: str) -> list[str]:
+        try:
+            answer = await dns.asyncresolver.resolve(name, "TXT")
+            return [b"".join(rdata.strings).decode() for rdata in answer]
+        except dns.exception.DNSException as e:
+            _logger.debug("%s TXT: %r", name, e)
+            return []
+
+
+class DnsScanner2:
+    def __init__(self, rules: list[DnsRule], concurrency: int = 10) -> None:
+        self._rules = rules
+        self._semaphore = asyncio.Semaphore(concurrency)
+
+    async def run(self, domains: Sequence[str]) -> AsyncIterator[HostFinding]:
+        tasks = [asyncio.create_task(self._check_domain(domain)) for domain in domains]
+        for done in asyncio.as_completed(tasks):
+            for host_finding in await done:
+                yield host_finding
+
+    async def _check_domain(self, domain: str) -> list[HostFinding]:
+        async with self._semaphore:
+            txt = await self._query_txt(domain)
+            dmarc_txt = await self._query_txt(f"_dmarc.{domain}")
+
+        result = DnsResult(domain=domain, txt=txt, dmarc_txt=dmarc_txt)
+        return await self._run_rules(domain, result)
+
+    async def _run_rules(self, domain: str, result: DnsResult) -> list[HostFinding]:
+        findings = await asyncio.gather(*(self._run_rule(domain, rule, result) for rule in self._rules))
+        return [hf for group in findings for hf in group]
+
+    async def _run_rule(self, domain: str, rule: DnsRule, result: DnsResult) -> list[HostFinding]:
+        try:
+            message = await rule.validator(result)
+        except ValidationErrors as e:
+            return [self._make_finding(domain, rule, error) for error in e.errors]
+        except ValidationError as e:
+            return [self._make_finding(domain, rule, e)]
+        if message is None:
+            return []
+        return [
+            HostFinding(
+                host=domain,
+                finding=Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail),
+            )
+        ]
+
+    def _make_finding(self, domain: str, rule: DnsRule, error: ValidationError) -> HostFinding:
+        return HostFinding(
+            host=domain,
+            finding=Finding(
+                code=rule.code,
+                severity=rule.severity,
+                title=error.message,
+                detail=rule.detail,
+                metadata=error.metadata,
+            ),
+        )
 
     async def _query_txt(self, name: str) -> list[str]:
         try:

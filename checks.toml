@@ -186,6 +186,14 @@ detail = "An SPF TXT record lists the servers authorized to send email for this 
 severity = "critical"
 detail = "The '+all' mechanism in an SPF record authorizes any server on the internet to send email for this domain, negating anti-spoofing protection."
 
+[dns_spf_multiple]
+severity = "warning"
+detail = "Publishing more than one SPF policy record is a misconfiguration; receivers treat SPF evaluation as invalid when multiple 'v=spf1' records are present."
+
 [dns_dmarc_missing]
 severity = "notice"
 detail = "A DMARC record at '_dmarc.<domain>' specifies how mail receivers should handle messages that fail SPF or DKIM checks."
+
+[dns_dmarc_multiple]
+severity = "warning"
+detail = "Publishing more than one DMARC policy record is a misconfiguration; receivers cannot reliably determine which 'v=DMARC1' policy to apply."

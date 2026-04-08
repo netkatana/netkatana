@@ -1,4 +1,5 @@
-from netkatana.types import HttpRule, Severity
+from netkatana.types import DnsRule, HttpRule, Severity, TlsRule
+from netkatana.validators.dns import dmarc_missing, dmarc_multiple, spf_missing, spf_multiple, spf_permissive
 from netkatana.validators.http.headers import (
     access_control_allow_credentials_invalid,
     access_control_allow_credentials_wildcard,
@@ -37,6 +38,16 @@ from netkatana.validators.http.headers import (
     strict_transport_security_max_age_zero,
     strict_transport_security_missing,
     strict_transport_security_preload_not_eligible,
+)
+from netkatana.validators.tls import (
+    tls_cert_expired,
+    tls_cert_mismatched,
+    tls_cert_revoked,
+    tls_cert_self_signed,
+    tls_cert_untrusted,
+    tls_cipher_weak,
+    tls_version_deprecated,
+    tls_version_outdated,
 )
 
 http_rules = [
@@ -261,5 +272,89 @@ http_rules = [
         severity=Severity.NOTICE,
         detail="Browsers cap Access-Control-Max-Age, but excessively large values still indicate intent to cache permissive preflight results for too long, delaying policy corrections after a mistake.",
         validator=access_control_max_age_excessive,
+    ),
+]
+
+tls_rules = [
+    TlsRule(
+        code="tls_version_deprecated",
+        severity=Severity.CRITICAL,
+        detail="Versions SSL 3.0, TLS 1.0, and TLS 1.1 have known cryptographic weaknesses and are no longer accepted by modern security standards.",
+        validator=tls_version_deprecated,
+    ),
+    TlsRule(
+        code="tls_version_outdated",
+        severity=Severity.WARNING,
+        detail="TLS 1.2 remains widely supported, but TLS 1.3 removes legacy negotiation features, reduces handshake latency, and is the current recommended baseline.",
+        validator=tls_version_outdated,
+    ),
+    TlsRule(
+        code="tls_cert_expired",
+        severity=Severity.CRITICAL,
+        detail="An expired certificate can no longer prove the server's identity, so clients will reject the connection or warn the user.",
+        validator=tls_cert_expired,
+    ),
+    TlsRule(
+        code="tls_cert_self_signed",
+        severity=Severity.WARNING,
+        detail="A self-signed certificate is not anchored in a trusted CA hierarchy, so clients cannot verify the server's identity by default.",
+        validator=tls_cert_self_signed,
+    ),
+    TlsRule(
+        code="tls_cert_mismatched",
+        severity=Severity.CRITICAL,
+        detail="The certificate subject or SAN list must match the hostname being connected to; otherwise clients treat the connection as potentially intercepted.",
+        validator=tls_cert_mismatched,
+    ),
+    TlsRule(
+        code="tls_cert_revoked",
+        severity=Severity.CRITICAL,
+        detail="CAs can revoke certificates before they expire; clients that check revocation status will reject a revoked certificate.",
+        validator=tls_cert_revoked,
+    ),
+    TlsRule(
+        code="tls_cert_untrusted",
+        severity=Severity.CRITICAL,
+        detail="The TLS certificate chain must be traceable to a root CA trusted by the client; an unverifiable chain causes connection rejection.",
+        validator=tls_cert_untrusted,
+    ),
+    TlsRule(
+        code="tls_cipher_weak",
+        severity=Severity.WARNING,
+        detail="Cipher suites such as RC4, NULL, EXPORT, DES, 3DES, IDEA, and SEED have known weaknesses and should not be negotiated.",
+        validator=tls_cipher_weak,
+    ),
+]
+
+dns_rules = [
+    DnsRule(
+        code="dns_spf_missing",
+        severity=Severity.NOTICE,
+        detail="An SPF TXT record lists the servers authorized to send email for this domain; without it, mail servers cannot verify sender authenticity.",
+        validator=spf_missing,
+    ),
+    DnsRule(
+        code="dns_spf_multiple",
+        severity=Severity.WARNING,
+        detail="Publishing more than one SPF policy record is a misconfiguration; receivers treat SPF evaluation as invalid when multiple 'v=spf1' records are present.",
+        validator=spf_multiple,
+    ),
+    DnsRule(
+        code="dns_spf_permissive",
+        severity=Severity.CRITICAL,
+        detail="The '+all' mechanism in an SPF record authorizes any server on the internet to send email for this domain, negating anti-spoofing protection.",
+        validator=spf_permissive,
+    ),
+    DnsRule(
+        code="dns_dmarc_missing",
+        severity=Severity.NOTICE,
+        detail="A DMARC record at '_dmarc.<domain>' specifies how mail receivers should handle messages that fail SPF or DKIM checks.",
+        validator=dmarc_missing,
+    ),
+    DnsRule(
+        code="dns_dmarc_multiple",
+        severity=Severity.WARNING,
+        detail="Publishing more than one DMARC policy record is a misconfiguration; receivers cannot reliably determine which 'v=DMARC1' policy to apply.",
+        validator=dmarc_multiple,
     ),
 ]

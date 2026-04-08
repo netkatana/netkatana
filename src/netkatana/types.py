@@ -79,3 +79,19 @@ class HttpRule:
     severity: Severity
     detail: str
     validator: Callable[[Response], Awaitable[str | None]]
+
+
+@dataclass(kw_only=True)
+class TlsRule:
+    code: str
+    severity: Severity
+    detail: str
+    validator: Callable[[TlsResult], Awaitable[str | None]]
+
+
+@dataclass(kw_only=True)
+class DnsRule:
+    code: str
+    severity: Severity
+    detail: str
+    validator: Callable[[DnsResult], Awaitable[str | None]]
