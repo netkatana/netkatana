@@ -24,8 +24,8 @@ def cli() -> None:
     logging.basicConfig(handlers=[RichHandler(console=Console(stderr=True))], format="%(message)s")
 
 
-def _get_hosts(ctx: click.Context, param: click.Parameter, hosts: tuple[str, ...]) -> list[str]:
-    targets = list(hosts)
+def _get_targets(ctx: click.Context, param: click.Parameter, values: tuple[str, ...]) -> list[str]:
+    targets = list(values)
 
     stdin = click.get_text_stream("stdin")
     if not stdin.isatty():
@@ -38,15 +38,15 @@ def _get_hosts(ctx: click.Context, param: click.Parameter, hosts: tuple[str, ...
 
 
 @cli.command()
-@click.argument("hosts", nargs=-1, callback=_get_hosts)
+@click.argument("targets", nargs=-1, callback=_get_targets)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
-def http(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
-    asyncio.run(_http(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+def http(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_http(targets=targets, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+async def _http(*, targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     async with Client() as client:
         scanner = HttpScanner(
             rules=http_rules,
@@ -55,45 +55,45 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bo
         )
 
         with _formatters[fmt](show_passed=show_passed) as formatter:
-            async for finding in scanner.check_hosts(hosts):
+            async for finding in scanner.scan(targets):
                 formatter.emit(finding)
 
 
 @cli.command()
-@click.argument("hosts", nargs=-1, callback=_get_hosts)
+@click.argument("targets", nargs=-1, callback=_get_targets)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
-def tls(hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
-    asyncio.run(_tls(hosts=hosts, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+def tls(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_tls(targets=targets, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _tls(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+async def _tls(*, targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     scanner = TlsScanner(
         rules=tls_rules,
         concurrency=concurrency,
     )
 
     with _formatters[fmt](show_passed=show_passed) as formatter:
-        async for finding in scanner.run(hosts):
+        async for finding in scanner.scan(targets):
             formatter.emit(finding)
 
 
 @cli.command()
-@click.argument("domains", nargs=-1, callback=_get_hosts)
+@click.argument("targets", nargs=-1, callback=_get_targets)
 @click.option("-c", "--concurrency", default=10, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
-def dns(domains: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
-    asyncio.run(_dns(domains=domains, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
+def dns(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+    asyncio.run(_dns(targets=targets, concurrency=concurrency, fmt=fmt, show_passed=show_passed))
 
 
-async def _dns(*, domains: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
+async def _dns(*, targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
     scanner = DnsScanner(
         rules=dns_rules,
         concurrency=concurrency,
     )
 
     with _formatters[fmt](show_passed=show_passed) as formatter:
-        async for finding in scanner.run(domains):
+        async for finding in scanner.scan(targets):
             formatter.emit(finding)

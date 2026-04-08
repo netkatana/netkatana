@@ -7,7 +7,6 @@ from typing import TypeVar
 import dns.asyncresolver
 import dns.exception
 import httpx
-from httpx import Response
 from pydantic import ValidationError as PydanticValidationError
 
 from netkatana.exceptions import ValidationError, ValidationErrors
@@ -68,25 +67,25 @@ class HttpScanner:
         self._client = client
         self._semaphore = asyncio.Semaphore(concurrency)
 
-    async def check_hosts(self, hosts: Sequence[str]) -> AsyncIterator[Finding]:
-        tasks = [asyncio.create_task(self.check_host(host)) for host in hosts]
+    async def scan(self, targets: Sequence[str]) -> AsyncIterator[Finding]:
+        tasks = [asyncio.create_task(self._scan_target(target)) for target in targets]
 
-        for done in asyncio.as_completed(tasks):
-            for finding in await done:
+        for completed_task in asyncio.as_completed(tasks):
+            for finding in await completed_task:
                 yield finding
 
-    async def check_host(self, host: str) -> list[Finding]:
+    async def _scan_target(self, target: str) -> list[Finding]:
         async with self._semaphore:
             try:
-                response = await self._client.get(f"https://{host}")
+                response = await self._client.get(f"https://{target}")
             except RedirectError as e:
-                _logger.warning("%s: %r", host, e)
+                _logger.warning("%s: %r", target, e)
                 response = e.response
             except httpx.TransportError as e:
-                _logger.warning("%s: %r", host, e)
+                _logger.warning("%s: %r", target, e)
                 return []
 
-        return await _run_rules(host, self._rules, response)
+        return await _run_rules(target, self._rules, response)
 
 
 class TlsScanner:
@@ -94,7 +93,7 @@ class TlsScanner:
         self._rules = rules
         self._concurrency = concurrency
 
-    async def run(self, hosts: Sequence[str]) -> AsyncIterator[Finding]:
+    async def scan(self, targets: Sequence[str]) -> AsyncIterator[Finding]:
         proc = await asyncio.create_subprocess_exec(
             "tlsx",
             "-json",
@@ -115,7 +114,7 @@ class TlsScanner:
 
         async def _write_stdin() -> None:
             assert proc.stdin is not None
-            proc.stdin.write("\n".join(hosts).encode())
+            proc.stdin.write("\n".join(targets).encode())
             await proc.stdin.drain()
             proc.stdin.close()
 
@@ -144,19 +143,19 @@ class DnsScanner:
         self._rules = rules
         self._semaphore = asyncio.Semaphore(concurrency)
 
-    async def run(self, domains: Sequence[str]) -> AsyncIterator[Finding]:
-        tasks = [asyncio.create_task(self._check_domain(domain)) for domain in domains]
-        for done in asyncio.as_completed(tasks):
-            for finding in await done:
+    async def scan(self, targets: Sequence[str]) -> AsyncIterator[Finding]:
+        tasks = [asyncio.create_task(self._scan_target(target)) for target in targets]
+        for completed_task in asyncio.as_completed(tasks):
+            for finding in await completed_task:
                 yield finding
 
-    async def _check_domain(self, domain: str) -> list[Finding]:
+    async def _scan_target(self, target: str) -> list[Finding]:
         async with self._semaphore:
-            txt = await self._query_txt(domain)
-            dmarc_txt = await self._query_txt(f"_dmarc.{domain}")
+            txt = await self._query_txt(target)
+            dmarc_txt = await self._query_txt(f"_dmarc.{target}")
 
-        result = DnsResult(domain=domain, txt=txt, dmarc_txt=dmarc_txt)
-        return await _run_rules(domain, self._rules, result)
+        result = DnsResult(domain=target, txt=txt, dmarc_txt=dmarc_txt)
+        return await _run_rules(target, self._rules, result)
 
     async def _query_txt(self, name: str) -> list[str]:
         try:
