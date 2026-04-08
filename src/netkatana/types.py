@@ -15,17 +15,12 @@ class Severity(str, Enum):
 
 @dataclass
 class Finding:
+    host: str
     code: str
     severity: Severity
     title: str
     detail: str
     metadata: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
-class HostFinding:
-    host: str
-    finding: Finding
 
 
 @dataclass(frozen=True)

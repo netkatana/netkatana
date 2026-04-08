@@ -14,7 +14,6 @@ from netkatana.types import (
     DnsResult,
     DnsRule,
     Finding,
-    HostFinding,
     HttpRule,
     Severity,
     TlsResult,
@@ -35,14 +34,14 @@ class HttpScanner:
         self._client = client
         self._semaphore = asyncio.Semaphore(concurrency)
 
-    async def check_hosts(self, hosts: Sequence[str]) -> AsyncIterator[HostFinding]:
+    async def check_hosts(self, hosts: Sequence[str]) -> AsyncIterator[Finding]:
         tasks = [asyncio.create_task(self.check_host(host)) for host in hosts]
 
         for done in asyncio.as_completed(tasks):
             for host_findings in await done:
                 yield host_findings
 
-    async def check_host(self, host: str) -> list[HostFinding]:
+    async def check_host(self, host: str) -> list[Finding]:
         async with self._semaphore:
             try:
                 response = await self._client.get(f"https://{host}")
@@ -55,36 +54,31 @@ class HttpScanner:
 
         return await self._run_rules(host, response)
 
-    async def _run_rules(self, host: str, response: Response) -> list[HostFinding]:
+    async def _run_rules(self, host: str, response: Response) -> list[Finding]:
         results = await asyncio.gather(*(self._run_rule(host, rule, response) for rule in self._rules))
         return [hf for findings in results for hf in findings]
 
-    async def _run_rule(self, host: str, rule: HttpRule, response: Response) -> list[HostFinding]:
+    async def _run_rule(self, host: str, rule: HttpRule, response: Response) -> list[Finding]:
         try:
             message = await rule.validator(response)
         except ValidationErrors as e:
             return [self._make_finding(host, rule, error) for error in e.errors]
         except ValidationError as e:
             return [self._make_finding(host, rule, e)]
+
         if message is None:
             return []
-        return [
-            HostFinding(
-                host=host,
-                finding=Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail),
-            )
-        ]
 
-    def _make_finding(self, host: str, rule: HttpRule, error: ValidationError) -> HostFinding:
-        return HostFinding(
+        return [Finding(host=host, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
+
+    def _make_finding(self, host: str, rule: HttpRule, error: ValidationError) -> Finding:
+        return Finding(
             host=host,
-            finding=Finding(
-                code=rule.code,
-                severity=rule.severity,
-                title=error.message,
-                detail=rule.detail,
-                metadata=error.metadata,
-            ),
+            code=rule.code,
+            severity=rule.severity,
+            title=error.message,
+            detail=rule.detail,
+            metadata=error.metadata,
         )
 
 
@@ -93,7 +87,7 @@ class TlsScanner:
         self._rules = rules
         self._concurrency = concurrency
 
-    async def run(self, hosts: Sequence[str]) -> AsyncIterator[HostFinding]:
+    async def run(self, hosts: Sequence[str]) -> AsyncIterator[Finding]:
         proc = await asyncio.create_subprocess_exec(
             "tlsx",
             "-json",
@@ -137,36 +131,31 @@ class TlsScanner:
         await write_task
         await proc.wait()
 
-    async def _run_rules(self, host: str, result: TlsResult) -> list[HostFinding]:
+    async def _run_rules(self, host: str, result: TlsResult) -> list[Finding]:
         findings = await asyncio.gather(*(self._run_rule(host, rule, result) for rule in self._rules))
         return [hf for group in findings for hf in group]
 
-    async def _run_rule(self, host: str, rule: TlsRule, result: TlsResult) -> list[HostFinding]:
+    async def _run_rule(self, host: str, rule: TlsRule, result: TlsResult) -> list[Finding]:
         try:
             message = await rule.validator(result)
         except ValidationErrors as e:
             return [self._make_finding(host, rule, error) for error in e.errors]
         except ValidationError as e:
             return [self._make_finding(host, rule, e)]
+
         if message is None:
             return []
-        return [
-            HostFinding(
-                host=host,
-                finding=Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail),
-            )
-        ]
 
-    def _make_finding(self, host: str, rule: TlsRule, error: ValidationError) -> HostFinding:
-        return HostFinding(
+        return [Finding(host=host, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
+
+    def _make_finding(self, host: str, rule: TlsRule, error: ValidationError) -> Finding:
+        return Finding(
             host=host,
-            finding=Finding(
-                code=rule.code,
-                severity=rule.severity,
-                title=error.message,
-                detail=rule.detail,
-                metadata=error.metadata,
-            ),
+            code=rule.code,
+            severity=rule.severity,
+            title=error.message,
+            detail=rule.detail,
+            metadata=error.metadata,
         )
 
 
@@ -175,13 +164,13 @@ class DnsScanner:
         self._rules = rules
         self._semaphore = asyncio.Semaphore(concurrency)
 
-    async def run(self, domains: Sequence[str]) -> AsyncIterator[HostFinding]:
+    async def run(self, domains: Sequence[str]) -> AsyncIterator[Finding]:
         tasks = [asyncio.create_task(self._check_domain(domain)) for domain in domains]
         for done in asyncio.as_completed(tasks):
-            for host_finding in await done:
-                yield host_finding
+            for finding in await done:
+                yield finding
 
-    async def _check_domain(self, domain: str) -> list[HostFinding]:
+    async def _check_domain(self, domain: str) -> list[Finding]:
         async with self._semaphore:
             txt = await self._query_txt(domain)
             dmarc_txt = await self._query_txt(f"_dmarc.{domain}")
@@ -189,36 +178,31 @@ class DnsScanner:
         result = DnsResult(domain=domain, txt=txt, dmarc_txt=dmarc_txt)
         return await self._run_rules(domain, result)
 
-    async def _run_rules(self, domain: str, result: DnsResult) -> list[HostFinding]:
+    async def _run_rules(self, domain: str, result: DnsResult) -> list[Finding]:
         findings = await asyncio.gather(*(self._run_rule(domain, rule, result) for rule in self._rules))
         return [hf for group in findings for hf in group]
 
-    async def _run_rule(self, domain: str, rule: DnsRule, result: DnsResult) -> list[HostFinding]:
+    async def _run_rule(self, domain: str, rule: DnsRule, result: DnsResult) -> list[Finding]:
         try:
             message = await rule.validator(result)
         except ValidationErrors as e:
             return [self._make_finding(domain, rule, error) for error in e.errors]
         except ValidationError as e:
             return [self._make_finding(domain, rule, e)]
+
         if message is None:
             return []
-        return [
-            HostFinding(
-                host=domain,
-                finding=Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail),
-            )
-        ]
 
-    def _make_finding(self, domain: str, rule: DnsRule, error: ValidationError) -> HostFinding:
-        return HostFinding(
+        return [Finding(host=domain, code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail)]
+
+    def _make_finding(self, domain: str, rule: DnsRule, error: ValidationError) -> Finding:
+        return Finding(
             host=domain,
-            finding=Finding(
-                code=rule.code,
-                severity=rule.severity,
-                title=error.message,
-                detail=rule.detail,
-                metadata=error.metadata,
-            ),
+            code=rule.code,
+            severity=rule.severity,
+            title=error.message,
+            detail=rule.detail,
+            metadata=error.metadata,
         )
 
     async def _query_txt(self, name: str) -> list[str]:
