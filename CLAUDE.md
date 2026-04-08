@@ -6,46 +6,50 @@ HTTP header, TLS certificate, and DNS security scanner.
 
 ```
 src/netkatana/
-├── types.py           # Core types: Severity, Finding, HostFinding, StrictTransportSecurityHeader, AbstractHttpCheck, AbstractTlsCheck, TlsResult, DnsResult
-├── scanners.py        # Orchestrators: HttpScanner, TlsScanner, DnsScanner
+├── types.py           # Core types: Severity, Finding, StrictTransportSecurityHeader, TlsResult, DnsResult, HttpRule, TlsRule, DnsRule
+├── scanners.py        # Rule runners: HttpScanner, TlsScanner, DnsScanner
 ├── cli.py             # Click CLI: `http`, `tls`, and `dns` commands
 ├── formatters.py      # Output: VerboseFormatter, JsonlFormatter, JsonFormatter, TableFormatter
 ├── http.py            # HTTP client with manual redirect following and typed redirect exceptions
 ├── utils.py           # Helpers: extract_host(), parse_strict_transport_security_header()
-└── checks/
-    ├── __init__.py    # Exposes http_checks, tls_checks, dns_checks lists consumed by cli.py
-    ├── config.py      # Loads checks.toml, provides get_detail(code) and get_severity(code)
-    ├── http/
-    │   └── headers.py # HTTP header checks
-    ├── tls.py         # TLS certificate and version checks
-    └── dns.py         # DNS checks (SPF, DMARC, ...)
+├── rules.py           # Rule registry: code, severity, detail, validator
+└── validators/
+    ├── dns.py         # DNS validators
+    ├── tls.py         # TLS validators
+    └── http/
+        └── headers.py # HTTP header validators
 ```
 
-## Checks
+## Rules
 
-`checks.toml` (project root) is the source of truth for `detail` and `severity` of all implemented checks. Each entry uses the check code as the table key.
+`src/netkatana/rules.py` is the source of truth for implemented checks. Each rule defines:
+
+- `code`
+- `severity`
+- `detail`
+- `validator`
 
 `TODO.md` lists planned checks grouped by category.
 
 ## Key abstractions
 
-**`Finding`** — result of a single check. Fields: `code`, `severity`, `title`, `detail`, `metadata`.
+**`Finding`** — result of a single rule evaluation. Fields: `host`, `code`, `severity`, `title`, `detail`, `metadata`.
 
 **`Severity`** — `PASS | NOTICE | WARNING | CRITICAL`. `PASS` means the check ran and found no issue. `return []` means the check was irrelevant or couldn't run.
 
-**`HostFinding`** — `Finding` paired with the host it came from. Emitted by scanners.
+**`HttpRule` / `TlsRule` / `DnsRule`** — immutable rule definitions containing metadata plus a validator function.
 
-**`AbstractHttpCheck` / `AbstractTlsCheck`** — base classes for individual checks. Implement `async def check(...) -> list[Finding]`.
+**Validators** — async functions returning `str | None` or raising `ValidationError` / `ValidationErrors`.
 
-**`HttpScanner` / `TlsScanner`** — orchestrators that run all checks against all hosts concurrently and yield `HostFinding` objects.
+**`HttpScanner` / `TlsScanner` / `DnsScanner`** — orchestrators that run rules against all targets concurrently and yield `Finding` objects.
 
-## How checks work
+## How validators work
 
-- Each check returns `list[Finding]`.
-- If the check passes: return one `Finding` with `severity=Severity.PASS`.
-- If an issue is found: return one or more `Finding` objects with the appropriate severity.
-- If the check can't run (e.g. missing data): return `[]`.
-- PASS findings share the same `code` as their failure counterpart — `severity` distinguishes them.
+- If the validator passes: return a PASS title string.
+- If the validator is irrelevant or can't run: return `None`.
+- If the validator finds one issue: raise `ValidationError`.
+- If the validator finds multiple issues for the same rule: raise `ValidationErrors`.
+- The scanner wraps validator output into `Finding` objects using rule metadata.
 
 ## Detail text conventions
 
@@ -56,16 +60,16 @@ The `detail` field appears on both PASS and FAIL findings. Follow these rules wh
 - **Concise.** One or two sentences. Prefer a semicolon to join cause and consequence over a long subordinate clause.
 - **Single quotes, not backticks.** Use single quotes for header names, directive names, and values (e.g. 'max-age', 'unsafe-inline'). Backticks render in Markdown but not in the terminal.
 
-## Adding a new check
+## Adding a new rule
 
-1. Add an entry to `checks.toml` with `detail` and `severity` (the failure severity).
-2. Subclass `AbstractHttpCheck`, `AbstractTlsCheck`, or `AbstractDnsCheck` in the relevant `checks/` file.
-3. Implement `async def check(...)` returning `list[Finding]`. Use `get_detail(code)` and `get_severity(code)` from `checks/config.py`; use `Severity.PASS` directly for pass findings.
-4. Add the import and append an instance to the appropriate list in `checks/__init__.py`.
+1. Add a validator function in the relevant module under `src/netkatana/validators/`.
+2. Return `str | None`, or raise `ValidationError` / `ValidationErrors`.
+3. Register the rule in `src/netkatana/rules.py` with `code`, `severity`, `detail`, and `validator`.
+4. Add validator tests under `tests/validators/`.
 
 ## Formatters
 
-All formatters accept `show_passed: bool = False`. When `False` (default), `Severity.PASS` findings are silently dropped. Pass `--show-passed` on the CLI to include them.
+All formatters accept `show_passed: bool = False`. When `False` (default), `Severity.PASS` findings are dropped. Pass `--show-passed` on the CLI to include them.
 
 ## Development
 

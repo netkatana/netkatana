@@ -32,16 +32,15 @@
 - `tls_cert_weak_signature` — warning
 - `tls_no_forward_secrecy` — warning
 - `tls_compression_enabled` — warning
-- `tls_version_outdated` — warning/notice
 
 ## DNS
 
 - `dns_zone_transfer_enabled` — critical
 - `dns_dangling_cname` — critical
 - `dns_spf_invalid` — warning
-- `dns_spf_multiple` — warning
 - `dns_dmarc_policy_none` — warning
 - `dns_dmarc_invalid` — warning
+- `dns_dmarc_multiple` — warning
 - `dns_dkim_missing` — notice
 - `dns_mta_sts_missing` — notice
 - `dns_caa_missing` — warning
