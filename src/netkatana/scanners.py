@@ -5,9 +5,10 @@ from collections.abc import AsyncIterator, Sequence
 import dns.asyncresolver
 import dns.exception
 import httpx
+from httpx import Response
 from pydantic import ValidationError as PydanticValidationError
 
-from netkatana.exceptions import ValidationError
+from netkatana.exceptions import ValidationError, ValidationErrors
 from netkatana.http import Client, RedirectError
 from netkatana.types import (
     AbstractDnsCheck,
@@ -74,9 +75,8 @@ class HttpScanner2:
         tasks = [asyncio.create_task(self.check_host(host)) for host in hosts]
 
         for done in asyncio.as_completed(tasks):
-            host_findings = await done
-            for host_finding in host_findings:
-                yield host_finding
+            for host_findings in await done:
+                yield host_findings
 
     async def check_host(self, host: str) -> list[HostFinding]:
         async with self._semaphore:
@@ -89,29 +89,39 @@ class HttpScanner2:
                 _logger.warning("%s: %r", host, e)
                 return []
 
-        findings = []
+        return await self._run_rules(host, response)
 
-        for rule in self._rules:
-            try:
-                message = await rule.validator(response)
+    async def _run_rules(self, host: str, response: Response) -> list[HostFinding]:
+        results = await asyncio.gather(*(self._run_rule(host, rule, response) for rule in self._rules))
+        return [hf for findings in results for hf in findings]
 
-                if message is None:
-                    continue
+    async def _run_rule(self, host: str, rule: HttpRule, response: Response) -> list[HostFinding]:
+        try:
+            message = await rule.validator(response)
+        except ValidationErrors as e:
+            return [self._make_finding(host, rule, error) for error in e.errors]
+        except ValidationError as e:
+            return [self._make_finding(host, rule, e)]
+        if message is None:
+            return []
+        return [
+            HostFinding(
+                host=host,
+                finding=Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail),
+            )
+        ]
 
-                findings.append(Finding(code=rule.code, severity=Severity.PASS, title=message, detail=rule.detail))
-            except ValidationError as e:
-                for error in e.errors():
-                    findings.append(
-                        Finding(
-                            code=rule.code,
-                            severity=rule.severity,
-                            title=error.message,
-                            detail=rule.detail,
-                            metadata=error.metadata,
-                        )
-                    )
-
-        return [HostFinding(host=host, finding=f) for f in findings]
+    def _make_finding(self, host: str, rule: HttpRule, error: ValidationError) -> HostFinding:
+        return HostFinding(
+            host=host,
+            finding=Finding(
+                code=rule.code,
+                severity=rule.severity,
+                title=error.message,
+                detail=rule.detail,
+                metadata=error.metadata,
+            ),
+        )
 
 
 class TlsScanner:
