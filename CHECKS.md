@@ -199,11 +199,41 @@ Same as `headers_csp_connect_src_missing`, applied to `Content-Security-Policy-R
 
 Same as `headers_csp_connect_src_unrestricted`, applied to `Content-Security-Policy-Report-Only`.
 
-### headers_cors_wildcard_origin
+### headers_cors_allow_origin_wildcard
 
-> WARNING, planned
+> WARNING, implemented
 
-The 'Access-Control-Allow-Origin' header controls which origins can read the response; a wildcard value (*) grants read access to any origin, including on credentialed endpoints.
+The 'Access-Control-Allow-Origin' header controls which origins can read the response via JavaScript; a wildcard value ('*') grants read access to any origin on the internet.
+
+### headers_cors_allow_origin_null
+
+> CRITICAL, implemented
+
+An 'Access-Control-Allow-Origin' value of 'null' grants read access to sandboxed iframes, 'data:' URLs, and local files, all of which an attacker controls; the null origin is not a safe substitute for a specific origin.
+
+### headers_cors_allow_credentials_wildcard
+
+> CRITICAL, implemented
+
+Combining 'Access-Control-Allow-Origin: *' with 'Access-Control-Allow-Credentials: true' is rejected by browsers, but its presence indicates a likely misconfiguration where the server may be dynamically reflecting the 'Origin' header, granting any origin credentialed access.
+
+### headers_cors_allow_credentials_invalid
+
+> WARNING, implemented
+
+The 'Access-Control-Allow-Credentials' header only takes effect when its value is exactly 'true' (ASCII case-insensitive); any other value is treated as absent by browsers.
+
+### headers_cors_allow_methods_unsafe
+
+> NOTICE, implemented
+
+The 'Access-Control-Allow-Methods' header lists the HTTP methods permitted for cross-origin requests; including mutating methods such as 'DELETE', 'PUT', or 'PATCH' broadens the attack surface for cross-origin state modification.
+
+### headers_cors_max_age_excessive
+
+> NOTICE, implemented
+
+The 'Access-Control-Max-Age' header controls how long preflight results can be cached; values above 86,400 seconds exceed the Firefox cap, and values above 7,200 seconds exceed the Chromium (v76+) cap.
 
 ### headers_x_content_type_options_missing
 
