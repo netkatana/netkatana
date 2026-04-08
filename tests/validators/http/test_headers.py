@@ -3,8 +3,12 @@ from httpx import Response
 
 from netkatana.exceptions import ValidationError
 from netkatana.validators.http.headers import (
+    access_control_allow_credentials_invalid,
+    access_control_allow_credentials_wildcard,
+    access_control_allow_methods_unsafe,
     access_control_allow_origin_null,
     access_control_allow_origin_wildcard,
+    access_control_max_age_excessive,
     content_security_policy_base_uri_missing,
     content_security_policy_connect_src_missing,
     content_security_policy_connect_src_unrestricted,
@@ -1352,3 +1356,189 @@ async def test_access_control_allow_origin_null_specific_origin():
     message = await access_control_allow_origin_null(response)
 
     assert message == "Access-Control-Allow-Origin is not null"
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_wildcard_no_cors_header():
+    response = Response(200)
+
+    message = await access_control_allow_credentials_wildcard(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_wildcard_specific_origin_with_credentials():
+    response = Response(
+        200,
+        headers={
+            "access-control-allow-origin": "https://example.com",
+            "access-control-allow-credentials": "true",
+        },
+    )
+
+    message = await access_control_allow_credentials_wildcard(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_wildcard_wildcard_without_credentials():
+    response = Response(200, headers={"access-control-allow-origin": "*"})
+
+    message = await access_control_allow_credentials_wildcard(response)
+
+    assert message == "Access-Control-Allow-Origin wildcard does not enable credentials"
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_wildcard_wildcard_with_credentials():
+    response = Response(
+        200,
+        headers={
+            "access-control-allow-origin": "*",
+            "access-control-allow-credentials": "true",
+        },
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_allow_credentials_wildcard(response)
+
+    assert exc_info.value.message == "Access-Control-Allow-Origin is wildcard with credentials enabled"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_invalid_header_absent():
+    response = Response(200)
+
+    message = await access_control_allow_credentials_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_invalid_valid_lowercase():
+    response = Response(200, headers={"access-control-allow-credentials": "true"})
+
+    message = await access_control_allow_credentials_invalid(response)
+
+    assert message == "Access-Control-Allow-Credentials has a valid value"
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_invalid_valid_uppercase():
+    response = Response(200, headers={"access-control-allow-credentials": "TRUE"})
+
+    message = await access_control_allow_credentials_invalid(response)
+
+    assert message == "Access-Control-Allow-Credentials has a valid value"
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_invalid_invalid_value():
+    response = Response(200, headers={"access-control-allow-credentials": "1"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_allow_credentials_invalid(response)
+
+    assert exc_info.value.message == "Access-Control-Allow-Credentials has an invalid value"
+    assert exc_info.value.metadata == {"value": "1"}
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_credentials_invalid_false_value():
+    response = Response(200, headers={"access-control-allow-credentials": "false"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_allow_credentials_invalid(response)
+
+    assert exc_info.value.message == "Access-Control-Allow-Credentials has an invalid value"
+    assert exc_info.value.metadata == {"value": "false"}
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_methods_unsafe_header_absent():
+    response = Response(200)
+
+    message = await access_control_allow_methods_unsafe(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_methods_unsafe_safe_methods():
+    response = Response(200, headers={"access-control-allow-methods": "GET, POST, OPTIONS"})
+
+    message = await access_control_allow_methods_unsafe(response)
+
+    assert message == "Access-Control-Allow-Methods does not include unsafe methods"
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_methods_unsafe_delete():
+    response = Response(200, headers={"access-control-allow-methods": "GET, DELETE"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_allow_methods_unsafe(response)
+
+    assert exc_info.value.message == "Access-Control-Allow-Methods includes unsafe methods"
+    assert exc_info.value.metadata == {"methods": "DELETE"}
+
+
+@pytest.mark.asyncio
+async def test_access_control_allow_methods_unsafe_multiple_unsafe():
+    response = Response(200, headers={"access-control-allow-methods": "GET, PUT, DELETE, PATCH"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_allow_methods_unsafe(response)
+
+    assert exc_info.value.message == "Access-Control-Allow-Methods includes unsafe methods"
+    assert exc_info.value.metadata == {"methods": "DELETE, PATCH, PUT"}
+
+
+@pytest.mark.asyncio
+async def test_access_control_max_age_excessive_header_absent():
+    response = Response(200)
+
+    message = await access_control_max_age_excessive(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_max_age_excessive_invalid_value():
+    response = Response(200, headers={"access-control-max-age": "notanumber"})
+
+    message = await access_control_max_age_excessive(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_access_control_max_age_excessive_within_limit():
+    response = Response(200, headers={"access-control-max-age": "7200"})
+
+    message = await access_control_max_age_excessive(response)
+
+    assert message == "Access-Control-Max-Age is within browser cache limits"
+
+
+@pytest.mark.asyncio
+async def test_access_control_max_age_excessive_at_limit():
+    response = Response(200, headers={"access-control-max-age": "86400"})
+
+    message = await access_control_max_age_excessive(response)
+
+    assert message == "Access-Control-Max-Age is within browser cache limits"
+
+
+@pytest.mark.asyncio
+async def test_access_control_max_age_excessive_excessive():
+    response = Response(200, headers={"access-control-max-age": "86401"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await access_control_max_age_excessive(response)
+
+    assert exc_info.value.message == "Access-Control-Max-Age exceeds browser cache limits"
+    assert exc_info.value.metadata == {"max_age": "86401"}

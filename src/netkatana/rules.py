@@ -1,7 +1,11 @@
 from netkatana.types import HttpRule, Severity
 from netkatana.validators.http.headers import (
+    access_control_allow_credentials_invalid,
+    access_control_allow_credentials_wildcard,
+    access_control_allow_methods_unsafe,
     access_control_allow_origin_null,
     access_control_allow_origin_wildcard,
+    access_control_max_age_excessive,
     content_security_policy_base_uri_missing,
     content_security_policy_connect_src_missing,
     content_security_policy_connect_src_unrestricted,
@@ -233,5 +237,29 @@ http_rules = [
         severity=Severity.CRITICAL,
         detail="Access-Control-Allow-Origin: null trusts sandboxed iframes, data: URLs, file://, and opaque-origin documents, which can let untrusted contexts read sensitive responses.",
         validator=access_control_allow_origin_null,
+    ),
+    HttpRule(
+        code="headers_cors_allow_credentials_wildcard",
+        severity=Severity.CRITICAL,
+        detail="Using Access-Control-Allow-Origin: * together with Access-Control-Allow-Credentials: true attempts to expose credentialed responses to any origin and indicates a broken CORS policy.",
+        validator=access_control_allow_credentials_wildcard,
+    ),
+    HttpRule(
+        code="headers_cors_allow_credentials_invalid",
+        severity=Severity.WARNING,
+        detail="Access-Control-Allow-Credentials only accepts the case-insensitive token 'true'; any other value is invalid and ignored by browsers, often masking a misconfigured credentialed CORS policy.",
+        validator=access_control_allow_credentials_invalid,
+    ),
+    HttpRule(
+        code="headers_cors_allow_methods_unsafe",
+        severity=Severity.NOTICE,
+        detail="Allowing unsafe methods such as PUT, PATCH, or DELETE cross-origin increases the impact of a CORS mistake by enabling state-changing requests from trusted origins.",
+        validator=access_control_allow_methods_unsafe,
+    ),
+    HttpRule(
+        code="headers_cors_max_age_excessive",
+        severity=Severity.NOTICE,
+        detail="Browsers cap Access-Control-Max-Age, but excessively large values still indicate intent to cache permissive preflight results for too long, delaying policy corrections after a mistake.",
+        validator=access_control_max_age_excessive,
     ),
 ]

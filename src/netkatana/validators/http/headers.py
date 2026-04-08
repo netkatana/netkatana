@@ -7,6 +7,11 @@ _HSTS_MIN_MAX_AGE = 31_536_000  # one year
 _CSP_HEADER = "content-security-policy"
 _CSP_REPORT_ONLY_HEADER = "content-security-policy-report-only"
 _CORS_ALLOW_ORIGIN_HEADER = "access-control-allow-origin"
+_CORS_ALLOW_CREDENTIALS_HEADER = "access-control-allow-credentials"
+_CORS_ALLOW_METHODS_HEADER = "access-control-allow-methods"
+_CORS_UNSAFE_METHODS = {"DELETE", "PATCH", "PUT"}
+_CORS_MAX_AGE_HEADER = "access-control-max-age"
+_CORS_MAX_AGE_EXCESSIVE = 86_400
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -492,3 +497,62 @@ async def access_control_allow_origin_null(response: Response) -> str | None:
         raise ValidationError("Access-Control-Allow-Origin is null")
 
     return "Access-Control-Allow-Origin is not null"
+
+
+async def access_control_allow_credentials_wildcard(response: Response) -> str | None:
+    if _CORS_ALLOW_ORIGIN_HEADER not in response.headers:
+        return None
+
+    if response.headers[_CORS_ALLOW_ORIGIN_HEADER].strip() != "*":
+        return None
+
+    credentials = response.headers.get(_CORS_ALLOW_CREDENTIALS_HEADER, "").strip().lower()
+    if credentials == "true":
+        raise ValidationError("Access-Control-Allow-Origin is wildcard with credentials enabled")
+
+    return "Access-Control-Allow-Origin wildcard does not enable credentials"
+
+
+async def access_control_allow_credentials_invalid(response: Response) -> str | None:
+    if _CORS_ALLOW_CREDENTIALS_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_CORS_ALLOW_CREDENTIALS_HEADER].strip()
+    if value.lower() == "true":
+        return "Access-Control-Allow-Credentials has a valid value"
+
+    raise ValidationError("Access-Control-Allow-Credentials has an invalid value", metadata={"value": value})
+
+
+async def access_control_allow_methods_unsafe(response: Response) -> str | None:
+    if _CORS_ALLOW_METHODS_HEADER not in response.headers:
+        return None
+
+    methods = {method.strip().upper() for method in response.headers[_CORS_ALLOW_METHODS_HEADER].split(",")}
+    unsafe = methods & _CORS_UNSAFE_METHODS
+
+    if unsafe:
+        raise ValidationError(
+            "Access-Control-Allow-Methods includes unsafe methods",
+            metadata={"methods": ", ".join(sorted(unsafe))},
+        )
+
+    return "Access-Control-Allow-Methods does not include unsafe methods"
+
+
+async def access_control_max_age_excessive(response: Response) -> str | None:
+    if _CORS_MAX_AGE_HEADER not in response.headers:
+        return None
+
+    try:
+        max_age = int(response.headers[_CORS_MAX_AGE_HEADER].strip())
+    except ValueError:
+        return None
+
+    if max_age > _CORS_MAX_AGE_EXCESSIVE:
+        raise ValidationError(
+            "Access-Control-Max-Age exceeds browser cache limits",
+            metadata={"max_age": str(max_age)},
+        )
+
+    return "Access-Control-Max-Age is within browser cache limits"
