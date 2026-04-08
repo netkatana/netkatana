@@ -55,8 +55,8 @@ async def _http(*, hosts: list[str], concurrency: int, fmt: str, show_passed: bo
         )
 
         with _formatters[fmt](show_passed=show_passed) as formatter:
-            async for host_finding in scanner.check_hosts(hosts):
-                formatter.emit(host_finding)
+            async for finding in scanner.check_hosts(hosts):
+                formatter.emit(finding)
 
 
 @cli.command()
@@ -75,8 +75,8 @@ async def _tls(*, hosts: list[str], concurrency: int, fmt: str, show_passed: boo
     )
 
     with _formatters[fmt](show_passed=show_passed) as formatter:
-        async for host_finding in scanner.run(hosts):
-            formatter.emit(host_finding)
+        async for finding in scanner.run(hosts):
+            formatter.emit(finding)
 
 
 @cli.command()
@@ -95,5 +95,5 @@ async def _dns(*, domains: list[str], concurrency: int, fmt: str, show_passed: b
     )
 
     with _formatters[fmt](show_passed=show_passed) as formatter:
-        async for host_finding in scanner.run(domains):
-            formatter.emit(host_finding)
+        async for finding in scanner.run(domains):
+            formatter.emit(finding)

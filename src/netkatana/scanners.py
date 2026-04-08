@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncIterator, Sequence
+from itertools import chain
 
 import dns.asyncresolver
 import dns.exception
@@ -38,8 +39,8 @@ class HttpScanner:
         tasks = [asyncio.create_task(self.check_host(host)) for host in hosts]
 
         for done in asyncio.as_completed(tasks):
-            for host_findings in await done:
-                yield host_findings
+            for findings in await done:
+                yield findings
 
     async def check_host(self, host: str) -> list[Finding]:
         async with self._semaphore:
@@ -55,8 +56,8 @@ class HttpScanner:
         return await self._run_rules(host, response)
 
     async def _run_rules(self, host: str, response: Response) -> list[Finding]:
-        results = await asyncio.gather(*(self._run_rule(host, rule, response) for rule in self._rules))
-        return [hf for findings in results for hf in findings]
+        finding_batches = await asyncio.gather(*(self._run_rule(host, rule, response) for rule in self._rules))
+        return list(chain.from_iterable(finding_batches))
 
     async def _run_rule(self, host: str, rule: HttpRule, response: Response) -> list[Finding]:
         try:
@@ -125,15 +126,15 @@ class TlsScanner:
             except PydanticValidationError:
                 _logger.warning("Failed to parse tlsx output: %s", line)
                 continue
-            for host_finding in await self._run_rules(result.host, result):
-                yield host_finding
+            for finding in await self._run_rules(result.host, result):
+                yield finding
 
         await write_task
         await proc.wait()
 
     async def _run_rules(self, host: str, result: TlsResult) -> list[Finding]:
-        findings = await asyncio.gather(*(self._run_rule(host, rule, result) for rule in self._rules))
-        return [hf for group in findings for hf in group]
+        finding_batches = await asyncio.gather(*(self._run_rule(host, rule, result) for rule in self._rules))
+        return list(chain.from_iterable(finding_batches))
 
     async def _run_rule(self, host: str, rule: TlsRule, result: TlsResult) -> list[Finding]:
         try:
@@ -179,8 +180,8 @@ class DnsScanner:
         return await self._run_rules(domain, result)
 
     async def _run_rules(self, domain: str, result: DnsResult) -> list[Finding]:
-        findings = await asyncio.gather(*(self._run_rule(domain, rule, result) for rule in self._rules))
-        return [hf for group in findings for hf in group]
+        finding_batches = await asyncio.gather(*(self._run_rule(domain, rule, result) for rule in self._rules))
+        return list(chain.from_iterable(finding_batches))
 
     async def _run_rule(self, domain: str, rule: DnsRule, result: DnsResult) -> list[Finding]:
         try:
