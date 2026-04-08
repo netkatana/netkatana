@@ -1,140 +1,149 @@
 # Checks
 
+This file is the source of truth for all checks. Update it when adding or changing a check.
+
+## Conventions
+
+Each check entry has a `> severity, status` line and a one- or two-sentence description. That description is used verbatim as the `detail` field on `Finding` objects and in console output, so it must follow these rules:
+
+- **Informative, not prescriptive.** Explain what the header/directive/feature does and why it matters. Do not tell the user what to do ("use X", "set Y to Z", "submit via ...").
+- **Neutral with respect to outcome.** The same text appears on both PASS and FAIL findings. Phrases like "header absent" or "is missing" imply failure — avoid them. Write from the perspective of what the feature is and what happens when it is or isn't configured.
+- **Concise.** One or two sentences. Prefer a semicolon to join cause and consequence over a long subordinate clause.
+- **Single quotes, not backticks.** Use single quotes for header names, directive names, and values (e.g. 'max-age', 'unsafe-inline'). Backticks render in Markdown but not in the terminal.
+
 ## HTTP
 
 ### headers_hsts_missing
 
 > CRITICAL, implemented
 
-HSTS header absent — browsers may connect over HTTP, leaving users vulnerable to protocol downgrade and SSL stripping
-attacks.
+The 'Strict-Transport-Security' header instructs browsers to always use HTTPS for this domain, preventing protocol
+downgrade and SSL stripping attacks.
 
 ### headers_hsts_invalid
 
 > CRITICAL, implemented
 
-HSTS header present but malformed (missing `max-age`, non-numeric value, or directives in wrong order) — browser
-silently ignores it.
+The 'Strict-Transport-Security' header requires a valid 'max-age' directive; a malformed header is silently ignored by
+browsers.
 
 ### headers_hsts_max_age_zero
 
 > CRITICAL, implemented
 
-HSTS `max-age=0` — instructs browsers to delete the cached policy, removing HTTPS enforcement for all returning users.
+'max-age=0' instructs browsers to delete the cached HSTS policy, removing HTTPS enforcement for returning users.
 
 ### headers_hsts_max_age_low
 
 > WARNING, implemented
 
-HSTS `max-age` is less than one year (31,536,000 s) — short window leaves returning users exposed to downgrade attacks
-between visits.
+The 'max-age' directive controls how long browsers enforce HTTPS for this domain; values below one year (31,536,000 s)
+leave a wider window for downgrade attacks between visits.
 
 ### headers_hsts_include_subdomains_missing
 
 > NOTICE, implemented
 
-HSTS `includeSubDomains` directive absent — subdomains reachable over plain HTTP, parent-domain cookies may be
-intercepted.
+The 'includeSubDomains' directive extends HSTS to all subdomains; without it, subdomains are reachable over plain HTTP
+and parent-domain cookies may be intercepted.
 
 ### headers_hsts_preload_not_eligible
 
 > WARNING, implemented
 
-HSTS header contains `preload` but does not meet preload list requirements (`max-age` ≥ 31,536,000 s and
-`includeSubDomains`) — the domain will be rejected by preload lists despite the developer signalling intent.
+The 'preload' directive signals intent to join browser preload lists, which hardcode the HSTS policy before a user's
+first visit; qualifying requires 'max-age' ≥ 31,536,000 s and 'includeSubDomains'.
 
 ### headers_csp_missing
 
 > WARNING, implemented
 
-CSP header missing — no restriction on which resources browsers load, increases XSS/data injection risk.
+The 'Content-Security-Policy' header restricts which resources browsers can load, reducing the risk of XSS and data
+injection attacks.
 
 ### headers_csp_unsafe_inline
 
 > CRITICAL, implemented
 
-CSP `script-src` (or `default-src` fallback) contains `'unsafe-inline'` without a nonce or hash to neutralize it — any
-inline script executes, directly defeating XSS protection.
+'unsafe-inline' in 'script-src' (or 'default-src') permits all inline scripts; a nonce or hash neutralizes it and
+restores XSS protection in CSP Level 2+ browsers.
 
 ### headers_csp_unsafe_eval
 
 > CRITICAL, implemented
 
-CSP `script-src` (or `default-src` fallback) contains `'unsafe-eval'` — permits `eval()`, `new Function(string)`, and
-similar dynamic code execution, enabling code injection from any attacker-controlled string.
+'unsafe-eval' in 'script-src' (or 'default-src') permits eval(), new Function(string), and similar dynamic code
+execution from strings.
 
 ### headers_csp_object_src_unsafe
 
 > WARNING, implemented
 
-CSP `object-src` (or `default-src` fallback) is not restricted to `'none'` — plugin content (`<object>`, `<embed>`) is
-unrestricted, enabling potential code execution via Flash or Java applets.
+'object-src' (or 'default-src') controls <object> and <embed> elements; plugin content runs outside the browser's
+normal security model and has historically enabled code execution.
 
 ### headers_csp_base_uri_missing
 
 > WARNING, implemented
 
-CSP policy lacks a `base-uri` directive — attackers can inject `<base href='https://evil.com/'>` to redirect all
-relative resource loads, bypassing `script-src` allowlists; `base-uri` does not fall back to `default-src` and must be
-set explicitly.
+'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and
+bypassing 'script-src'; it does not fall back to 'default-src'.
 
 ### headers_csp_frame_ancestors_missing
 
 > WARNING, implemented
 
-CSP policy lacks a `frame-ancestors` directive — any origin can embed this page in an iframe or frame, enabling
-clickjacking attacks. Unlike fetch directives, `frame-ancestors` does not fall back to `default-src` and must be set
-explicitly.
+'frame-ancestors' controls which origins can embed this page in a frame or iframe, preventing clickjacking; it does not
+fall back to 'default-src'.
 
 ### headers_csp_form_action_missing
 
 > WARNING, implemented
 
-CSP policy lacks a `form-action` directive — form submissions are unrestricted, allowing an injected form to exfiltrate
-data to any origin. Unlike fetch directives, `form-action` does not fall back to `default-src` and must be set
-explicitly.
+'form-action' restricts which URLs forms may submit to, preventing data exfiltration via injected forms; it does not
+fall back to 'default-src'.
 
 ### headers_csp_script_src_missing
 
 > CRITICAL, implemented
 
-CSP present but neither `script-src` nor `default-src` is set — scripts are completely unrestricted, providing no XSS
-protection despite the header being present.
+'script-src' (falling back to 'default-src') restricts which scripts browsers execute; without either directive, scripts
+are completely unrestricted.
 
 ### headers_csp_script_src_unrestricted
 
 > CRITICAL, implemented
 
-CSP `script-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — scripts can be
-loaded from any origin, making the allowlist pointless.
+A wildcard source (*, 'https:', or 'http:') in 'script-src' (or 'default-src') allows scripts from any origin, making
+the allowlist pointless.
 
 ### headers_csp_style_src_missing
 
 > CRITICAL, implemented
 
-CSP present but neither `style-src` nor `default-src` is set — stylesheets are completely unrestricted, enabling CSS
-injection attacks and data exfiltration via `url()` probes.
+'style-src' (falling back to 'default-src') restricts which stylesheets browsers load; without either directive, CSS
+injection and data exfiltration via url() probes are possible.
 
 ### headers_csp_style_src_unrestricted
 
 > CRITICAL, implemented
 
-CSP `style-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — stylesheets can
-be loaded from any origin, making the allowlist pointless.
+A wildcard source (*, 'https:', or 'http:') in 'style-src' (or 'default-src') allows stylesheets from any origin,
+making the allowlist pointless.
 
 ### headers_csp_connect_src_missing
 
 > CRITICAL, implemented
 
-CSP present but neither `connect-src` nor `default-src` is set — fetch, XHR, and WebSocket connections are completely
-unrestricted, enabling data exfiltration to arbitrary origins.
+'connect-src' (falling back to 'default-src') restricts fetch, XHR, and WebSocket destinations; without either
+directive, connections to arbitrary origins are unrestricted.
 
 ### headers_csp_connect_src_unrestricted
 
 > CRITICAL, implemented
 
-CSP `connect-src` (or `default-src` fallback) contains a wildcard source (`*`, `https:`, or `http:`) — fetch, XHR, and
-WebSocket connections can target any origin, making the allowlist pointless.
+A wildcard source (*, 'https:', or 'http:') in 'connect-src' (or 'default-src') allows fetch, XHR, and WebSocket
+connections to any origin, making the allowlist pointless.
 
 ### headers_csp_report_only_unsafe_inline
 
