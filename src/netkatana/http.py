@@ -29,7 +29,7 @@ class Client:
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *exc_info: Any) -> None:
+    async def __aexit__(self, *_exc_info: Any) -> None:
         await self.aclose()
 
     async def get(self, url: str) -> Response:

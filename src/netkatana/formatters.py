@@ -31,7 +31,7 @@ class AbstractFormatter(ABC):
     def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: object) -> None:
+    def __exit__(self) -> None:
         self.flush()
 
 

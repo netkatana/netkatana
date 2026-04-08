@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Awaitable, Callable
@@ -36,12 +35,6 @@ class StrictTransportSecurityHeader:
     preload: bool
 
 
-class AbstractHttpCheck(ABC):
-    @abstractmethod
-    async def check(self, response: Response) -> list[Finding]:
-        pass
-
-
 class TlsResult(BaseModel):
     host: str
     port: str
@@ -55,22 +48,10 @@ class TlsResult(BaseModel):
     untrusted: bool = False
 
 
-class AbstractTlsCheck(ABC):
-    @abstractmethod
-    async def check(self, result: TlsResult) -> list[Finding]:
-        pass
-
-
 class DnsResult(BaseModel):
     domain: str
     txt: list[str]
     dmarc_txt: list[str]
-
-
-class AbstractDnsCheck(ABC):
-    @abstractmethod
-    async def check(self, result: DnsResult) -> list[Finding]:
-        pass
 
 
 @dataclass(kw_only=True)
