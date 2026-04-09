@@ -61,6 +61,15 @@ Implemented checks:
 - headers_coep_report_only_invalid
 - headers_coep_report_only_unsafe_none
 - headers_coep_report_only_credentialless
+- headers_coop_missing
+- headers_coop_invalid
+- headers_coop_unsafe_none
+- headers_coop_same_origin_allow_popups
+- headers_coop_noopener_allow_popups
+- headers_coop_report_only_invalid
+- headers_coop_report_only_unsafe_none
+- headers_coop_report_only_same_origin_allow_popups
+- headers_coop_report_only_noopener_allow_popups
 - tls_version_deprecated
 - tls_version_outdated
 - tls_cert_expired

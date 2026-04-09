@@ -16,6 +16,15 @@ from netkatana.validators.http.headers import (
     coep_ro_invalid,
     coep_ro_unsafe_none,
     coep_unsafe_none,
+    coop_invalid,
+    coop_missing,
+    coop_noopener_allow_popups,
+    coop_ro_invalid,
+    coop_ro_noopener_allow_popups,
+    coop_ro_same_origin_allow_popups,
+    coop_ro_unsafe_none,
+    coop_same_origin_allow_popups,
+    coop_unsafe_none,
     corp_cross_origin,
     corp_invalid,
     corp_missing,
@@ -1901,3 +1910,266 @@ async def test_coep_ro_credentialless_require_corp():
     message = await coep_ro_credentialless(response)
 
     assert message == "Cross-Origin-Embedder-Policy-Report-Only (COEP) is not credentialless"
+
+
+@pytest.mark.asyncio
+async def test_coop_missing_missing():
+    response = Response(200)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_missing(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy (COOP) missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coop_missing_present():
+    response = Response(200, headers={"cross-origin-opener-policy": "same-origin"})
+
+    message = await coop_missing(response)
+
+    assert message == "Cross-Origin-Opener-Policy (COOP) present"
+
+
+@pytest.mark.asyncio
+async def test_coop_invalid_header_absent():
+    response = Response(200)
+
+    message = await coop_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_invalid_valid():
+    response = Response(200, headers={"cross-origin-opener-policy": "same-origin"})
+
+    message = await coop_invalid(response)
+
+    assert message == "Cross-Origin-Opener-Policy (COOP) header is valid"
+
+
+@pytest.mark.asyncio
+async def test_coop_invalid_invalid():
+    value = "invalid"
+    response = Response(200, headers={"cross-origin-opener-policy": value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_invalid(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy (COOP) header is invalid"
+    assert exc_info.value.metadata == {"value": value}
+
+
+@pytest.mark.asyncio
+async def test_coop_unsafe_none_header_absent():
+    response = Response(200)
+
+    message = await coop_unsafe_none(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_unsafe_none_invalid_value():
+    response = Response(200, headers={"cross-origin-opener-policy": "invalid"})
+
+    message = await coop_unsafe_none(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_unsafe_none_unsafe_none():
+    response = Response(200, headers={"cross-origin-opener-policy": "unsafe-none"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_unsafe_none(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy (COOP) is unsafe-none"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coop_unsafe_none_same_origin():
+    response = Response(200, headers={"cross-origin-opener-policy": "same-origin"})
+
+    message = await coop_unsafe_none(response)
+
+    assert message == "Cross-Origin-Opener-Policy (COOP) is not unsafe-none"
+
+
+@pytest.mark.asyncio
+async def test_coop_same_origin_allow_popups_header_absent():
+    response = Response(200)
+
+    message = await coop_same_origin_allow_popups(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_same_origin_allow_popups_same_origin_allow_popups():
+    response = Response(200, headers={"cross-origin-opener-policy": "same-origin-allow-popups"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_same_origin_allow_popups(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy (COOP) is same-origin-allow-popups"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coop_same_origin_allow_popups_same_origin():
+    response = Response(200, headers={"cross-origin-opener-policy": "same-origin"})
+
+    message = await coop_same_origin_allow_popups(response)
+
+    assert message == "Cross-Origin-Opener-Policy (COOP) is not same-origin-allow-popups"
+
+
+@pytest.mark.asyncio
+async def test_coop_noopener_allow_popups_header_absent():
+    response = Response(200)
+
+    message = await coop_noopener_allow_popups(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_noopener_allow_popups_noopener_allow_popups():
+    response = Response(200, headers={"cross-origin-opener-policy": "noopener-allow-popups"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_noopener_allow_popups(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy (COOP) is noopener-allow-popups"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coop_noopener_allow_popups_same_origin():
+    response = Response(200, headers={"cross-origin-opener-policy": "same-origin"})
+
+    message = await coop_noopener_allow_popups(response)
+
+    assert message == "Cross-Origin-Opener-Policy (COOP) is not noopener-allow-popups"
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_invalid_header_absent():
+    response = Response(200)
+
+    message = await coop_ro_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_invalid_valid():
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": "same-origin"})
+
+    message = await coop_ro_invalid(response)
+
+    assert message == "Cross-Origin-Opener-Policy-Report-Only (COOP) header is valid"
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_invalid_invalid():
+    value = "invalid"
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_ro_invalid(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy-Report-Only (COOP) header is invalid"
+    assert exc_info.value.metadata == {"value": value}
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_unsafe_none_header_absent():
+    response = Response(200)
+
+    message = await coop_ro_unsafe_none(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_unsafe_none_unsafe_none():
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": "unsafe-none"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_ro_unsafe_none(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy-Report-Only (COOP) is unsafe-none"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_unsafe_none_same_origin():
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": "same-origin"})
+
+    message = await coop_ro_unsafe_none(response)
+
+    assert message == "Cross-Origin-Opener-Policy-Report-Only (COOP) is not unsafe-none"
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_same_origin_allow_popups_header_absent():
+    response = Response(200)
+
+    message = await coop_ro_same_origin_allow_popups(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_same_origin_allow_popups_same_origin_allow_popups():
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": "same-origin-allow-popups"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_ro_same_origin_allow_popups(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy-Report-Only (COOP) is same-origin-allow-popups"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_same_origin_allow_popups_same_origin():
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": "same-origin"})
+
+    message = await coop_ro_same_origin_allow_popups(response)
+
+    assert message == "Cross-Origin-Opener-Policy-Report-Only (COOP) is not same-origin-allow-popups"
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_noopener_allow_popups_header_absent():
+    response = Response(200)
+
+    message = await coop_ro_noopener_allow_popups(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_noopener_allow_popups_noopener_allow_popups():
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": "noopener-allow-popups"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coop_ro_noopener_allow_popups(response)
+
+    assert exc_info.value.message == "Cross-Origin-Opener-Policy-Report-Only (COOP) is noopener-allow-popups"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coop_ro_noopener_allow_popups_same_origin():
+    response = Response(200, headers={"cross-origin-opener-policy-report-only": "same-origin"})
+
+    message = await coop_ro_noopener_allow_popups(response)
+
+    assert message == "Cross-Origin-Opener-Policy-Report-Only (COOP) is not noopener-allow-popups"

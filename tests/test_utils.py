@@ -1,9 +1,14 @@
 import pytest
 
-from netkatana.types import CrossOriginEmbedderPolicyHeader, StrictTransportSecurityHeader
+from netkatana.types import (
+    CrossOriginEmbedderPolicyHeader,
+    CrossOriginOpenerPolicyHeader,
+    StrictTransportSecurityHeader,
+)
 from netkatana.utils import (
     extract_host,
     parse_cross_origin_embedder_policy_header,
+    parse_cross_origin_opener_policy_header,
     parse_strict_transport_security_header,
 )
 
@@ -146,3 +151,51 @@ def test_parse_cross_origin_embedder_policy_header_valid(value: str, expected: C
 def test_parse_cross_origin_embedder_policy_header_invalid(value: str):
     with pytest.raises(ValueError):
         parse_cross_origin_embedder_policy_header(value)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("same-origin", CrossOriginOpenerPolicyHeader(policy="same-origin", report_to=None)),
+        (
+            "same-origin-allow-popups",
+            CrossOriginOpenerPolicyHeader(policy="same-origin-allow-popups", report_to=None),
+        ),
+        (
+            "noopener-allow-popups",
+            CrossOriginOpenerPolicyHeader(policy="noopener-allow-popups", report_to=None),
+        ),
+        ("unsafe-none", CrossOriginOpenerPolicyHeader(policy="unsafe-none", report_to=None)),
+        (
+            'same-origin; report-to="default-endpoint"',
+            CrossOriginOpenerPolicyHeader(policy="same-origin", report_to='"default-endpoint"'),
+        ),
+        (
+            "noopener-allow-popups; report-to=endpoint",
+            CrossOriginOpenerPolicyHeader(policy="noopener-allow-popups", report_to="endpoint"),
+        ),
+    ],
+)
+def test_parse_cross_origin_opener_policy_header_valid(value: str, expected: CrossOriginOpenerPolicyHeader):
+    result = parse_cross_origin_opener_policy_header(value)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "invalid",
+        "Same-Origin",
+        "same-origin, unsafe-none",
+        "same-origin;",
+        "same-origin; report-to",
+        "same-origin; report-to=",
+        'same-origin; report-to="unterminated',
+        "same-origin; foo=bar",
+    ],
+)
+def test_parse_cross_origin_opener_policy_header_invalid(value: str):
+    with pytest.raises(ValueError):
+        parse_cross_origin_opener_policy_header(value)

@@ -25,7 +25,7 @@ _logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def _make_finding(target: str, rule: Rule[object], error: ValidationError) -> Finding:
+def _make_finding(target: str, rule: Rule[T], error: ValidationError) -> Finding:
     return Finding(
         host=target,
         code=rule.code,
