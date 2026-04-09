@@ -9,6 +9,10 @@ from netkatana.validators.http.headers import (
     access_control_allow_origin_null,
     access_control_allow_origin_wildcard,
     access_control_max_age_excessive,
+    corp_cross_origin,
+    corp_invalid,
+    corp_missing,
+    corp_same_site,
     csp_base_uri_missing,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
@@ -1542,3 +1546,137 @@ async def test_access_control_max_age_excessive_excessive():
 
     assert exc_info.value.message == "Access-Control-Max-Age exceeds browser cache limits"
     assert exc_info.value.metadata == {"max_age": "86401"}
+
+
+@pytest.mark.asyncio
+async def test_corp_missing_missing():
+    response = Response(200)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await corp_missing(response)
+
+    assert exc_info.value.message == "Cross-Origin-Resource-Policy (CORP) missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_corp_missing_present():
+    response = Response(200, headers={"cross-origin-resource-policy": "same-origin"})
+
+    message = await corp_missing(response)
+
+    assert message == "Cross-Origin-Resource-Policy (CORP) present"
+
+
+@pytest.mark.asyncio
+async def test_corp_invalid_header_absent():
+    response = Response(200)
+
+    message = await corp_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_corp_invalid_valid_same_origin():
+    response = Response(200, headers={"cross-origin-resource-policy": "same-origin"})
+
+    message = await corp_invalid(response)
+
+    assert message == "Cross-Origin-Resource-Policy (CORP) header is valid"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "invalid",
+        "Same-Origin",
+        "same-origin, same-site",
+        "same-origin, cross-origin",
+    ],
+)
+@pytest.mark.asyncio
+async def test_corp_invalid_invalid_values(value: str):
+    response = Response(200, headers={"cross-origin-resource-policy": value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await corp_invalid(response)
+
+    assert exc_info.value.message == "Cross-Origin-Resource-Policy (CORP) header is invalid"
+    assert exc_info.value.metadata == {"value": value}
+
+
+@pytest.mark.asyncio
+async def test_corp_same_site_header_absent():
+    response = Response(200)
+
+    message = await corp_same_site(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_corp_same_site_invalid_value():
+    response = Response(200, headers={"cross-origin-resource-policy": "invalid"})
+
+    message = await corp_same_site(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_corp_same_site_same_site():
+    response = Response(200, headers={"cross-origin-resource-policy": "same-site"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await corp_same_site(response)
+
+    assert exc_info.value.message == "Cross-Origin-Resource-Policy (CORP) is same-site"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_corp_same_site_same_origin():
+    response = Response(200, headers={"cross-origin-resource-policy": "same-origin"})
+
+    message = await corp_same_site(response)
+
+    assert message == "Cross-Origin-Resource-Policy (CORP) is not same-site"
+
+
+@pytest.mark.asyncio
+async def test_corp_cross_origin_header_absent():
+    response = Response(200)
+
+    message = await corp_cross_origin(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_corp_cross_origin_invalid_value():
+    response = Response(200, headers={"cross-origin-resource-policy": "invalid"})
+
+    message = await corp_cross_origin(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_corp_cross_origin_cross_origin():
+    response = Response(200, headers={"cross-origin-resource-policy": "cross-origin"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await corp_cross_origin(response)
+
+    assert exc_info.value.message == "Cross-Origin-Resource-Policy (CORP) is cross-origin"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_corp_cross_origin_same_origin():
+    response = Response(200, headers={"cross-origin-resource-policy": "same-origin"})
+
+    message = await corp_cross_origin(response)
+
+    assert message == "Cross-Origin-Resource-Policy (CORP) is not cross-origin"

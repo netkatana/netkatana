@@ -7,6 +7,10 @@ from netkatana.validators.http.headers import (
     access_control_allow_origin_null,
     access_control_allow_origin_wildcard,
     access_control_max_age_excessive,
+    corp_cross_origin,
+    corp_invalid,
+    corp_missing,
+    corp_same_site,
     csp_base_uri_missing,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
@@ -272,6 +276,30 @@ http_rules = [
         severity=Severity.NOTICE,
         detail="Browsers cap Access-Control-Max-Age, but excessively large values still indicate intent to cache permissive preflight results for too long, delaying policy corrections after a mistake.",
         validator=access_control_max_age_excessive,
+    ),
+    HttpRule(
+        code="headers_corp_missing",
+        severity=Severity.NOTICE,
+        detail="The 'Cross-Origin-Resource-Policy' header lets a resource declare which origins or sites may load it in 'no-cors' mode, reducing unintended cross-site embedding and read side channels.",
+        validator=corp_missing,
+    ),
+    HttpRule(
+        code="headers_corp_invalid",
+        severity=Severity.CRITICAL,
+        detail="The 'Cross-Origin-Resource-Policy' header only accepts the case-sensitive values 'same-origin', 'same-site', or 'cross-origin'; invalid values are ignored by browsers.",
+        validator=corp_invalid,
+    ),
+    HttpRule(
+        code="headers_corp_same_site",
+        severity=Severity.NOTICE,
+        detail="'same-site' allows resources to be loaded across origins within the same site, which is broader than 'same-origin' and relies on site boundaries rather than exact origin matching.",
+        validator=corp_same_site,
+    ),
+    HttpRule(
+        code="headers_corp_cross_origin",
+        severity=Severity.WARNING,
+        detail="'cross-origin' allows any site to load the resource in 'no-cors' mode, making the resource broadly embeddable across origins.",
+        validator=corp_cross_origin,
     ),
 ]
 

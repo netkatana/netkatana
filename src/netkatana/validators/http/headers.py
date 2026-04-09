@@ -12,6 +12,8 @@ _CORS_ALLOW_METHODS_HEADER = "access-control-allow-methods"
 _CORS_UNSAFE_METHODS = {"DELETE", "PATCH", "PUT"}
 _CORS_MAX_AGE_HEADER = "access-control-max-age"
 _CORS_MAX_AGE_EXCESSIVE = 86_400
+_CORP_HEADER = "cross-origin-resource-policy"
+_CORP_VALID_VALUES = {"same-origin", "same-site", "cross-origin"}
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -30,6 +32,10 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
         or source == "'strict-dynamic'"
         for source in sources
     )
+
+
+def _corp_header_values(response: Response) -> list[str]:
+    return [value.strip() for value in response.headers.get_list(_CORP_HEADER)]
 
 
 async def hsts_missing(response: Response) -> str | None:
@@ -556,3 +562,52 @@ async def access_control_max_age_excessive(response: Response) -> str | None:
         )
 
     return "Access-Control-Max-Age is within browser cache limits"
+
+
+async def corp_missing(response: Response) -> str | None:
+    if _CORP_HEADER not in response.headers:
+        raise ValidationError("Cross-Origin-Resource-Policy (CORP) missing")
+
+    return "Cross-Origin-Resource-Policy (CORP) present"
+
+
+async def corp_invalid(response: Response) -> str | None:
+    if _CORP_HEADER not in response.headers:
+        return None
+
+    values = _corp_header_values(response)
+    if len(values) != 1 or values[0] not in _CORP_VALID_VALUES:
+        raise ValidationError(
+            "Cross-Origin-Resource-Policy (CORP) header is invalid",
+            metadata={"value": response.headers[_CORP_HEADER]},
+        )
+
+    return "Cross-Origin-Resource-Policy (CORP) header is valid"
+
+
+async def corp_same_site(response: Response) -> str | None:
+    if _CORP_HEADER not in response.headers:
+        return None
+
+    values = _corp_header_values(response)
+    if len(values) != 1 or values[0] not in _CORP_VALID_VALUES:
+        return None
+
+    if values[0] == "same-site":
+        raise ValidationError("Cross-Origin-Resource-Policy (CORP) is same-site")
+
+    return "Cross-Origin-Resource-Policy (CORP) is not same-site"
+
+
+async def corp_cross_origin(response: Response) -> str | None:
+    if _CORP_HEADER not in response.headers:
+        return None
+
+    values = _corp_header_values(response)
+    if len(values) != 1 or values[0] not in _CORP_VALID_VALUES:
+        return None
+
+    if values[0] == "cross-origin":
+        raise ValidationError("Cross-Origin-Resource-Policy (CORP) is cross-origin")
+
+    return "Cross-Origin-Resource-Policy (CORP) is not cross-origin"
