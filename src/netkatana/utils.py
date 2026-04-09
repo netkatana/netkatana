@@ -44,13 +44,14 @@ def parse_strict_transport_security_header(value: str) -> StrictTransportSecurit
 
 
 def parse_cross_origin_embedder_policy_header(value: str) -> CrossOriginEmbedderPolicyHeader:
-    m = _COEP_RE.fullmatch(value)
-    if m is None:
+    match = _COEP_RE.match(value)
+
+    if match is None:
         raise ValueError(f"Invalid Cross-Origin-Embedder-Policy header value: {value!r}")
 
     return CrossOriginEmbedderPolicyHeader(
-        policy=m.group("policy"),
-        report_to=m.group("report_to"),
+        policy=match.group("policy"),
+        report_to=match.group("report_to"),
     )
 
 
