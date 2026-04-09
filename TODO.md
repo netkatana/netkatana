@@ -6,7 +6,6 @@
 - `headers_x_content_type_options_invalid` — warning
 - `headers_x_frame_options_missing` — warning
 - `headers_x_frame_options_invalid` — warning
-- `headers_cross_origin_opener_policy_missing` — warning
 - `headers_cookie_missing_secure` — critical
 - `headers_cookie_missing_httponly` — warning
 - `headers_cookie_missing_samesite` — warning
