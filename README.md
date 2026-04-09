@@ -50,6 +50,10 @@ Implemented checks:
 - headers_cors_allow_credentials_invalid
 - headers_cors_allow_methods_unsafe
 - headers_cors_max_age_excessive
+- headers_corp_missing
+- headers_corp_invalid
+- headers_corp_same_site
+- headers_corp_cross_origin
 - tls_version_deprecated
 - tls_version_outdated
 - tls_cert_expired
