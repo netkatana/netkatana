@@ -6,8 +6,6 @@ This file is ordered by implementation priority, not by protocol.
 
 ### HTTP
 
-- `headers_x_content_type_options_missing` — warning
-- `headers_x_content_type_options_invalid` — critical
 - `headers_referrer_policy_missing` — notice
 - `headers_referrer_policy_invalid` — warning
 - `headers_referrer_policy_unsafe` — warning
@@ -34,7 +32,6 @@ This file is ordered by implementation priority, not by protocol.
 ### Existing-group gaps to close early
 
 - `headers_hsts_duplicated` — warning
-- `headers_x_content_type_options_duplicated` — critical
 - `headers_x_frame_options_duplicated` — critical
 - `headers_csp_duplicated` — critical
 - `headers_csp_report_only_duplicated` — warning
@@ -153,7 +150,7 @@ This file is ordered by implementation priority, not by protocol.
 
 - `Referrer-Policy` should not stop at "missing"; invalid and unsafe values matter more than absence.
 - `Permissions-Policy` should not stop at "missing"; invalid syntax, deprecated features, and wildcard-style permissive policies are the real misconfiguration surface.
-- `X-Frame-Options`, `X-Content-Type-Options`, and `X-Permitted-Cross-Domain-Policies` should include duplicate-header/value checks because browsers handle conflicting values inconsistently.
+- `X-Frame-Options` and `X-Permitted-Cross-Domain-Policies` should include duplicate-header/value checks because browsers handle conflicting values inconsistently.
 - DNS email-authentication work should include syntax validation before policy-strength checks.
 
 ## Recommended implementation roadmap

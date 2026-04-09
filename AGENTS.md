@@ -15,6 +15,7 @@
 - Return `None` when the rule is not applicable or cannot run.
 - Raise `ValidationError` for one finding.
 - Raise `ValidationErrors` for multiple findings.
+- For header validity checks, prefer the canonical merged value from `response.headers[...]`; use `response.headers.get_list(...)` only when the rule explicitly needs to reason about duplicate header instances.
 
 ## Rule Design
 
