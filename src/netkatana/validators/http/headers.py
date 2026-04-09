@@ -32,14 +32,14 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
     )
 
 
-async def strict_transport_security_missing(response: Response) -> str | None:
+async def hsts_missing(response: Response) -> str | None:
     if "strict-transport-security" not in response.headers:
         raise ValidationError("Strict-Transport-Security (HSTS) missing")
 
     return "Strict-Transport-Security (HSTS) present"
 
 
-async def strict_transport_security_invalid(response: Response) -> str | None:
+async def hsts_invalid(response: Response) -> str | None:
     if "strict-transport-security" not in response.headers:
         return None
 
@@ -53,7 +53,7 @@ async def strict_transport_security_invalid(response: Response) -> str | None:
     return "Strict-Transport-Security (HSTS) header is valid"
 
 
-async def strict_transport_security_max_age_zero(response: Response) -> str | None:
+async def hsts_max_age_zero(response: Response) -> str | None:
     if "strict-transport-security" not in response.headers:
         return None
 
@@ -70,7 +70,7 @@ async def strict_transport_security_max_age_zero(response: Response) -> str | No
     return "Strict-Transport-Security (HSTS) max-age is non-zero"
 
 
-async def strict_transport_security_max_age_low(response: Response) -> str | None:
+async def hsts_max_age_low(response: Response) -> str | None:
     if "strict-transport-security" not in response.headers:
         return None
 
@@ -93,7 +93,7 @@ async def strict_transport_security_max_age_low(response: Response) -> str | Non
     return "Strict-Transport-Security (HSTS) max-age meets minimum"
 
 
-async def strict_transport_security_include_subdomains_missing(response: Response) -> str | None:
+async def hsts_include_subdomains_missing(response: Response) -> str | None:
     if "strict-transport-security" not in response.headers:
         return None
 
@@ -110,7 +110,7 @@ async def strict_transport_security_include_subdomains_missing(response: Respons
     return "Strict-Transport-Security (HSTS) includeSubDomains present"
 
 
-async def strict_transport_security_preload_not_eligible(response: Response) -> str | None:
+async def hsts_preload_not_eligible(response: Response) -> str | None:
     if "strict-transport-security" not in response.headers:
         return None
 
@@ -130,14 +130,14 @@ async def strict_transport_security_preload_not_eligible(response: Response) -> 
     return "Strict-Transport-Security (HSTS) meets preload requirements"
 
 
-async def content_security_policy_missing(response: Response) -> str | None:
+async def csp_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         raise ValidationError("Content-Security-Policy (CSP) missing")
 
     return "Content-Security-Policy (CSP) present"
 
 
-async def content_security_policy_unsafe_inline(response: Response) -> str | None:
+async def csp_unsafe_inline(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -156,7 +156,7 @@ async def content_security_policy_unsafe_inline(response: Response) -> str | Non
     raise ValidationError("Content-Security-Policy (CSP) script-src contains 'unsafe-inline'")
 
 
-async def content_security_policy_report_only_unsafe_inline(response: Response) -> str | None:
+async def csp_ro_unsafe_inline(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -175,7 +175,7 @@ async def content_security_policy_report_only_unsafe_inline(response: Response) 
     raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-inline'")
 
 
-async def content_security_policy_unsafe_eval(response: Response) -> str | None:
+async def csp_unsafe_eval(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -191,7 +191,7 @@ async def content_security_policy_unsafe_eval(response: Response) -> str | None:
     return "Content-Security-Policy (CSP) script-src does not contain 'unsafe-eval'"
 
 
-async def content_security_policy_report_only_unsafe_eval(response: Response) -> str | None:
+async def csp_ro_unsafe_eval(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -207,7 +207,7 @@ async def content_security_policy_report_only_unsafe_eval(response: Response) ->
     return "Content-Security-Policy-Report-Only (CSP) script-src does not contain 'unsafe-eval'"
 
 
-async def content_security_policy_object_src_unsafe(response: Response) -> str | None:
+async def csp_object_src_unsafe(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -220,7 +220,7 @@ async def content_security_policy_object_src_unsafe(response: Response) -> str |
     raise ValidationError("Content-Security-Policy (CSP) object-src is not restricted to 'none'")
 
 
-async def content_security_policy_report_only_object_src_unsafe(response: Response) -> str | None:
+async def csp_ro_object_src_unsafe(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -233,7 +233,7 @@ async def content_security_policy_report_only_object_src_unsafe(response: Respon
     raise ValidationError("Content-Security-Policy-Report-Only (CSP) object-src is not restricted to 'none'")
 
 
-async def content_security_policy_base_uri_missing(response: Response) -> str | None:
+async def csp_base_uri_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -245,7 +245,7 @@ async def content_security_policy_base_uri_missing(response: Response) -> str | 
     return "Content-Security-Policy (CSP) base-uri is present"
 
 
-async def content_security_policy_report_only_base_uri_missing(response: Response) -> str | None:
+async def csp_ro_base_uri_missing(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -257,7 +257,7 @@ async def content_security_policy_report_only_base_uri_missing(response: Respons
     return "Content-Security-Policy-Report-Only (CSP) base-uri is present"
 
 
-async def content_security_policy_frame_ancestors_missing(response: Response) -> str | None:
+async def csp_frame_ancestors_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -269,7 +269,7 @@ async def content_security_policy_frame_ancestors_missing(response: Response) ->
     return "Content-Security-Policy (CSP) frame-ancestors is present"
 
 
-async def content_security_policy_report_only_frame_ancestors_missing(response: Response) -> str | None:
+async def csp_ro_frame_ancestors_missing(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -281,7 +281,7 @@ async def content_security_policy_report_only_frame_ancestors_missing(response: 
     return "Content-Security-Policy-Report-Only (CSP) frame-ancestors is present"
 
 
-async def content_security_policy_form_action_missing(response: Response) -> str | None:
+async def csp_form_action_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -293,7 +293,7 @@ async def content_security_policy_form_action_missing(response: Response) -> str
     return "Content-Security-Policy (CSP) form-action is present"
 
 
-async def content_security_policy_report_only_form_action_missing(response: Response) -> str | None:
+async def csp_ro_form_action_missing(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -305,7 +305,7 @@ async def content_security_policy_report_only_form_action_missing(response: Resp
     return "Content-Security-Policy-Report-Only (CSP) form-action is present"
 
 
-async def content_security_policy_script_src_missing(response: Response) -> str | None:
+async def csp_script_src_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -318,7 +318,7 @@ async def content_security_policy_script_src_missing(response: Response) -> str 
     return "Content-Security-Policy (CSP) script-src is present"
 
 
-async def content_security_policy_report_only_script_src_missing(response: Response) -> str | None:
+async def csp_ro_script_src_missing(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -331,7 +331,7 @@ async def content_security_policy_report_only_script_src_missing(response: Respo
     return "Content-Security-Policy-Report-Only (CSP) script-src is present"
 
 
-async def content_security_policy_script_src_unrestricted(response: Response) -> str | None:
+async def csp_script_src_unrestricted(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -347,7 +347,7 @@ async def content_security_policy_script_src_unrestricted(response: Response) ->
     return "Content-Security-Policy (CSP) script-src is restricted"
 
 
-async def content_security_policy_report_only_script_src_unrestricted(response: Response) -> str | None:
+async def csp_ro_script_src_unrestricted(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -363,7 +363,7 @@ async def content_security_policy_report_only_script_src_unrestricted(response: 
     return "Content-Security-Policy-Report-Only (CSP) script-src is restricted"
 
 
-async def content_security_policy_style_src_missing(response: Response) -> str | None:
+async def csp_style_src_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -376,7 +376,7 @@ async def content_security_policy_style_src_missing(response: Response) -> str |
     return "Content-Security-Policy (CSP) style-src is present"
 
 
-async def content_security_policy_style_src_unrestricted(response: Response) -> str | None:
+async def csp_style_src_unrestricted(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -392,7 +392,7 @@ async def content_security_policy_style_src_unrestricted(response: Response) -> 
     return "Content-Security-Policy (CSP) style-src is restricted"
 
 
-async def content_security_policy_report_only_style_src_missing(response: Response) -> str | None:
+async def csp_ro_style_src_missing(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -405,7 +405,7 @@ async def content_security_policy_report_only_style_src_missing(response: Respon
     return "Content-Security-Policy-Report-Only (CSP) style-src is present"
 
 
-async def content_security_policy_report_only_style_src_unrestricted(response: Response) -> str | None:
+async def csp_ro_style_src_unrestricted(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -421,7 +421,7 @@ async def content_security_policy_report_only_style_src_unrestricted(response: R
     return "Content-Security-Policy-Report-Only (CSP) style-src is restricted"
 
 
-async def content_security_policy_connect_src_missing(response: Response) -> str | None:
+async def csp_connect_src_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -434,7 +434,7 @@ async def content_security_policy_connect_src_missing(response: Response) -> str
     return "Content-Security-Policy (CSP) connect-src is present"
 
 
-async def content_security_policy_connect_src_unrestricted(response: Response) -> str | None:
+async def csp_connect_src_unrestricted(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
 
@@ -450,7 +450,7 @@ async def content_security_policy_connect_src_unrestricted(response: Response) -
     return "Content-Security-Policy (CSP) connect-src is restricted"
 
 
-async def content_security_policy_report_only_connect_src_missing(response: Response) -> str | None:
+async def csp_ro_connect_src_missing(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -463,7 +463,7 @@ async def content_security_policy_report_only_connect_src_missing(response: Resp
     return "Content-Security-Policy-Report-Only (CSP) connect-src is present"
 
 
-async def content_security_policy_report_only_connect_src_unrestricted(response: Response) -> str | None:
+async def csp_ro_connect_src_unrestricted(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
