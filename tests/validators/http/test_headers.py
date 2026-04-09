@@ -2300,15 +2300,9 @@ async def test_referrer_policy_invalid_header_absent():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "headers",
-    [
-        {"referrer-policy": "invalid"},
-        {"referrer-policy": "no-referrer, strict-origin-when-cross-origin"},
-    ],
-)
-async def test_referrer_policy_invalid_invalid(headers):
-    response = Response(200, headers=headers)
+@pytest.mark.parametrize("value", ["invalid", "no-referrer, strict-origin-when-cross-origin"])
+async def test_referrer_policy_invalid_invalid(value: str):
+    response = Response(200, headers={"referrer-policy": value})
 
     with pytest.raises(ValidationError) as exc_info:
         await referrer_policy_invalid(response)

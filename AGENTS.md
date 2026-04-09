@@ -20,11 +20,14 @@
 ## Rule Design
 
 - Prefer small parsers in `utils.py` and reuse them from validators.
+- Prefer the smallest return type that fits current usage; do not add a dedicated typed container for a single primitive value unless multiple fields or shared semantics justify it.
 - Prefer multiple narrow rules over one broad rule:
   - missing header
   - invalid syntax
   - weaker but valid configuration
 - If an enforced rule has a report-only equivalent, their severities must match.
+- Add new validators, parser helpers, rules, tests, README entries, and TODO updates at the end of the relevant existing section or file unless explicitly asked to reorder.
+- When a TODO item is implemented, remove it from `TODO.md`.
 
 ## Detail Text
 
@@ -43,3 +46,4 @@
 - Class tests should use `Test<SubjectClassName>`.
 - Method tests should use `test_<subject_method_name>_<scenario>`.
 - Cross-rule invariants belong in `tests/test_rules.py`.
+- Prefer extending an existing parametrized test over adding a separate test when the behavior is the same.
