@@ -23,6 +23,16 @@ _COOP_RE = re.compile(
     r"^(?P<policy>unsafe-none|same-origin-allow-popups|same-origin|noopener-allow-popups)"
     r'(; report-to=(?P<report_to>"[^"]+"|[^";]+))?$'
 )
+_REFERRER_POLICY_VALUES = {
+    "no-referrer",
+    "no-referrer-when-downgrade",
+    "same-origin",
+    "origin",
+    "strict-origin",
+    "origin-when-cross-origin",
+    "strict-origin-when-cross-origin",
+    "unsafe-url",
+}
 
 
 def parse_strict_transport_security_header(value: str) -> StrictTransportSecurityHeader:
@@ -89,3 +99,12 @@ def parse_content_security_policy(value: str) -> dict[str, list[str]]:
         sources = [s.lower() for s in tokens[1:]]
         directives[name] = sources
     return directives
+
+
+def parse_referrer_policy_header(value: str) -> str:
+    policy = value.strip().lower()
+
+    if policy not in _REFERRER_POLICY_VALUES:
+        raise ValueError(f"Invalid Referrer-Policy header value: {value!r}")
+
+    return policy

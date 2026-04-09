@@ -60,6 +60,9 @@ from netkatana.validators.http.headers import (
     hsts_max_age_zero,
     hsts_missing,
     hsts_preload_not_eligible,
+    referrer_policy_invalid,
+    referrer_policy_missing,
+    referrer_policy_unsafe,
     x_content_type_options_duplicated,
     x_content_type_options_invalid,
     x_content_type_options_missing,
@@ -2265,3 +2268,109 @@ async def test_x_content_type_options_duplicated_duplicated():
 
     assert exc_info.value.message == "X-Content-Type-Options header is duplicated"
     assert exc_info.value.metadata == {"values": "nosniff, sniff"}
+
+
+@pytest.mark.asyncio
+async def test_referrer_policy_missing_missing():
+    response = Response(200)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await referrer_policy_missing(response)
+
+    assert exc_info.value.message == "Referrer-Policy header missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_referrer_policy_missing_present():
+    response = Response(200, headers={"referrer-policy": "strict-origin-when-cross-origin"})
+
+    message = await referrer_policy_missing(response)
+
+    assert message == "Referrer-Policy header present"
+
+
+@pytest.mark.asyncio
+async def test_referrer_policy_invalid_header_absent():
+    response = Response(200)
+
+    message = await referrer_policy_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["invalid", "no-referrer, strict-origin-when-cross-origin"])
+async def test_referrer_policy_invalid_invalid(value: str):
+    response = Response(200, headers={"referrer-policy": value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await referrer_policy_invalid(response)
+
+    assert exc_info.value.message == "Referrer-Policy header is invalid"
+    assert exc_info.value.metadata == {"value": response.headers["referrer-policy"]}
+
+
+@pytest.mark.asyncio
+async def test_referrer_policy_invalid_valid():
+    response = Response(200, headers={"referrer-policy": "  SAME-ORIGIN  "})
+
+    message = await referrer_policy_invalid(response)
+
+    assert message == "Referrer-Policy header is valid"
+
+
+@pytest.mark.asyncio
+async def test_referrer_policy_unsafe_header_absent():
+    response = Response(200)
+
+    message = await referrer_policy_unsafe(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_referrer_policy_unsafe_invalid_header():
+    response = Response(200, headers={"referrer-policy": "invalid"})
+
+    message = await referrer_policy_unsafe(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "policy",
+    [
+        "no-referrer-when-downgrade",
+        "origin",
+        "origin-when-cross-origin",
+        "unsafe-url",
+    ],
+)
+async def test_referrer_policy_unsafe_unsafe(policy: str):
+    response = Response(200, headers={"referrer-policy": policy})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await referrer_policy_unsafe(response)
+
+    assert exc_info.value.message == "Referrer-Policy is weaker than 'strict-origin-when-cross-origin'"
+    assert exc_info.value.metadata == {"policy": policy}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "policy",
+    [
+        "no-referrer",
+        "same-origin",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+    ],
+)
+async def test_referrer_policy_unsafe_not_unsafe(policy: str):
+    response = Response(200, headers={"referrer-policy": policy})
+
+    message = await referrer_policy_unsafe(response)
+
+    assert message == "Referrer-Policy is not weaker than 'strict-origin-when-cross-origin'"
