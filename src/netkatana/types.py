@@ -32,6 +32,12 @@ class StrictTransportSecurityHeader:
     preload: bool
 
 
+@dataclass(frozen=True)
+class CrossOriginEmbedderPolicyHeader:
+    policy: str
+    report_to: str | None
+
+
 class TlsResult(BaseModel):
     host: str
     port: str
