@@ -66,6 +66,8 @@ from netkatana.validators.http.headers import (
     x_content_type_options_duplicated,
     x_content_type_options_invalid,
     x_content_type_options_missing,
+    x_frame_options_invalid,
+    x_frame_options_missing,
 )
 
 
@@ -2374,3 +2376,54 @@ async def test_referrer_policy_unsafe_not_unsafe(policy: str):
     message = await referrer_policy_unsafe(response)
 
     assert message == "Referrer-Policy is not weaker than 'strict-origin-when-cross-origin'"
+
+
+@pytest.mark.asyncio
+async def test_x_frame_options_missing_missing():
+    response = Response(200)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_frame_options_missing(response)
+
+    assert exc_info.value.message == "X-Frame-Options header missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_x_frame_options_missing_present():
+    response = Response(200, headers={"x-frame-options": "DENY"})
+
+    message = await x_frame_options_missing(response)
+
+    assert message == "X-Frame-Options header present"
+
+
+@pytest.mark.asyncio
+async def test_x_frame_options_invalid_header_absent():
+    response = Response(200)
+
+    message = await x_frame_options_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["ALLOW-FROM https://example.com", "deny, deny"])
+async def test_x_frame_options_invalid_invalid(value: str):
+    response = Response(200, headers={"x-frame-options": value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_frame_options_invalid(response)
+
+    assert exc_info.value.message == "X-Frame-Options header is invalid"
+    assert exc_info.value.metadata == {"value": value}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["DENY", " sameorigin "])
+async def test_x_frame_options_invalid_valid(value: str):
+    response = Response(200, headers={"x-frame-options": value})
+
+    message = await x_frame_options_invalid(response)
+
+    assert message == "X-Frame-Options header is valid"

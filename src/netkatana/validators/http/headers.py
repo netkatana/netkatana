@@ -7,6 +7,7 @@ from netkatana.utils import (
     parse_cross_origin_opener_policy_header,
     parse_referrer_policy_header,
     parse_strict_transport_security_header,
+    parse_x_frame_options_header,
 )
 
 _HSTS_MIN_MAX_AGE = 31_536_000  # one year
@@ -26,6 +27,7 @@ _COOP_HEADER = "cross-origin-opener-policy"
 _COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
 _REFERRER_POLICY_HEADER = "referrer-policy"
 _X_CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
+_X_FRAME_OPTIONS_HEADER = "x-frame-options"
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -926,3 +928,24 @@ async def referrer_policy_unsafe(response: Response) -> str | None:
         )
 
     return "Referrer-Policy is not weaker than 'strict-origin-when-cross-origin'"
+
+
+async def x_frame_options_missing(response: Response) -> str | None:
+    if _X_FRAME_OPTIONS_HEADER not in response.headers:
+        raise ValidationError("X-Frame-Options header missing")
+
+    return "X-Frame-Options header present"
+
+
+async def x_frame_options_invalid(response: Response) -> str | None:
+    if _X_FRAME_OPTIONS_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_X_FRAME_OPTIONS_HEADER]
+
+    try:
+        parse_x_frame_options_header(value)
+    except ValueError as e:
+        raise ValidationError("X-Frame-Options header is invalid", metadata={"value": value}) from e
+
+    return "X-Frame-Options header is valid"
