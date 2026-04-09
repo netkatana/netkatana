@@ -76,6 +76,8 @@ Implemented checks:
 - headers_referrer_policy_missing
 - headers_referrer_policy_invalid
 - headers_referrer_policy_unsafe
+- headers_x_frame_options_missing
+- headers_x_frame_options_invalid
 - tls_version_deprecated
 - tls_version_outdated
 - tls_cert_expired

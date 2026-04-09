@@ -108,3 +108,12 @@ def parse_referrer_policy_header(value: str) -> str:
         raise ValueError(f"Invalid Referrer-Policy header value: {value!r}")
 
     return policy
+
+
+def parse_x_frame_options_header(value: str) -> str:
+    option = value.strip().lower()
+
+    if option not in {"deny", "sameorigin"}:
+        raise ValueError(f"Invalid X-Frame-Options header value: {value!r}")
+
+    return option

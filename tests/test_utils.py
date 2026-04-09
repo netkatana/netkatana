@@ -11,6 +11,7 @@ from netkatana.utils import (
     parse_cross_origin_opener_policy_header,
     parse_referrer_policy_header,
     parse_strict_transport_security_header,
+    parse_x_frame_options_header,
 )
 
 
@@ -228,3 +229,30 @@ def test_parse_referrer_policy_header_valid(value: str, expected: str):
 def test_parse_referrer_policy_header_invalid(value: str):
     with pytest.raises(ValueError):
         parse_referrer_policy_header(value)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("DENY", "deny"),
+        (" sameorigin ", "sameorigin"),
+    ],
+)
+def test_parse_x_frame_options_header_valid(value: str, expected: str):
+    result = parse_x_frame_options_header(value)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "ALLOW-FROM https://example.com",
+        "deny, deny",
+        "same-origin",
+    ],
+)
+def test_parse_x_frame_options_header_invalid(value: str):
+    with pytest.raises(ValueError):
+        parse_x_frame_options_header(value)

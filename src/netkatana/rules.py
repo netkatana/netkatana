@@ -64,6 +64,8 @@ from netkatana.validators.http.headers import (
     x_content_type_options_duplicated,
     x_content_type_options_invalid,
     x_content_type_options_missing,
+    x_frame_options_invalid,
+    x_frame_options_missing,
 )
 from netkatana.validators.tls import (
     tls_cert_expired,
@@ -454,6 +456,18 @@ http_rules = [
         severity=Severity.WARNING,
         detail="Policies weaker than 'strict-origin-when-cross-origin' send more referrer information than the modern baseline, increasing cross-origin origin, path, or query leakage.",
         validator=referrer_policy_unsafe,
+    ),
+    HttpRule(
+        code="headers_x_frame_options_missing",
+        severity=Severity.WARNING,
+        detail="The 'X-Frame-Options' header asks browsers to block framing or restrict it to the same origin, reducing clickjacking exposure in browsers that still enforce it.",
+        validator=x_frame_options_missing,
+    ),
+    HttpRule(
+        code="headers_x_frame_options_invalid",
+        severity=Severity.WARNING,
+        detail="The 'X-Frame-Options' header only accepts the tokens 'DENY' or 'SAMEORIGIN'; other values are ignored by modern browsers and provide no framing protection.",
+        validator=x_frame_options_invalid,
     ),
 ]
 

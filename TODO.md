@@ -6,8 +6,6 @@ This file is ordered by implementation priority, not by protocol.
 
 ### HTTP
 
-- `headers_x_frame_options_missing` — warning
-- `headers_x_frame_options_invalid` — warning
 - `headers_cookie_missing_secure` — critical
 - `headers_cookie_missing_httponly` — warning
 - `headers_cookie_missing_samesite` — warning
