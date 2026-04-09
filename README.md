@@ -70,6 +70,9 @@ Implemented checks:
 - headers_coop_report_only_unsafe_none
 - headers_coop_report_only_same_origin_allow_popups
 - headers_coop_report_only_noopener_allow_popups
+- headers_x_content_type_options_missing
+- headers_x_content_type_options_invalid
+- headers_x_content_type_options_duplicated
 - tls_version_deprecated
 - tls_version_outdated
 - tls_cert_expired

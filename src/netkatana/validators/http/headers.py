@@ -23,6 +23,7 @@ _COEP_HEADER = "cross-origin-embedder-policy"
 _COEP_REPORT_ONLY_HEADER = "cross-origin-embedder-policy-report-only"
 _COOP_HEADER = "cross-origin-opener-policy"
 _COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
+_X_CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -852,3 +853,36 @@ async def coop_ro_noopener_allow_popups(response: Response) -> str | None:
         raise ValidationError("Cross-Origin-Opener-Policy-Report-Only (COOP) is noopener-allow-popups")
 
     return "Cross-Origin-Opener-Policy-Report-Only (COOP) is not noopener-allow-popups"
+
+
+async def x_content_type_options_missing(response: Response) -> str | None:
+    if _X_CONTENT_TYPE_OPTIONS_HEADER not in response.headers:
+        raise ValidationError("X-Content-Type-Options header missing")
+
+    return "X-Content-Type-Options header present"
+
+
+async def x_content_type_options_invalid(response: Response) -> str | None:
+    if _X_CONTENT_TYPE_OPTIONS_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_X_CONTENT_TYPE_OPTIONS_HEADER]
+
+    if value.strip().lower() != "nosniff":
+        raise ValidationError("X-Content-Type-Options header is invalid", metadata={"value": value})
+
+    return "X-Content-Type-Options header is valid"
+
+
+async def x_content_type_options_duplicated(response: Response) -> str | None:
+    if _X_CONTENT_TYPE_OPTIONS_HEADER not in response.headers:
+        return None
+
+    values = [value.strip() for value in response.headers.get_list(_X_CONTENT_TYPE_OPTIONS_HEADER)]
+    if len(values) > 1:
+        raise ValidationError(
+            "X-Content-Type-Options header is duplicated",
+            metadata={"values": ", ".join(values)},
+        )
+
+    return "X-Content-Type-Options header is not duplicated"
