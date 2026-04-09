@@ -17,8 +17,6 @@ def extract_host(target: str) -> str:
 
 
 _MAX_AGE_RE = re.compile(r"^max-age=(\d+)$", re.IGNORECASE)
-_COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
-_COOKIE_VALUE_RE = re.compile(r'^(?:[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*|"(?:[\x20-\x21\x23-\x7E]*)")$')
 _COEP_RE = re.compile(
     r'^(?P<policy>unsafe-none|require-corp|credentialless)(; report-to=(?P<report_to>"[^"]+"|[^";]+))?$'
 )
@@ -36,6 +34,10 @@ _REFERRER_POLICY_VALUES = {
     "strict-origin-when-cross-origin",
     "unsafe-url",
 }
+
+# https://datatracker.ietf.org/doc/html/rfc6265#section-4.1.1
+_COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_COOKIE_VALUE_RE = re.compile(r'^(?:[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*|"[\x20-\x21\x23-\x7E]*")$')
 
 
 def parse_strict_transport_security_header(value: str) -> StrictTransportSecurityHeader:
@@ -96,8 +98,6 @@ def parse_content_security_policy(value: str) -> dict[str, list[str]]:
         if not part:
             continue
         tokens = part.split()
-        if not tokens:
-            continue
         name = tokens[0].lower()
         sources = [s.lower() for s in tokens[1:]]
         directives[name] = sources
@@ -123,57 +123,74 @@ def parse_x_frame_options_header(value: str) -> str:
 
 
 def parse_set_cookie_header(value: str) -> SetCookieHeader:
-    parts = [part.strip() for part in value.split(";")]
-    if not parts or not parts[0]:
-        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
-
-    cookie_pair = parts[0]
-    if "=" not in cookie_pair:
-        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
-
-    name, _cookie_value = cookie_pair.split("=", 1)
-    name = name.strip()
-    if not name:
-        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
-    if _COOKIE_NAME_RE.match(name) is None:
-        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
-
-    cookie_value = _cookie_value.strip()
-    if _COOKIE_VALUE_RE.match(cookie_value) is None:
-        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
-
-    secure = False
-    http_only = False
-    same_site = None
-    domain = None
-    path = None
-
-    for attribute in parts[1:]:
-        if not attribute:
-            continue
-
-        key, separator, attribute_value = attribute.partition("=")
-        key = key.strip().lower()
-
-        if separator:
-            attribute_value = attribute_value.strip()
-
-        if key == "secure" and not separator:
-            secure = True
-        elif key == "httponly" and not separator:
-            http_only = True
-        elif key == "samesite" and separator:
-            same_site = attribute_value
-        elif key == "domain" and separator:
-            domain = attribute_value
-        elif key == "path" and separator:
-            path = attribute_value
+    parts = _split_set_cookie_parts(value)
+    cookie_name, _cookie_value = _parse_set_cookie_name_value_pair(parts[0])
+    secure, http_only, same_site, domain, path = _parse_set_cookie_attributes(parts[1:])
 
     return SetCookieHeader(
-        name=name,
+        name=cookie_name,
         secure=secure,
         http_only=http_only,
         same_site=same_site,
         domain=domain,
         path=path,
     )
+
+
+def _split_set_cookie_parts(value: str) -> list[str]:
+    parts = [part.strip() for part in value.split(";")]
+    if not parts or not parts[0]:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    return parts
+
+
+def _parse_set_cookie_name_value_pair(value: str) -> tuple[str, str]:
+    if "=" not in value:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    cookie_name, cookie_value = value.split("=", 1)
+    cookie_name = cookie_name.strip()
+
+    if not cookie_name:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    if _COOKIE_NAME_RE.match(cookie_name) is None:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    cookie_value = cookie_value.strip()
+    if _COOKIE_VALUE_RE.match(cookie_value) is None:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    return cookie_name, cookie_value
+
+
+def _parse_set_cookie_attributes(attributes: list[str]) -> tuple[bool, bool, str | None, str | None, str | None]:
+    secure = False
+    http_only = False
+    same_site = None
+    domain = None
+    path = None
+
+    for attribute in attributes:
+        if not attribute:
+            continue
+
+        attribute_name, separator, attribute_value = attribute.partition("=")
+        attribute_name = attribute_name.strip().lower()
+
+        if separator:
+            attribute_value = attribute_value.strip()
+
+        if attribute_name == "secure" and not separator:
+            secure = True
+        elif attribute_name == "httponly" and not separator:
+            http_only = True
+        elif attribute_name == "samesite" and separator:
+            same_site = attribute_value
+        elif attribute_name == "domain" and separator:
+            domain = attribute_value
+        elif attribute_name == "path" and separator:
+            path = attribute_value
+
+    return secure, http_only, same_site, domain, path
