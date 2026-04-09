@@ -286,12 +286,26 @@ def test_parse_set_cookie_header_with_domain():
     )
 
 
+def test_parse_set_cookie_header_with_expires():
+    result = parse_set_cookie_header("session=abc123; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Secure")
+
+    assert result == SetCookieHeader(
+        name="session",
+        secure=True,
+        http_only=False,
+        same_site=None,
+        domain=None,
+        path=None,
+    )
+
+
 @pytest.mark.parametrize(
     "value",
     [
         "",
         "Secure; HttpOnly",
         "=abc123; Secure",
+        "session=abc123, foo=bar",
     ],
 )
 def test_parse_set_cookie_header_invalid(value: str):

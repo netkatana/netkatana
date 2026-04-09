@@ -17,6 +17,8 @@ def extract_host(target: str) -> str:
 
 
 _MAX_AGE_RE = re.compile(r"^max-age=(\d+)$", re.IGNORECASE)
+_COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_COOKIE_VALUE_RE = re.compile(r'^(?:[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*|"(?:[\x20-\x21\x23-\x7E]*)")$')
 _COEP_RE = re.compile(
     r'^(?P<policy>unsafe-none|require-corp|credentialless)(; report-to=(?P<report_to>"[^"]+"|[^";]+))?$'
 )
@@ -132,6 +134,12 @@ def parse_set_cookie_header(value: str) -> SetCookieHeader:
     name, _cookie_value = cookie_pair.split("=", 1)
     name = name.strip()
     if not name:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+    if _COOKIE_NAME_RE.match(name) is None:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    cookie_value = _cookie_value.strip()
+    if _COOKIE_VALUE_RE.match(cookie_value) is None:
         raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
 
     secure = False

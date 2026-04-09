@@ -79,6 +79,11 @@ Implemented checks:
 - headers_x_frame_options_missing
 - headers_x_frame_options_invalid
 - headers_cookie_secure_missing
+- headers_cookie_httponly_missing
+- headers_cookie_samesite_missing
+- headers_cookie_prefix_secure_misconfigured
+- headers_cookie_prefix_host_misconfigured
+- headers_cookie_invalid
 - tls_version_deprecated
 - tls_version_outdated
 - tls_cert_expired

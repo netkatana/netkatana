@@ -16,6 +16,11 @@ from netkatana.validators.http.headers import (
     coep_ro_invalid,
     coep_ro_unsafe_none,
     coep_unsafe_none,
+    cookie_httponly_missing,
+    cookie_invalid,
+    cookie_prefix_host_misconfigured,
+    cookie_prefix_secure_misconfigured,
+    cookie_samesite_missing,
     cookie_secure_missing,
     coop_invalid,
     coop_missing,
@@ -2507,3 +2512,132 @@ async def test_cookie_secure_missing_invalid_cookie_ignored():
     message = await cookie_secure_missing(response)
 
     assert message == "Set-Cookie headers include 'Secure'"
+
+
+@pytest.mark.asyncio
+async def test_cookie_httponly_missing_all_cookies_httponly():
+    response = Response(
+        200,
+        headers=[
+            ("set-cookie", "session=abc123; Secure; HttpOnly"),
+            ("set-cookie", "prefs=light; HttpOnly; SameSite=Lax"),
+        ],
+    )
+
+    message = await cookie_httponly_missing(response)
+
+    assert message == "Set-Cookie headers include 'HttpOnly'"
+
+
+@pytest.mark.asyncio
+async def test_cookie_httponly_missing_missing_httponly():
+    response = Response(200, headers=[("set-cookie", "session=abc123; Secure")])
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_httponly_missing(response)
+
+    assert [error.message for error in exc_info.value.errors] == ["Set-Cookie header is missing 'HttpOnly'"]
+    assert [error.metadata for error in exc_info.value.errors] == [{"cookie_name": "session"}]
+
+
+@pytest.mark.asyncio
+async def test_cookie_samesite_missing_all_cookies_include_samesite():
+    response = Response(
+        200,
+        headers=[
+            ("set-cookie", "session=abc123; Secure; SameSite=Lax"),
+            ("set-cookie", "prefs=light; HttpOnly; SameSite=Strict"),
+        ],
+    )
+
+    message = await cookie_samesite_missing(response)
+
+    assert message == "Set-Cookie headers include 'SameSite'"
+
+
+@pytest.mark.asyncio
+async def test_cookie_samesite_missing_missing_samesite():
+    response = Response(200, headers=[("set-cookie", "session=abc123; Secure; HttpOnly")])
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_samesite_missing(response)
+
+    assert [error.message for error in exc_info.value.errors] == ["Set-Cookie header is missing 'SameSite'"]
+    assert [error.metadata for error in exc_info.value.errors] == [{"cookie_name": "session"}]
+
+
+@pytest.mark.asyncio
+async def test_cookie_prefix_secure_misconfigured_valid():
+    response = Response(200, headers=[("set-cookie", "__Secure-session=abc123; Secure; HttpOnly")])
+
+    message = await cookie_prefix_secure_misconfigured(response)
+
+    assert message == "'__Secure-' cookies are configured correctly"
+
+
+@pytest.mark.asyncio
+async def test_cookie_prefix_secure_misconfigured_missing_secure():
+    response = Response(200, headers=[("set-cookie", "__Secure-session=abc123; HttpOnly")])
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_prefix_secure_misconfigured(response)
+
+    assert [error.message for error in exc_info.value.errors] == ["'__Secure-' cookie is misconfigured"]
+    assert [error.metadata for error in exc_info.value.errors] == [{"cookie_name": "__Secure-session"}]
+
+
+@pytest.mark.asyncio
+async def test_cookie_prefix_host_misconfigured_valid():
+    response = Response(200, headers=[("set-cookie", "__Host-session=abc123; Secure; Path=/; HttpOnly")])
+
+    message = await cookie_prefix_host_misconfigured(response)
+
+    assert message == "'__Host-' cookies are configured correctly"
+
+
+@pytest.mark.asyncio
+async def test_cookie_prefix_host_misconfigured_with_domain():
+    response = Response(200, headers=[("set-cookie", "__Host-session=abc123; Secure; Path=/; Domain=example.com")])
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_prefix_host_misconfigured(response)
+
+    assert [error.message for error in exc_info.value.errors] == ["'__Host-' cookie is misconfigured"]
+    assert [error.metadata for error in exc_info.value.errors] == [{"cookie_name": "__Host-session"}]
+
+
+@pytest.mark.asyncio
+async def test_cookie_prefix_host_misconfigured_without_path_root():
+    response = Response(200, headers=[("set-cookie", "__Host-session=abc123; Secure; Path=/app")])
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_prefix_host_misconfigured(response)
+
+    assert [error.message for error in exc_info.value.errors] == ["'__Host-' cookie is misconfigured"]
+    assert [error.metadata for error in exc_info.value.errors] == [{"cookie_name": "__Host-session"}]
+
+
+@pytest.mark.asyncio
+async def test_cookie_invalid_valid():
+    response = Response(
+        200,
+        headers=[
+            ("set-cookie", "session=abc123; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Secure"),
+            ("set-cookie", "__Host-id=1; Secure; Path=/"),
+        ],
+    )
+
+    message = await cookie_invalid(response)
+
+    assert message == "Set-Cookie headers are valid"
+
+
+@pytest.mark.asyncio
+async def test_cookie_invalid_invalid():
+    response = Response(200, headers=[("set-cookie", "session=abc123, foo=bar")])
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_invalid(response)
+
+    assert [error.message for error in exc_info.value.errors] == ["Set-Cookie header is invalid"]
+    assert [error.metadata for error in exc_info.value.errors] == [{"value": "session=abc123, foo=bar"}]
