@@ -1,7 +1,11 @@
 import pytest
 
-from netkatana.types import StrictTransportSecurityHeader
-from netkatana.utils import extract_host, parse_strict_transport_security_header
+from netkatana.types import CrossOriginEmbedderPolicyHeader, StrictTransportSecurityHeader
+from netkatana.utils import (
+    extract_host,
+    parse_cross_origin_embedder_policy_header,
+    parse_strict_transport_security_header,
+)
 
 
 def test_extract_host_bare_hostname():
@@ -97,3 +101,48 @@ def test_parse_strict_transport_security_header_invalid_empty_string():
 def test_parse_strict_transport_security_header_invalid_garbage():
     with pytest.raises(ValueError):
         parse_strict_transport_security_header("garbage")
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("require-corp", CrossOriginEmbedderPolicyHeader(policy="require-corp", report_to=None)),
+        ("credentialless", CrossOriginEmbedderPolicyHeader(policy="credentialless", report_to=None)),
+        ("unsafe-none", CrossOriginEmbedderPolicyHeader(policy="unsafe-none", report_to=None)),
+        (
+            'require-corp; report-to="default-endpoint"',
+            CrossOriginEmbedderPolicyHeader(policy="require-corp", report_to='"default-endpoint"'),
+        ),
+        (
+            "credentialless; report-to=endpoint",
+            CrossOriginEmbedderPolicyHeader(policy="credentialless", report_to="endpoint"),
+        ),
+        (
+            'unsafe-none; report-to="group;with:semicolon"',
+            CrossOriginEmbedderPolicyHeader(policy="unsafe-none", report_to='"group;with:semicolon"'),
+        ),
+    ],
+)
+def test_parse_cross_origin_embedder_policy_header_valid(value: str, expected: CrossOriginEmbedderPolicyHeader):
+    result = parse_cross_origin_embedder_policy_header(value)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "invalid",
+        "Require-Corp",
+        "require-corp, credentialless",
+        "require-corp;",
+        "require-corp; report-to",
+        "require-corp; report-to=",
+        'require-corp; report-to="unterminated',
+        "require-corp; foo=bar",
+    ],
+)
+def test_parse_cross_origin_embedder_policy_header_invalid(value: str):
+    with pytest.raises(ValueError):
+        parse_cross_origin_embedder_policy_header(value)

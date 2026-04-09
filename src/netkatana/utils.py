@@ -1,7 +1,7 @@
 import re
 from urllib.parse import urlparse
 
-from netkatana.types import StrictTransportSecurityHeader
+from netkatana.types import CrossOriginEmbedderPolicyHeader, StrictTransportSecurityHeader
 
 
 def extract_host(target: str) -> str:
@@ -12,6 +12,9 @@ def extract_host(target: str) -> str:
 
 
 _MAX_AGE_RE = re.compile(r"^max-age=(\d+)$", re.IGNORECASE)
+_COEP_RE = re.compile(
+    r'^(?P<policy>unsafe-none|require-corp|credentialless)(; report-to=(?P<report_to>"[^"]+"|[^";]+))?$'
+)
 
 
 def parse_strict_transport_security_header(value: str) -> StrictTransportSecurityHeader:
@@ -37,6 +40,18 @@ def parse_strict_transport_security_header(value: str) -> StrictTransportSecurit
         max_age=max_age,
         include_subdomains=include_subdomains,
         preload=preload,
+    )
+
+
+def parse_cross_origin_embedder_policy_header(value: str) -> CrossOriginEmbedderPolicyHeader:
+    match = _COEP_RE.match(value)
+
+    if match is None:
+        raise ValueError(f"Invalid Cross-Origin-Embedder-Policy header value: {value!r}")
+
+    return CrossOriginEmbedderPolicyHeader(
+        policy=match.group("policy"),
+        report_to=match.group("report_to"),
     )
 
 

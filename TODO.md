@@ -16,7 +16,6 @@
 - `headers_cookie_prefix_host_missing` — notice
 - `headers_referrer_policy_missing` — notice
 - `headers_permissions_policy_missing` — notice
-- `headers_cross_origin_embedder_policy_missing` — notice
 - `headers_x_permitted_cross_domain_policies_missing` — notice
 - `headers_server_disclosure` — notice
 - `headers_x_powered_by_disclosure` — notice

@@ -9,6 +9,13 @@ from netkatana.validators.http.headers import (
     access_control_allow_origin_null,
     access_control_allow_origin_wildcard,
     access_control_max_age_excessive,
+    coep_credentialless,
+    coep_invalid,
+    coep_missing,
+    coep_ro_credentialless,
+    coep_ro_invalid,
+    coep_ro_unsafe_none,
+    coep_unsafe_none,
     corp_cross_origin,
     corp_invalid,
     corp_missing,
@@ -1680,3 +1687,217 @@ async def test_corp_cross_origin_same_origin():
     message = await corp_cross_origin(response)
 
     assert message == "Cross-Origin-Resource-Policy (CORP) is not cross-origin"
+
+
+@pytest.mark.asyncio
+async def test_coep_missing_missing():
+    response = Response(200)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coep_missing(response)
+
+    assert exc_info.value.message == "Cross-Origin-Embedder-Policy (COEP) missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coep_missing_present():
+    response = Response(200, headers={"cross-origin-embedder-policy": "require-corp"})
+
+    message = await coep_missing(response)
+
+    assert message == "Cross-Origin-Embedder-Policy (COEP) present"
+
+
+@pytest.mark.asyncio
+async def test_coep_invalid_header_absent():
+    response = Response(200)
+
+    message = await coep_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_invalid_valid():
+    response = Response(200, headers={"cross-origin-embedder-policy": "require-corp"})
+
+    message = await coep_invalid(response)
+
+    assert message == "Cross-Origin-Embedder-Policy (COEP) header is valid"
+
+
+@pytest.mark.asyncio
+async def test_coep_invalid_invalid():
+    value = "invalid"
+    response = Response(200, headers={"cross-origin-embedder-policy": value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coep_invalid(response)
+
+    assert exc_info.value.message == "Cross-Origin-Embedder-Policy (COEP) header is invalid"
+    assert exc_info.value.metadata == {"value": value}
+
+
+@pytest.mark.asyncio
+async def test_coep_unsafe_none_header_absent():
+    response = Response(200)
+
+    message = await coep_unsafe_none(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_unsafe_none_invalid_value():
+    response = Response(200, headers={"cross-origin-embedder-policy": "invalid"})
+
+    message = await coep_unsafe_none(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_unsafe_none_unsafe_none():
+    response = Response(200, headers={"cross-origin-embedder-policy": "unsafe-none"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coep_unsafe_none(response)
+
+    assert exc_info.value.message == "Cross-Origin-Embedder-Policy (COEP) is unsafe-none"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coep_unsafe_none_require_corp():
+    response = Response(200, headers={"cross-origin-embedder-policy": "require-corp"})
+
+    message = await coep_unsafe_none(response)
+
+    assert message == "Cross-Origin-Embedder-Policy (COEP) is not unsafe-none"
+
+
+@pytest.mark.asyncio
+async def test_coep_credentialless_header_absent():
+    response = Response(200)
+
+    message = await coep_credentialless(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_credentialless_invalid_value():
+    response = Response(200, headers={"cross-origin-embedder-policy": "invalid"})
+
+    message = await coep_credentialless(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_credentialless_credentialless():
+    response = Response(200, headers={"cross-origin-embedder-policy": "credentialless"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coep_credentialless(response)
+
+    assert exc_info.value.message == "Cross-Origin-Embedder-Policy (COEP) is credentialless"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coep_credentialless_require_corp():
+    response = Response(200, headers={"cross-origin-embedder-policy": "require-corp"})
+
+    message = await coep_credentialless(response)
+
+    assert message == "Cross-Origin-Embedder-Policy (COEP) is not credentialless"
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_invalid_header_absent():
+    response = Response(200)
+
+    message = await coep_ro_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_invalid_valid():
+    response = Response(200, headers={"cross-origin-embedder-policy-report-only": "require-corp"})
+
+    message = await coep_ro_invalid(response)
+
+    assert message == "Cross-Origin-Embedder-Policy-Report-Only (COEP) header is valid"
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_invalid_invalid():
+    value = "invalid"
+    response = Response(200, headers={"cross-origin-embedder-policy-report-only": value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coep_ro_invalid(response)
+
+    assert exc_info.value.message == "Cross-Origin-Embedder-Policy-Report-Only (COEP) header is invalid"
+    assert exc_info.value.metadata == {"value": value}
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_unsafe_none_header_absent():
+    response = Response(200)
+
+    message = await coep_ro_unsafe_none(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_unsafe_none_unsafe_none():
+    response = Response(200, headers={"cross-origin-embedder-policy-report-only": "unsafe-none"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coep_ro_unsafe_none(response)
+
+    assert exc_info.value.message == "Cross-Origin-Embedder-Policy-Report-Only (COEP) is unsafe-none"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_unsafe_none_require_corp():
+    response = Response(200, headers={"cross-origin-embedder-policy-report-only": "require-corp"})
+
+    message = await coep_ro_unsafe_none(response)
+
+    assert message == "Cross-Origin-Embedder-Policy-Report-Only (COEP) is not unsafe-none"
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_credentialless_header_absent():
+    response = Response(200)
+
+    message = await coep_ro_credentialless(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_credentialless_credentialless():
+    response = Response(200, headers={"cross-origin-embedder-policy-report-only": "credentialless"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await coep_ro_credentialless(response)
+
+    assert exc_info.value.message == "Cross-Origin-Embedder-Policy-Report-Only (COEP) is credentialless"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_coep_ro_credentialless_require_corp():
+    response = Response(200, headers={"cross-origin-embedder-policy-report-only": "require-corp"})
+
+    message = await coep_ro_credentialless(response)
+
+    assert message == "Cross-Origin-Embedder-Policy-Report-Only (COEP) is not credentialless"

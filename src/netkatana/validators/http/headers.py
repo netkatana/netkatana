@@ -1,7 +1,11 @@
 from httpx import Response
 
 from netkatana.exceptions import ValidationError
-from netkatana.utils import parse_content_security_policy, parse_strict_transport_security_header
+from netkatana.utils import (
+    parse_content_security_policy,
+    parse_cross_origin_embedder_policy_header,
+    parse_strict_transport_security_header,
+)
 
 _HSTS_MIN_MAX_AGE = 31_536_000  # one year
 _CSP_HEADER = "content-security-policy"
@@ -14,6 +18,8 @@ _CORS_MAX_AGE_HEADER = "access-control-max-age"
 _CORS_MAX_AGE_EXCESSIVE = 86_400
 _CORP_HEADER = "cross-origin-resource-policy"
 _CORP_VALID_VALUES = {"same-origin", "same-site", "cross-origin"}
+_COEP_HEADER = "cross-origin-embedder-policy"
+_COEP_REPORT_ONLY_HEADER = "cross-origin-embedder-policy-report-only"
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -611,3 +617,104 @@ async def corp_cross_origin(response: Response) -> str | None:
         raise ValidationError("Cross-Origin-Resource-Policy (CORP) is cross-origin")
 
     return "Cross-Origin-Resource-Policy (CORP) is not cross-origin"
+
+
+async def coep_missing(response: Response) -> str | None:
+    if _COEP_HEADER not in response.headers:
+        raise ValidationError("Cross-Origin-Embedder-Policy (COEP) missing")
+
+    return "Cross-Origin-Embedder-Policy (COEP) present"
+
+
+async def coep_invalid(response: Response) -> str | None:
+    if _COEP_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_COEP_HEADER]
+
+    try:
+        parse_cross_origin_embedder_policy_header(value)
+    except ValueError as e:
+        raise ValidationError(
+            "Cross-Origin-Embedder-Policy (COEP) header is invalid",
+            metadata={"value": value},
+        ) from e
+
+    return "Cross-Origin-Embedder-Policy (COEP) header is valid"
+
+
+async def coep_unsafe_none(response: Response) -> str | None:
+    if _COEP_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_embedder_policy_header(response.headers[_COEP_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "unsafe-none":
+        raise ValidationError("Cross-Origin-Embedder-Policy (COEP) is unsafe-none")
+
+    return "Cross-Origin-Embedder-Policy (COEP) is not unsafe-none"
+
+
+async def coep_credentialless(response: Response) -> str | None:
+    if _COEP_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_embedder_policy_header(response.headers[_COEP_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "credentialless":
+        raise ValidationError("Cross-Origin-Embedder-Policy (COEP) is credentialless")
+
+    return "Cross-Origin-Embedder-Policy (COEP) is not credentialless"
+
+
+async def coep_ro_invalid(response: Response) -> str | None:
+    if _COEP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_COEP_REPORT_ONLY_HEADER]
+
+    try:
+        parse_cross_origin_embedder_policy_header(value)
+    except ValueError as e:
+        raise ValidationError(
+            "Cross-Origin-Embedder-Policy-Report-Only (COEP) header is invalid",
+            metadata={"value": value},
+        ) from e
+
+    return "Cross-Origin-Embedder-Policy-Report-Only (COEP) header is valid"
+
+
+async def coep_ro_unsafe_none(response: Response) -> str | None:
+    if _COEP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_embedder_policy_header(response.headers[_COEP_REPORT_ONLY_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "unsafe-none":
+        raise ValidationError("Cross-Origin-Embedder-Policy-Report-Only (COEP) is unsafe-none")
+
+    return "Cross-Origin-Embedder-Policy-Report-Only (COEP) is not unsafe-none"
+
+
+async def coep_ro_credentialless(response: Response) -> str | None:
+    if _COEP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_embedder_policy_header(response.headers[_COEP_REPORT_ONLY_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "credentialless":
+        raise ValidationError("Cross-Origin-Embedder-Policy-Report-Only (COEP) is credentialless")
+
+    return "Cross-Origin-Embedder-Policy-Report-Only (COEP) is not credentialless"

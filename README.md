@@ -54,6 +54,13 @@ Implemented checks:
 - headers_corp_invalid
 - headers_corp_same_site
 - headers_corp_cross_origin
+- headers_coep_missing
+- headers_coep_invalid
+- headers_coep_unsafe_none
+- headers_coep_credentialless
+- headers_coep_report_only_invalid
+- headers_coep_report_only_unsafe_none
+- headers_coep_report_only_credentialless
 - tls_version_deprecated
 - tls_version_outdated
 - tls_cert_expired
