@@ -6,8 +6,6 @@ This file is ordered by implementation priority, not by protocol.
 
 ### HTTP
 
-- `headers_cookie_prefix_secure_missing` — notice
-- `headers_cookie_prefix_host_missing` — notice
 - `headers_server_disclosure` — notice
 - `headers_x_powered_by_disclosure` — notice
 

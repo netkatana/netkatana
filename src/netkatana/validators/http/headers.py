@@ -27,9 +27,9 @@ _COEP_REPORT_ONLY_HEADER = "cross-origin-embedder-policy-report-only"
 _COOP_HEADER = "cross-origin-opener-policy"
 _COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
 _REFERRER_POLICY_HEADER = "referrer-policy"
-_SET_COOKIE_HEADER = "set-cookie"
 _X_CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 _X_FRAME_OPTIONS_HEADER = "x-frame-options"
+_SET_COOKIE_HEADER = "set-cookie"
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:

@@ -159,6 +159,7 @@ def _parse_set_cookie_name_value_pair(value: str) -> tuple[str, str]:
         raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
 
     cookie_value = cookie_value.strip()
+
     if _COOKIE_VALUE_RE.match(cookie_value) is None:
         raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
 
