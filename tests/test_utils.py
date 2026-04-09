@@ -3,13 +3,16 @@ import pytest
 from netkatana.types import (
     CrossOriginEmbedderPolicyHeader,
     CrossOriginOpenerPolicyHeader,
+    SetCookieHeader,
     StrictTransportSecurityHeader,
 )
 from netkatana.utils import (
     extract_host,
+    parse_content_security_policy,
     parse_cross_origin_embedder_policy_header,
     parse_cross_origin_opener_policy_header,
     parse_referrer_policy_header,
+    parse_set_cookie_header,
     parse_strict_transport_security_header,
     parse_x_frame_options_header,
 )
@@ -203,6 +206,24 @@ def test_parse_cross_origin_opener_policy_header_invalid(value: str):
         parse_cross_origin_opener_policy_header(value)
 
 
+def test_parse_content_security_policy_ignores_empty_parts():
+    result = parse_content_security_policy("default-src 'self'; ; script-src https://cdn.example.com")
+
+    assert result == {
+        "default-src": ["'self'"],
+        "script-src": ["https://cdn.example.com"],
+    }
+
+
+def test_parse_content_security_policy_ignores_whitespace_only_parts():
+    result = parse_content_security_policy("default-src 'self';   ;\t; style-src 'none'")
+
+    assert result == {
+        "default-src": ["'self'"],
+        "style-src": ["'none'"],
+    }
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -256,3 +277,112 @@ def test_parse_x_frame_options_header_valid(value: str, expected: str):
 def test_parse_x_frame_options_header_invalid(value: str):
     with pytest.raises(ValueError):
         parse_x_frame_options_header(value)
+
+
+def test_parse_set_cookie_header_with_security_attributes():
+    result = parse_set_cookie_header("session=abc123; Secure; HttpOnly; SameSite=Lax; Path=/")
+
+    assert result == SetCookieHeader(
+        name="session",
+        secure=True,
+        http_only=True,
+        same_site="Lax",
+        domain=None,
+        path="/",
+    )
+
+
+def test_parse_set_cookie_header_with_domain():
+    result = parse_set_cookie_header("prefs=light; Domain=example.com")
+
+    assert result == SetCookieHeader(
+        name="prefs",
+        secure=False,
+        http_only=False,
+        same_site=None,
+        domain="example.com",
+        path=None,
+    )
+
+
+def test_parse_set_cookie_header_with_expires():
+    result = parse_set_cookie_header("session=abc123; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Secure")
+
+    assert result == SetCookieHeader(
+        name="session",
+        secure=True,
+        http_only=False,
+        same_site=None,
+        domain=None,
+        path=None,
+    )
+
+
+def test_parse_set_cookie_header_with_quoted_value():
+    result = parse_set_cookie_header('session="abc123"; Secure; HttpOnly')
+
+    assert result == SetCookieHeader(
+        name="session",
+        secure=True,
+        http_only=True,
+        same_site=None,
+        domain=None,
+        path=None,
+    )
+
+
+def test_parse_set_cookie_header_with_token_name_punctuation():
+    result = parse_set_cookie_header("session-id_v2=abc123!~+|; Secure")
+
+    assert result == SetCookieHeader(
+        name="session-id_v2",
+        secure=True,
+        http_only=False,
+        same_site=None,
+        domain=None,
+        path=None,
+    )
+
+
+def test_parse_set_cookie_header_with_empty_value():
+    result = parse_set_cookie_header("session=; Secure; SameSite=Strict")
+
+    assert result == SetCookieHeader(
+        name="session",
+        secure=True,
+        http_only=False,
+        same_site="Strict",
+        domain=None,
+        path=None,
+    )
+
+
+def test_parse_set_cookie_header_ignores_empty_attributes():
+    result = parse_set_cookie_header("session=abc123; ; Secure; ; HttpOnly")
+
+    assert result == SetCookieHeader(
+        name="session",
+        secure=True,
+        http_only=True,
+        same_site=None,
+        domain=None,
+        path=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "Secure; HttpOnly",
+        "=abc123; Secure",
+        "session=abc123, foo=bar",
+        "session id=abc123; Secure",
+        "session[=abc123; Secure",
+        "session=abc\x07; Secure",
+        "session=abc def; Secure",
+    ],
+)
+def test_parse_set_cookie_header_invalid(value: str):
+    with pytest.raises(ValueError):
+        parse_set_cookie_header(value)

@@ -1,11 +1,12 @@
 from httpx import Response
 
-from netkatana.exceptions import ValidationError
+from netkatana.exceptions import ValidationError, ValidationErrors
 from netkatana.utils import (
     parse_content_security_policy,
     parse_cross_origin_embedder_policy_header,
     parse_cross_origin_opener_policy_header,
     parse_referrer_policy_header,
+    parse_set_cookie_header,
     parse_strict_transport_security_header,
     parse_x_frame_options_header,
 )
@@ -28,6 +29,7 @@ _COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
 _REFERRER_POLICY_HEADER = "referrer-policy"
 _X_CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 _X_FRAME_OPTIONS_HEADER = "x-frame-options"
+_SET_COOKIE_HEADER = "set-cookie"
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -949,3 +951,161 @@ async def x_frame_options_invalid(response: Response) -> str | None:
         raise ValidationError("X-Frame-Options header is invalid", metadata={"value": value}) from e
 
     return "X-Frame-Options header is valid"
+
+
+async def cookie_secure_missing(response: Response) -> str | None:
+    if _SET_COOKIE_HEADER not in response.headers:
+        return None
+
+    errors = []
+    for value in response.headers.get_list(_SET_COOKIE_HEADER):
+        try:
+            cookie = parse_set_cookie_header(value)
+        except ValueError:
+            continue
+
+        if cookie.secure:
+            continue
+
+        errors.append(
+            ValidationError(
+                "Set-Cookie header is missing 'Secure'",
+                metadata={"cookie_name": cookie.name},
+            )
+        )
+
+    if errors:
+        raise ValidationErrors(errors)
+
+    return "Set-Cookie headers include 'Secure'"
+
+
+async def cookie_httponly_missing(response: Response) -> str | None:
+    if _SET_COOKIE_HEADER not in response.headers:
+        return None
+
+    errors = []
+    for value in response.headers.get_list(_SET_COOKIE_HEADER):
+        try:
+            cookie = parse_set_cookie_header(value)
+        except ValueError:
+            continue
+
+        if cookie.http_only:
+            continue
+
+        errors.append(
+            ValidationError(
+                "Set-Cookie header is missing 'HttpOnly'",
+                metadata={"cookie_name": cookie.name},
+            )
+        )
+
+    if errors:
+        raise ValidationErrors(errors)
+
+    return "Set-Cookie headers include 'HttpOnly'"
+
+
+async def cookie_samesite_missing(response: Response) -> str | None:
+    if _SET_COOKIE_HEADER not in response.headers:
+        return None
+
+    errors = []
+    for value in response.headers.get_list(_SET_COOKIE_HEADER):
+        try:
+            cookie = parse_set_cookie_header(value)
+        except ValueError:
+            continue
+
+        if cookie.same_site is not None:
+            continue
+
+        errors.append(
+            ValidationError(
+                "Set-Cookie header is missing 'SameSite'",
+                metadata={"cookie_name": cookie.name},
+            )
+        )
+
+    if errors:
+        raise ValidationErrors(errors)
+
+    return "Set-Cookie headers include 'SameSite'"
+
+
+async def cookie_prefix_secure_misconfigured(response: Response) -> str | None:
+    if _SET_COOKIE_HEADER not in response.headers:
+        return None
+
+    errors = []
+    for value in response.headers.get_list(_SET_COOKIE_HEADER):
+        try:
+            cookie = parse_set_cookie_header(value)
+        except ValueError:
+            continue
+
+        if not cookie.name.startswith("__Secure-"):
+            continue
+
+        if cookie.secure:
+            continue
+
+        errors.append(
+            ValidationError(
+                "'__Secure-' cookie is misconfigured",
+                metadata={"cookie_name": cookie.name},
+            )
+        )
+
+    if errors:
+        raise ValidationErrors(errors)
+
+    return "'__Secure-' cookies are configured correctly"
+
+
+async def cookie_prefix_host_misconfigured(response: Response) -> str | None:
+    if _SET_COOKIE_HEADER not in response.headers:
+        return None
+
+    errors = []
+    for value in response.headers.get_list(_SET_COOKIE_HEADER):
+        try:
+            cookie = parse_set_cookie_header(value)
+        except ValueError:
+            continue
+
+        if not cookie.name.startswith("__Host-"):
+            continue
+
+        if cookie.secure and cookie.domain is None and cookie.path == "/":
+            continue
+
+        errors.append(
+            ValidationError(
+                "'__Host-' cookie is misconfigured",
+                metadata={"cookie_name": cookie.name},
+            )
+        )
+
+    if errors:
+        raise ValidationErrors(errors)
+
+    return "'__Host-' cookies are configured correctly"
+
+
+async def cookie_invalid(response: Response) -> str | None:
+    if _SET_COOKIE_HEADER not in response.headers:
+        return None
+
+    errors = []
+    for value in response.headers.get_list(_SET_COOKIE_HEADER):
+        try:
+            parse_set_cookie_header(value)
+        except ValueError:
+            errors.append(ValidationError("Set-Cookie header is invalid", metadata={"value": value}))
+
+    if errors:
+        raise ValidationErrors(errors)
+
+    return "Set-Cookie headers are valid"

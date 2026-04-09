@@ -44,6 +44,16 @@ class CrossOriginOpenerPolicyHeader:
     report_to: str | None
 
 
+@dataclass(frozen=True)
+class SetCookieHeader:
+    name: str
+    secure: bool
+    http_only: bool
+    same_site: str | None
+    domain: str | None
+    path: str | None
+
+
 class TlsResult(BaseModel):
     host: str
     port: str
