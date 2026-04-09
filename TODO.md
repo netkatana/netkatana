@@ -6,9 +6,6 @@ This file is ordered by implementation priority, not by protocol.
 
 ### HTTP
 
-- `headers_referrer_policy_missing` — notice
-- `headers_referrer_policy_invalid` — warning
-- `headers_referrer_policy_unsafe` — warning
 - `headers_x_frame_options_missing` — warning
 - `headers_x_frame_options_invalid` — warning
 - `headers_cookie_missing_secure` — critical

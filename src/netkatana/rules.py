@@ -58,6 +58,9 @@ from netkatana.validators.http.headers import (
     hsts_max_age_zero,
     hsts_missing,
     hsts_preload_not_eligible,
+    referrer_policy_invalid,
+    referrer_policy_missing,
+    referrer_policy_unsafe,
     x_content_type_options_duplicated,
     x_content_type_options_invalid,
     x_content_type_options_missing,
@@ -433,6 +436,24 @@ http_rules = [
         severity=Severity.CRITICAL,
         detail="The 'X-Content-Type-Options' header should appear only once; duplicate instances create ambiguity and are handled inconsistently across intermediaries and clients.",
         validator=x_content_type_options_duplicated,
+    ),
+    HttpRule(
+        code="headers_referrer_policy_missing",
+        severity=Severity.NOTICE,
+        detail="The 'Referrer-Policy' header controls how much referrer information browsers send on navigations and subresource requests, reducing origin and path leakage to other sites.",
+        validator=referrer_policy_missing,
+    ),
+    HttpRule(
+        code="headers_referrer_policy_invalid",
+        severity=Severity.WARNING,
+        detail="The 'Referrer-Policy' header only accepts a defined policy token; invalid values are ignored and fall back to the user agent or document default policy.",
+        validator=referrer_policy_invalid,
+    ),
+    HttpRule(
+        code="headers_referrer_policy_unsafe",
+        severity=Severity.WARNING,
+        detail="Policies weaker than 'strict-origin-when-cross-origin' send more referrer information than the modern baseline, increasing cross-origin origin, path, or query leakage.",
+        validator=referrer_policy_unsafe,
     ),
 ]
 

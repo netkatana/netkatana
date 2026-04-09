@@ -5,6 +5,7 @@ from netkatana.utils import (
     parse_content_security_policy,
     parse_cross_origin_embedder_policy_header,
     parse_cross_origin_opener_policy_header,
+    parse_referrer_policy_header,
     parse_strict_transport_security_header,
 )
 
@@ -23,6 +24,7 @@ _COEP_HEADER = "cross-origin-embedder-policy"
 _COEP_REPORT_ONLY_HEADER = "cross-origin-embedder-policy-report-only"
 _COOP_HEADER = "cross-origin-opener-policy"
 _COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
+_REFERRER_POLICY_HEADER = "referrer-policy"
 _X_CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 
 
@@ -886,3 +888,41 @@ async def x_content_type_options_duplicated(response: Response) -> str | None:
         )
 
     return "X-Content-Type-Options header is not duplicated"
+
+
+async def referrer_policy_missing(response: Response) -> str | None:
+    if _REFERRER_POLICY_HEADER not in response.headers:
+        raise ValidationError("Referrer-Policy header missing")
+
+    return "Referrer-Policy header present"
+
+
+async def referrer_policy_invalid(response: Response) -> str | None:
+    if _REFERRER_POLICY_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_REFERRER_POLICY_HEADER]
+
+    try:
+        parse_referrer_policy_header(value)
+    except ValueError as e:
+        raise ValidationError("Referrer-Policy header is invalid", metadata={"value": value}) from e
+
+    return "Referrer-Policy header is valid"
+
+
+async def referrer_policy_unsafe(response: Response) -> str | None:
+    if _REFERRER_POLICY_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_referrer_policy_header(response.headers[_REFERRER_POLICY_HEADER])
+    except ValueError:
+        return None
+
+    if policy in {"no-referrer-when-downgrade", "origin", "origin-when-cross-origin", "unsafe-url"}:
+        raise ValidationError(
+            "Referrer-Policy is weaker than 'strict-origin-when-cross-origin'", metadata={"policy": policy}
+        )
+
+    return "Referrer-Policy is not weaker than 'strict-origin-when-cross-origin'"

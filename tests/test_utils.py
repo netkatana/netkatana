@@ -9,6 +9,7 @@ from netkatana.utils import (
     extract_host,
     parse_cross_origin_embedder_policy_header,
     parse_cross_origin_opener_policy_header,
+    parse_referrer_policy_header,
     parse_strict_transport_security_header,
 )
 
@@ -199,3 +200,31 @@ def test_parse_cross_origin_opener_policy_header_valid(value: str, expected: Cro
 def test_parse_cross_origin_opener_policy_header_invalid(value: str):
     with pytest.raises(ValueError):
         parse_cross_origin_opener_policy_header(value)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("strict-origin-when-cross-origin", "strict-origin-when-cross-origin"),
+        ("no-referrer", "no-referrer"),
+        ("  SAME-ORIGIN  ", "same-origin"),
+    ],
+)
+def test_parse_referrer_policy_header_valid(value: str, expected: str):
+    result = parse_referrer_policy_header(value)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "invalid",
+        "strict-origin-when-cross-origin, no-referrer",
+        "same-origin;",
+    ],
+)
+def test_parse_referrer_policy_header_invalid(value: str):
+    with pytest.raises(ValueError):
+        parse_referrer_policy_header(value)
