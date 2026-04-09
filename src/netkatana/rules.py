@@ -58,6 +58,9 @@ from netkatana.validators.http.headers import (
     hsts_max_age_zero,
     hsts_missing,
     hsts_preload_not_eligible,
+    x_content_type_options_duplicated,
+    x_content_type_options_invalid,
+    x_content_type_options_missing,
 )
 from netkatana.validators.tls import (
     tls_cert_expired,
@@ -412,6 +415,24 @@ http_rules = [
         severity=Severity.NOTICE,
         detail="'noopener-allow-popups' in report-only mode is not applied by the current HTML processing model, so it provides little or no rollout signal.",
         validator=coop_ro_noopener_allow_popups,
+    ),
+    HttpRule(
+        code="headers_x_content_type_options_missing",
+        severity=Severity.WARNING,
+        detail="The 'X-Content-Type-Options' header with value 'nosniff' disables MIME sniffing for scripts and styles, reducing exposure to content-type confusion attacks.",
+        validator=x_content_type_options_missing,
+    ),
+    HttpRule(
+        code="headers_x_content_type_options_invalid",
+        severity=Severity.CRITICAL,
+        detail="The 'X-Content-Type-Options' header only accepts the token 'nosniff'; invalid values are ignored by browsers and provide no MIME-sniffing protection.",
+        validator=x_content_type_options_invalid,
+    ),
+    HttpRule(
+        code="headers_x_content_type_options_duplicated",
+        severity=Severity.CRITICAL,
+        detail="The 'X-Content-Type-Options' header should appear only once; duplicate instances create ambiguity and are handled inconsistently across intermediaries and clients.",
+        validator=x_content_type_options_duplicated,
     ),
 ]
 

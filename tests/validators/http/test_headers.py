@@ -60,6 +60,9 @@ from netkatana.validators.http.headers import (
     hsts_max_age_zero,
     hsts_missing,
     hsts_preload_not_eligible,
+    x_content_type_options_duplicated,
+    x_content_type_options_invalid,
+    x_content_type_options_missing,
 )
 
 
@@ -2173,3 +2176,92 @@ async def test_coop_ro_noopener_allow_popups_same_origin():
     message = await coop_ro_noopener_allow_popups(response)
 
     assert message == "Cross-Origin-Opener-Policy-Report-Only (COOP) is not noopener-allow-popups"
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_missing_missing():
+    response = Response(200)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_content_type_options_missing(response)
+
+    assert exc_info.value.message == "X-Content-Type-Options header missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_missing_present():
+    response = Response(200, headers={"x-content-type-options": "nosniff"})
+
+    message = await x_content_type_options_missing(response)
+
+    assert message == "X-Content-Type-Options header present"
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_invalid_header_absent():
+    response = Response(200)
+
+    message = await x_content_type_options_invalid(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_invalid_invalid():
+    response = Response(200, headers={"x-content-type-options": "sniff"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_content_type_options_invalid(response)
+
+    assert exc_info.value.message == "X-Content-Type-Options header is invalid"
+    assert exc_info.value.metadata == {"value": "sniff"}
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_invalid_duplicated_header():
+    response = Response(200, headers=[("x-content-type-options", "nosniff"), ("x-content-type-options", "nosniff")])
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_content_type_options_invalid(response)
+
+    assert exc_info.value.message == "X-Content-Type-Options header is invalid"
+    assert exc_info.value.metadata == {"value": "nosniff, nosniff"}
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_invalid_valid():
+    response = Response(200, headers={"x-content-type-options": "NoSnIfF"})
+
+    message = await x_content_type_options_invalid(response)
+
+    assert message == "X-Content-Type-Options header is valid"
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_duplicated_header_absent():
+    response = Response(200)
+
+    message = await x_content_type_options_duplicated(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_duplicated_single_header():
+    response = Response(200, headers={"x-content-type-options": "nosniff"})
+
+    message = await x_content_type_options_duplicated(response)
+
+    assert message == "X-Content-Type-Options header is not duplicated"
+
+
+@pytest.mark.asyncio
+async def test_x_content_type_options_duplicated_duplicated():
+    response = Response(200, headers=[("x-content-type-options", "nosniff"), ("x-content-type-options", "sniff")])
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_content_type_options_duplicated(response)
+
+    assert exc_info.value.message == "X-Content-Type-Options header is duplicated"
+    assert exc_info.value.metadata == {"values": "nosniff, sniff"}
