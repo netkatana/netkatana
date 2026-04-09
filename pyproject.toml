@@ -1,10 +1,20 @@
 [project]
 name = "netkatana"
-version = "0.1.8"
+version = "0.1.9"
 description = "Add your description here"
 readme = "README.md"
 authors = [
     { name = "Vlad Dmitrievich", email = "2tunnels@proton.me" }
+]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Security",
+    "Topic :: Software Development",
+    "Topic :: System :: Networking :: Monitoring",
 ]
 requires-python = ">=3.14.3"
 dependencies = [
