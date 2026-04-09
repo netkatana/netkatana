@@ -1,7 +1,11 @@
 import re
 from urllib.parse import urlparse
 
-from netkatana.types import CrossOriginEmbedderPolicyHeader, StrictTransportSecurityHeader
+from netkatana.types import (
+    CrossOriginEmbedderPolicyHeader,
+    CrossOriginOpenerPolicyHeader,
+    StrictTransportSecurityHeader,
+)
 
 
 def extract_host(target: str) -> str:
@@ -14,6 +18,10 @@ def extract_host(target: str) -> str:
 _MAX_AGE_RE = re.compile(r"^max-age=(\d+)$", re.IGNORECASE)
 _COEP_RE = re.compile(
     r'^(?P<policy>unsafe-none|require-corp|credentialless)(; report-to=(?P<report_to>"[^"]+"|[^";]+))?$'
+)
+_COOP_RE = re.compile(
+    r"^(?P<policy>unsafe-none|same-origin-allow-popups|same-origin|noopener-allow-popups)"
+    r'(; report-to=(?P<report_to>"[^"]+"|[^";]+))?$'
 )
 
 
@@ -50,6 +58,18 @@ def parse_cross_origin_embedder_policy_header(value: str) -> CrossOriginEmbedder
         raise ValueError(f"Invalid Cross-Origin-Embedder-Policy header value: {value!r}")
 
     return CrossOriginEmbedderPolicyHeader(
+        policy=match.group("policy"),
+        report_to=match.group("report_to"),
+    )
+
+
+def parse_cross_origin_opener_policy_header(value: str) -> CrossOriginOpenerPolicyHeader:
+    match = _COOP_RE.match(value)
+
+    if match is None:
+        raise ValueError(f"Invalid Cross-Origin-Opener-Policy header value: {value!r}")
+
+    return CrossOriginOpenerPolicyHeader(
         policy=match.group("policy"),
         report_to=match.group("report_to"),
     )

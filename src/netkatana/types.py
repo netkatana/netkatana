@@ -38,6 +38,12 @@ class CrossOriginEmbedderPolicyHeader:
     report_to: str | None
 
 
+@dataclass(frozen=True)
+class CrossOriginOpenerPolicyHeader:
+    policy: str
+    report_to: str | None
+
+
 class TlsResult(BaseModel):
     host: str
     port: str

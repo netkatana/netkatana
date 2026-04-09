@@ -4,6 +4,7 @@ from netkatana.exceptions import ValidationError
 from netkatana.utils import (
     parse_content_security_policy,
     parse_cross_origin_embedder_policy_header,
+    parse_cross_origin_opener_policy_header,
     parse_strict_transport_security_header,
 )
 
@@ -20,6 +21,8 @@ _CORP_HEADER = "cross-origin-resource-policy"
 _CORP_VALID_VALUES = {"same-origin", "same-site", "cross-origin"}
 _COEP_HEADER = "cross-origin-embedder-policy"
 _COEP_REPORT_ONLY_HEADER = "cross-origin-embedder-policy-report-only"
+_COOP_HEADER = "cross-origin-opener-policy"
+_COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -718,3 +721,134 @@ async def coep_ro_credentialless(response: Response) -> str | None:
         raise ValidationError("Cross-Origin-Embedder-Policy-Report-Only (COEP) is credentialless")
 
     return "Cross-Origin-Embedder-Policy-Report-Only (COEP) is not credentialless"
+
+
+async def coop_missing(response: Response) -> str | None:
+    if _COOP_HEADER not in response.headers:
+        raise ValidationError("Cross-Origin-Opener-Policy (COOP) missing")
+
+    return "Cross-Origin-Opener-Policy (COOP) present"
+
+
+async def coop_invalid(response: Response) -> str | None:
+    if _COOP_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_COOP_HEADER]
+
+    try:
+        parse_cross_origin_opener_policy_header(value)
+    except ValueError as e:
+        raise ValidationError(
+            "Cross-Origin-Opener-Policy (COOP) header is invalid",
+            metadata={"value": value},
+        ) from e
+
+    return "Cross-Origin-Opener-Policy (COOP) header is valid"
+
+
+async def coop_unsafe_none(response: Response) -> str | None:
+    if _COOP_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_opener_policy_header(response.headers[_COOP_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "unsafe-none":
+        raise ValidationError("Cross-Origin-Opener-Policy (COOP) is unsafe-none")
+
+    return "Cross-Origin-Opener-Policy (COOP) is not unsafe-none"
+
+
+async def coop_same_origin_allow_popups(response: Response) -> str | None:
+    if _COOP_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_opener_policy_header(response.headers[_COOP_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "same-origin-allow-popups":
+        raise ValidationError("Cross-Origin-Opener-Policy (COOP) is same-origin-allow-popups")
+
+    return "Cross-Origin-Opener-Policy (COOP) is not same-origin-allow-popups"
+
+
+async def coop_noopener_allow_popups(response: Response) -> str | None:
+    if _COOP_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_opener_policy_header(response.headers[_COOP_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "noopener-allow-popups":
+        raise ValidationError("Cross-Origin-Opener-Policy (COOP) is noopener-allow-popups")
+
+    return "Cross-Origin-Opener-Policy (COOP) is not noopener-allow-popups"
+
+
+async def coop_ro_invalid(response: Response) -> str | None:
+    if _COOP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    value = response.headers[_COOP_REPORT_ONLY_HEADER]
+
+    try:
+        parse_cross_origin_opener_policy_header(value)
+    except ValueError as e:
+        raise ValidationError(
+            "Cross-Origin-Opener-Policy-Report-Only (COOP) header is invalid",
+            metadata={"value": value},
+        ) from e
+
+    return "Cross-Origin-Opener-Policy-Report-Only (COOP) header is valid"
+
+
+async def coop_ro_unsafe_none(response: Response) -> str | None:
+    if _COOP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_opener_policy_header(response.headers[_COOP_REPORT_ONLY_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "unsafe-none":
+        raise ValidationError("Cross-Origin-Opener-Policy-Report-Only (COOP) is unsafe-none")
+
+    return "Cross-Origin-Opener-Policy-Report-Only (COOP) is not unsafe-none"
+
+
+async def coop_ro_same_origin_allow_popups(response: Response) -> str | None:
+    if _COOP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_opener_policy_header(response.headers[_COOP_REPORT_ONLY_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "same-origin-allow-popups":
+        raise ValidationError("Cross-Origin-Opener-Policy-Report-Only (COOP) is same-origin-allow-popups")
+
+    return "Cross-Origin-Opener-Policy-Report-Only (COOP) is not same-origin-allow-popups"
+
+
+async def coop_ro_noopener_allow_popups(response: Response) -> str | None:
+    if _COOP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    try:
+        policy = parse_cross_origin_opener_policy_header(response.headers[_COOP_REPORT_ONLY_HEADER]).policy
+    except ValueError:
+        return None
+
+    if policy == "noopener-allow-popups":
+        raise ValidationError("Cross-Origin-Opener-Policy-Report-Only (COOP) is noopener-allow-popups")
+
+    return "Cross-Origin-Opener-Policy-Report-Only (COOP) is not noopener-allow-popups"
