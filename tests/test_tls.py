@@ -43,60 +43,61 @@ class _FakeProcess:
         self.wait = None
 
 
-@pytest.mark.asyncio
-async def test_tlsx_runner_yields_parsed_results(mocker: MockerFixture, caplog: LogCaptureFixture):
-    proc = _FakeProcess(
-        [
-            b'{"host":"example.com","port":"443","ip":"127.0.0.1","tls_version":"tls13","cipher":"TLS_AES_128_GCM_SHA256"}\n',
-            b"not json\n",
-            b"\n",
-            b'{"host":"example.org","port":"443","ip":"127.0.0.2","tls_version":"tls12","cipher":"ECDHE-RSA-AES256-GCM-SHA384"}\n',
+class TestTlsxRunner:
+    @pytest.mark.asyncio
+    async def test_run_yields_parsed_results(self, mocker: MockerFixture, caplog: LogCaptureFixture):
+        proc = _FakeProcess(
+            [
+                b'{"host":"example.com","port":"443","ip":"127.0.0.1","tls_version":"tls13","cipher":"TLS_AES_128_GCM_SHA256"}\n',
+                b"not json\n",
+                b"\n",
+                b'{"host":"example.org","port":"443","ip":"127.0.0.2","tls_version":"tls12","cipher":"ECDHE-RSA-AES256-GCM-SHA384"}\n',
+            ]
+        )
+        proc.wait = mocker.AsyncMock()
+        create_subprocess_exec = mocker.patch.object(
+            asyncio, "create_subprocess_exec", new=mocker.AsyncMock(return_value=proc)
+        )
+        runner = TlsxRunner()
+
+        with caplog.at_level("WARNING"):
+            results = [result async for result in runner.run(["example.com", "example.org"])]
+
+        assert results == [
+            TlsResult(
+                host="example.com",
+                port="443",
+                ip="127.0.0.1",
+                tls_version="tls13",
+                cipher="TLS_AES_128_GCM_SHA256",
+            ),
+            TlsResult(
+                host="example.org",
+                port="443",
+                ip="127.0.0.2",
+                tls_version="tls12",
+                cipher="ECDHE-RSA-AES256-GCM-SHA384",
+            ),
         ]
-    )
-    proc.wait = mocker.AsyncMock()
-    create_subprocess_exec = mocker.patch.object(
-        asyncio, "create_subprocess_exec", new=mocker.AsyncMock(return_value=proc)
-    )
-    runner = TlsxRunner()
+        assert bytes(proc.stdin.buffer) == b"example.com\nexample.org"
+        assert proc.stdin.closed is True
+        assert "Failed to parse tlsx output: b'not json'" in caplog.text
 
-    with caplog.at_level("WARNING"):
-        results = [result async for result in runner.run(["example.com", "example.org"])]
-
-    assert results == [
-        TlsResult(
-            host="example.com",
-            port="443",
-            ip="127.0.0.1",
-            tls_version="tls13",
-            cipher="TLS_AES_128_GCM_SHA256",
-        ),
-        TlsResult(
-            host="example.org",
-            port="443",
-            ip="127.0.0.2",
-            tls_version="tls12",
-            cipher="ECDHE-RSA-AES256-GCM-SHA384",
-        ),
-    ]
-    assert bytes(proc.stdin.buffer) == b"example.com\nexample.org"
-    assert proc.stdin.closed is True
-    assert "Failed to parse tlsx output: b'not json'" in caplog.text
-
-    create_subprocess_exec.assert_awaited_once_with(
-        "tlsx",
-        "-json",
-        "-tls-version",
-        "-cipher",
-        "-expired",
-        "-self-signed",
-        "-mismatched",
-        "-revoked",
-        "-untrusted",
-        "-silent",
-        "-concurrency",
-        "10",
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    proc.wait.assert_awaited_once_with()
+        create_subprocess_exec.assert_awaited_once_with(
+            "tlsx",
+            "-json",
+            "-tls-version",
+            "-cipher",
+            "-expired",
+            "-self-signed",
+            "-mismatched",
+            "-revoked",
+            "-untrusted",
+            "-silent",
+            "-concurrency",
+            "10",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        proc.wait.assert_awaited_once_with()

@@ -67,6 +67,14 @@ The `detail` field appears on both PASS and FAIL findings. Follow these rules wh
 3. Register the rule in `src/netkatana/rules.py` with `code`, `severity`, `detail`, and `validator`.
 4. Add validator tests under `tests/validators/`.
 
+## Testing conventions
+
+- The `tests/` directory should mirror the `src/netkatana/` directory structure.
+- Functions should be tested with function-based tests.
+- Function test names should follow `test_<subject>_<scenario>`.
+- Classes should be tested with class-based tests using `class Test<SubjectClass>:`.
+- Test names for class methods should follow `test_<subject_method>_<scenario>`.
+
 ## Formatters
 
 All formatters accept `show_passed: bool = False`. When `False` (default), `Severity.PASS` findings are dropped. Pass `--show-passed` on the CLI to include them.
