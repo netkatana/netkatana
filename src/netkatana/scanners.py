@@ -7,10 +7,10 @@ from typing import TypeVar
 import dns.asyncresolver
 import dns.exception
 import httpx
-from pydantic import ValidationError as PydanticValidationError
 
 from netkatana.exceptions import ValidationError, ValidationErrors
 from netkatana.http import Client, RedirectError
+from netkatana.tls import TlsxRunner
 from netkatana.types import (
     DnsResult,
     DnsRule,
@@ -18,7 +18,6 @@ from netkatana.types import (
     HttpRule,
     Rule,
     Severity,
-    TlsResult,
     TlsRule,
 )
 
@@ -89,53 +88,14 @@ class HttpScanner:
 
 
 class TlsScanner:
-    def __init__(self, rules: list[TlsRule], concurrency: int = 10) -> None:
+    def __init__(self, rules: list[TlsRule], concurrency: int = 10, runner: TlsxRunner | None = None) -> None:
         self._rules = rules
-        self._concurrency = concurrency
+        self._runner = runner or TlsxRunner(concurrency)
 
     async def scan(self, targets: Sequence[str]) -> AsyncIterator[Finding]:
-        proc = await asyncio.create_subprocess_exec(
-            "tlsx",
-            "-json",
-            "-tls-version",
-            "-cipher",
-            "-expired",
-            "-self-signed",
-            "-mismatched",
-            "-revoked",
-            "-untrusted",
-            "-silent",
-            "-concurrency",
-            str(self._concurrency),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-
-        async def _write_stdin() -> None:
-            assert proc.stdin is not None
-            proc.stdin.write("\n".join(targets).encode())
-            await proc.stdin.drain()
-            proc.stdin.close()
-
-        write_task = asyncio.create_task(_write_stdin())
-
-        assert proc.stdout is not None
-
-        async for line in proc.stdout:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                result = TlsResult.model_validate_json(line)
-            except PydanticValidationError:
-                _logger.warning("Failed to parse tlsx output: %s", line)
-                continue
+        async for result in self._runner.run(targets):
             for finding in await _run_rules(result.host, self._rules, result):
                 yield finding
-
-        await write_task
-        await proc.wait()
 
 
 class DnsScanner:
