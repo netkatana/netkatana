@@ -14,6 +14,7 @@ from netkatana.validators.http.headers import (
     coep_ro_invalid,
     coep_ro_unsafe_none,
     coep_unsafe_none,
+    cookie_secure_missing,
     coop_invalid,
     coop_missing,
     coop_noopener_allow_popups,
@@ -468,6 +469,12 @@ http_rules = [
         severity=Severity.WARNING,
         detail="The 'X-Frame-Options' header only accepts the tokens 'DENY' or 'SAMEORIGIN'; other values are ignored by modern browsers and provide no framing protection.",
         validator=x_frame_options_invalid,
+    ),
+    HttpRule(
+        code="headers_cookie_secure_missing",
+        severity=Severity.CRITICAL,
+        detail="The 'Secure' attribute ensures a cookie is sent only over HTTPS; without it, the cookie can be exposed on plain HTTP requests and intercepted by network attackers.",
+        validator=cookie_secure_missing,
     ),
 ]
 

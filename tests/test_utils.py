@@ -3,6 +3,7 @@ import pytest
 from netkatana.types import (
     CrossOriginEmbedderPolicyHeader,
     CrossOriginOpenerPolicyHeader,
+    SetCookieHeader,
     StrictTransportSecurityHeader,
 )
 from netkatana.utils import (
@@ -10,6 +11,7 @@ from netkatana.utils import (
     parse_cross_origin_embedder_policy_header,
     parse_cross_origin_opener_policy_header,
     parse_referrer_policy_header,
+    parse_set_cookie_header,
     parse_strict_transport_security_header,
     parse_x_frame_options_header,
 )
@@ -256,3 +258,42 @@ def test_parse_x_frame_options_header_valid(value: str, expected: str):
 def test_parse_x_frame_options_header_invalid(value: str):
     with pytest.raises(ValueError):
         parse_x_frame_options_header(value)
+
+
+def test_parse_set_cookie_header_with_security_attributes():
+    result = parse_set_cookie_header("session=abc123; Secure; HttpOnly; SameSite=Lax; Path=/")
+
+    assert result == SetCookieHeader(
+        name="session",
+        secure=True,
+        http_only=True,
+        same_site="Lax",
+        domain=None,
+        path="/",
+    )
+
+
+def test_parse_set_cookie_header_with_domain():
+    result = parse_set_cookie_header("prefs=light; Domain=example.com")
+
+    assert result == SetCookieHeader(
+        name="prefs",
+        secure=False,
+        http_only=False,
+        same_site=None,
+        domain="example.com",
+        path=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "Secure; HttpOnly",
+        "=abc123; Secure",
+    ],
+)
+def test_parse_set_cookie_header_invalid(value: str):
+    with pytest.raises(ValueError):
+        parse_set_cookie_header(value)

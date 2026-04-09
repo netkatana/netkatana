@@ -1,7 +1,7 @@
 import pytest
 from httpx import Response
 
-from netkatana.exceptions import ValidationError
+from netkatana.exceptions import ValidationError, ValidationErrors
 from netkatana.validators.http.headers import (
     access_control_allow_credentials_invalid,
     access_control_allow_credentials_wildcard,
@@ -16,6 +16,7 @@ from netkatana.validators.http.headers import (
     coep_ro_invalid,
     coep_ro_unsafe_none,
     coep_unsafe_none,
+    cookie_secure_missing,
     coop_invalid,
     coop_missing,
     coop_noopener_allow_popups,
@@ -2427,3 +2428,82 @@ async def test_x_frame_options_invalid_valid(value: str):
     message = await x_frame_options_invalid(response)
 
     assert message == "X-Frame-Options header is valid"
+
+
+@pytest.mark.asyncio
+async def test_cookie_secure_missing_header_absent():
+    response = Response(200)
+
+    message = await cookie_secure_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_cookie_secure_missing_all_cookies_secure():
+    response = Response(
+        200,
+        headers=[
+            ("set-cookie", "session=abc123; Secure; HttpOnly"),
+            ("set-cookie", "prefs=light; Secure; SameSite=Lax"),
+        ],
+    )
+
+    message = await cookie_secure_missing(response)
+
+    assert message == "Set-Cookie headers include 'Secure'"
+
+
+@pytest.mark.asyncio
+async def test_cookie_secure_missing_missing_secure():
+    response = Response(
+        200,
+        headers=[
+            ("set-cookie", "session=abc123; Secure; HttpOnly"),
+            ("set-cookie", "prefs=light; SameSite=Lax"),
+        ],
+    )
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_secure_missing(response)
+
+    assert [error.message for error in exc_info.value.errors] == ["Set-Cookie header is missing 'Secure'"]
+    assert [error.metadata for error in exc_info.value.errors] == [{"cookie_name": "prefs"}]
+
+
+@pytest.mark.asyncio
+async def test_cookie_secure_missing_multiple_cookies_missing_secure():
+    response = Response(
+        200,
+        headers=[
+            ("set-cookie", "session=abc123"),
+            ("set-cookie", "prefs=light; SameSite=Lax"),
+        ],
+    )
+
+    with pytest.raises(ValidationErrors) as exc_info:
+        await cookie_secure_missing(response)
+
+    assert [error.message for error in exc_info.value.errors] == [
+        "Set-Cookie header is missing 'Secure'",
+        "Set-Cookie header is missing 'Secure'",
+    ]
+    assert [error.metadata for error in exc_info.value.errors] == [
+        {"cookie_name": "session"},
+        {"cookie_name": "prefs"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cookie_secure_missing_invalid_cookie_ignored():
+    response = Response(
+        200,
+        headers=[
+            ("set-cookie", "Secure; HttpOnly"),
+            ("set-cookie", "session=abc123; Secure"),
+        ],
+    )
+
+    message = await cookie_secure_missing(response)
+
+    assert message == "Set-Cookie headers include 'Secure'"

@@ -1,11 +1,12 @@
 from httpx import Response
 
-from netkatana.exceptions import ValidationError
+from netkatana.exceptions import ValidationError, ValidationErrors
 from netkatana.utils import (
     parse_content_security_policy,
     parse_cross_origin_embedder_policy_header,
     parse_cross_origin_opener_policy_header,
     parse_referrer_policy_header,
+    parse_set_cookie_header,
     parse_strict_transport_security_header,
     parse_x_frame_options_header,
 )
@@ -26,6 +27,7 @@ _COEP_REPORT_ONLY_HEADER = "cross-origin-embedder-policy-report-only"
 _COOP_HEADER = "cross-origin-opener-policy"
 _COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
 _REFERRER_POLICY_HEADER = "referrer-policy"
+_SET_COOKIE_HEADER = "set-cookie"
 _X_CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 _X_FRAME_OPTIONS_HEADER = "x-frame-options"
 
@@ -949,3 +951,30 @@ async def x_frame_options_invalid(response: Response) -> str | None:
         raise ValidationError("X-Frame-Options header is invalid", metadata={"value": value}) from e
 
     return "X-Frame-Options header is valid"
+
+
+async def cookie_secure_missing(response: Response) -> str | None:
+    if _SET_COOKIE_HEADER not in response.headers:
+        return None
+
+    errors = []
+    for value in response.headers.get_list(_SET_COOKIE_HEADER):
+        try:
+            cookie = parse_set_cookie_header(value)
+        except ValueError:
+            continue
+
+        if cookie.secure:
+            continue
+
+        errors.append(
+            ValidationError(
+                "Set-Cookie header is missing 'Secure'",
+                metadata={"cookie_name": cookie.name},
+            )
+        )
+
+    if errors:
+        raise ValidationErrors(errors)
+
+    return "Set-Cookie headers include 'Secure'"

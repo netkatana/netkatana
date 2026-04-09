@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from netkatana.types import (
     CrossOriginEmbedderPolicyHeader,
     CrossOriginOpenerPolicyHeader,
+    SetCookieHeader,
     StrictTransportSecurityHeader,
 )
 
@@ -117,3 +118,54 @@ def parse_x_frame_options_header(value: str) -> str:
         raise ValueError(f"Invalid X-Frame-Options header value: {value!r}")
 
     return option
+
+
+def parse_set_cookie_header(value: str) -> SetCookieHeader:
+    parts = [part.strip() for part in value.split(";")]
+    if not parts or not parts[0]:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    cookie_pair = parts[0]
+    if "=" not in cookie_pair:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    name, _cookie_value = cookie_pair.split("=", 1)
+    name = name.strip()
+    if not name:
+        raise ValueError(f"Invalid Set-Cookie header value: {value!r}")
+
+    secure = False
+    http_only = False
+    same_site = None
+    domain = None
+    path = None
+
+    for attribute in parts[1:]:
+        if not attribute:
+            continue
+
+        key, separator, attribute_value = attribute.partition("=")
+        key = key.strip().lower()
+
+        if separator:
+            attribute_value = attribute_value.strip()
+
+        if key == "secure" and not separator:
+            secure = True
+        elif key == "httponly" and not separator:
+            http_only = True
+        elif key == "samesite" and separator:
+            same_site = attribute_value
+        elif key == "domain" and separator:
+            domain = attribute_value
+        elif key == "path" and separator:
+            path = attribute_value
+
+    return SetCookieHeader(
+        name=name,
+        secure=secure,
+        http_only=http_only,
+        same_site=same_site,
+        domain=domain,
+        path=path,
+    )

@@ -6,13 +6,13 @@ This file is ordered by implementation priority, not by protocol.
 
 ### HTTP
 
-- `headers_cookie_missing_secure` — critical
-- `headers_cookie_missing_httponly` — warning
-- `headers_cookie_missing_samesite` — warning
+- `headers_cookie_httponly_missing` — warning
+- `headers_cookie_samesite_missing` — warning
 - `headers_cookie_prefix_secure_misconfigured` — critical
 - `headers_cookie_prefix_host_misconfigured` — critical
 - `headers_cookie_prefix_secure_missing` — notice
 - `headers_cookie_prefix_host_missing` — notice
+- `headers_cookie_invalid` — warning
 - `headers_server_disclosure` — notice
 - `headers_x_powered_by_disclosure` — notice
 
