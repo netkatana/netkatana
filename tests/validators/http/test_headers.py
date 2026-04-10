@@ -38,15 +38,25 @@ from netkatana.validators.http.headers import (
     csp_base_uri_missing,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
+    csp_duplicated,
+    csp_font_src_missing,
+    csp_font_src_unrestricted,
     csp_form_action_missing,
     csp_frame_ancestors_missing,
+    csp_img_src_missing,
+    csp_img_src_unrestricted,
     csp_missing,
     csp_object_src_unsafe,
     csp_ro_base_uri_missing,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
+    csp_ro_duplicated,
+    csp_ro_font_src_missing,
+    csp_ro_font_src_unrestricted,
     csp_ro_form_action_missing,
     csp_ro_frame_ancestors_missing,
+    csp_ro_img_src_missing,
+    csp_ro_img_src_unrestricted,
     csp_ro_object_src_unsafe,
     csp_ro_script_src_missing,
     csp_ro_script_src_unrestricted,
@@ -54,12 +64,17 @@ from netkatana.validators.http.headers import (
     csp_ro_style_src_unrestricted,
     csp_ro_unsafe_eval,
     csp_ro_unsafe_inline,
+    csp_ro_worker_src_missing,
+    csp_ro_worker_src_unrestricted,
     csp_script_src_missing,
     csp_script_src_unrestricted,
     csp_style_src_missing,
     csp_style_src_unrestricted,
     csp_unsafe_eval,
     csp_unsafe_inline,
+    csp_worker_src_missing,
+    csp_worker_src_unrestricted,
+    hsts_duplicated,
     hsts_include_subdomains_missing,
     hsts_invalid,
     hsts_max_age_low,
@@ -69,11 +84,14 @@ from netkatana.validators.http.headers import (
     referrer_policy_invalid,
     referrer_policy_missing,
     referrer_policy_unsafe,
+    server_disclosure,
     x_content_type_options_duplicated,
     x_content_type_options_invalid,
     x_content_type_options_missing,
+    x_frame_options_duplicated,
     x_frame_options_invalid,
     x_frame_options_missing,
+    x_powered_by_disclosure,
 )
 
 
@@ -124,6 +142,41 @@ async def test_hsts_invalid_valid():
     message = await hsts_invalid(response)
 
     assert message == "Strict-Transport-Security (HSTS) header is valid"
+
+
+@pytest.mark.asyncio
+async def test_hsts_duplicated_header_absent():
+    response = Response(200)
+
+    message = await hsts_duplicated(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_hsts_duplicated_single_header():
+    response = Response(200, headers={"strict-transport-security": "max-age=31536000"})
+
+    message = await hsts_duplicated(response)
+
+    assert message == "Strict-Transport-Security (HSTS) header is not duplicated"
+
+
+@pytest.mark.asyncio
+async def test_hsts_duplicated_duplicated():
+    response = Response(
+        200,
+        headers=[
+            ("strict-transport-security", "max-age=31536000"),
+            ("strict-transport-security", "max-age=63072000; includeSubDomains"),
+        ],
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await hsts_duplicated(response)
+
+    assert exc_info.value.message == "Strict-Transport-Security (HSTS) header is duplicated"
+    assert exc_info.value.metadata == {"values": "max-age=31536000, max-age=63072000; includeSubDomains"}
 
 
 @pytest.mark.asyncio
@@ -334,6 +387,76 @@ async def test_csp_missing_present():
     message = await csp_missing(response)
 
     assert message == "Content-Security-Policy (CSP) present"
+
+
+@pytest.mark.asyncio
+async def test_csp_duplicated_header_absent():
+    response = Response(200)
+
+    message = await csp_duplicated(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_duplicated_single_header():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+
+    message = await csp_duplicated(response)
+
+    assert message == "Content-Security-Policy (CSP) header is not duplicated"
+
+
+@pytest.mark.asyncio
+async def test_csp_duplicated_duplicated():
+    response = Response(
+        200,
+        headers=[
+            ("content-security-policy", "default-src 'self'"),
+            ("content-security-policy", "script-src 'self'"),
+        ],
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_duplicated(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) header is duplicated"
+    assert exc_info.value.metadata == {"values": "default-src 'self', script-src 'self'"}
+
+
+@pytest.mark.asyncio
+async def test_csp_report_only_duplicated_header_absent():
+    response = Response(200)
+
+    message = await csp_ro_duplicated(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_report_only_duplicated_single_header():
+    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
+
+    message = await csp_ro_duplicated(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) header is not duplicated"
+
+
+@pytest.mark.asyncio
+async def test_csp_report_only_duplicated_duplicated():
+    response = Response(
+        200,
+        headers=[
+            ("content-security-policy-report-only", "default-src 'self'"),
+            ("content-security-policy-report-only", "img-src 'self'"),
+        ],
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_ro_duplicated(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) header is duplicated"
+    assert exc_info.value.metadata == {"values": "default-src 'self', img-src 'self'"}
 
 
 @pytest.mark.asyncio
@@ -1277,6 +1400,240 @@ async def test_csp_connect_src_unrestricted_clean_connect_src():
 
 
 @pytest.mark.asyncio
+async def test_csp_img_src_unrestricted_no_csp():
+    response = Response(200)
+
+    message = await csp_img_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_img_src_unrestricted_no_img_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "base-uri 'self'"})
+
+    message = await csp_img_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_img_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy": "img-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_img_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) img-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_img_src_unrestricted_wildcard_via_default_src():
+    response = Response(200, headers={"content-security-policy": "default-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_img_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) img-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_img_src_unrestricted_clean_img_src():
+    response = Response(200, headers={"content-security-policy": "img-src 'self'"})
+
+    message = await csp_img_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy (CSP) img-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_unrestricted_no_csp():
+    response = Response(200)
+
+    message = await csp_font_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_unrestricted_no_font_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "base-uri 'self'"})
+
+    message = await csp_font_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_unrestricted_wildcard_http():
+    response = Response(200, headers={"content-security-policy": "font-src http:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_font_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) font-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_unrestricted_wildcard_via_default_src():
+    response = Response(200, headers={"content-security-policy": "default-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_font_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) font-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_unrestricted_clean_font_src():
+    response = Response(200, headers={"content-security-policy": "font-src https://fonts.example"})
+
+    message = await csp_font_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy (CSP) font-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_unrestricted_no_csp():
+    response = Response(200)
+
+    message = await csp_worker_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_unrestricted_no_worker_src_no_script_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "base-uri 'self'"})
+
+    message = await csp_worker_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_unrestricted_wildcard_via_script_src():
+    response = Response(200, headers={"content-security-policy": "script-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_worker_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) worker-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_unrestricted_wildcard_via_default_src():
+    response = Response(200, headers={"content-security-policy": "default-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_worker_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) worker-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_unrestricted_clean_worker_src():
+    response = Response(200, headers={"content-security-policy": "worker-src 'self'"})
+
+    message = await csp_worker_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy (CSP) worker-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_csp_img_src_missing_no_csp():
+    response = Response(200)
+
+    message = await csp_img_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_img_src_missing_no_img_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "base-uri 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_img_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) img-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_img_src_missing_present():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+
+    message = await csp_img_src_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) img-src is present"
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_missing_no_csp():
+    response = Response(200)
+
+    message = await csp_font_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_missing_no_font_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "base-uri 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_font_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) font-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_font_src_missing_present():
+    response = Response(200, headers={"content-security-policy": "font-src 'self'"})
+
+    message = await csp_font_src_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) font-src is present"
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_missing_no_csp():
+    response = Response(200)
+
+    message = await csp_worker_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_missing_no_worker_src_no_script_src_no_default_src():
+    response = Response(200, headers={"content-security-policy": "base-uri 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_worker_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) worker-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_worker_src_missing_present_via_script_src():
+    response = Response(200, headers={"content-security-policy": "script-src 'self'"})
+
+    message = await csp_worker_src_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) worker-src is present"
+
+
+@pytest.mark.asyncio
 async def test_csp_ro_connect_src_missing_no_header():
     response = Response(200)
 
@@ -1332,6 +1689,207 @@ async def test_csp_ro_connect_src_unrestricted_clean_connect_src():
     message = await csp_ro_connect_src_unrestricted(response)
 
     assert message == "Content-Security-Policy-Report-Only (CSP) connect-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_img_src_unrestricted_no_header():
+    response = Response(200)
+
+    message = await csp_ro_img_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_img_src_unrestricted_no_img_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "base-uri 'self'"})
+
+    message = await csp_ro_img_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_img_src_unrestricted_wildcard_star():
+    response = Response(200, headers={"content-security-policy-report-only": "img-src *"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_ro_img_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) img-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_img_src_unrestricted_clean_img_src():
+    response = Response(200, headers={"content-security-policy-report-only": "img-src 'self'"})
+
+    message = await csp_ro_img_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) img-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_font_src_unrestricted_no_header():
+    response = Response(200)
+
+    message = await csp_ro_font_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_font_src_unrestricted_no_font_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "base-uri 'self'"})
+
+    message = await csp_ro_font_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_font_src_unrestricted_wildcard_via_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "default-src https:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_ro_font_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) font-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_font_src_unrestricted_clean_font_src():
+    response = Response(200, headers={"content-security-policy-report-only": "font-src https://fonts.example"})
+
+    message = await csp_ro_font_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) font-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_worker_src_unrestricted_no_header():
+    response = Response(200)
+
+    message = await csp_ro_worker_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_worker_src_unrestricted_no_worker_src_no_script_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "base-uri 'self'"})
+
+    message = await csp_ro_worker_src_unrestricted(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_worker_src_unrestricted_wildcard_via_script_src():
+    response = Response(200, headers={"content-security-policy-report-only": "script-src http:"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_ro_worker_src_unrestricted(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) worker-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_worker_src_unrestricted_clean_worker_src():
+    response = Response(200, headers={"content-security-policy-report-only": "worker-src 'self'"})
+
+    message = await csp_ro_worker_src_unrestricted(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) worker-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_img_src_missing_no_header():
+    response = Response(200)
+
+    message = await csp_ro_img_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_img_src_missing_no_img_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "base-uri 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_ro_img_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) img-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_img_src_missing_present():
+    response = Response(200, headers={"content-security-policy-report-only": "img-src 'self'"})
+
+    message = await csp_ro_img_src_missing(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) img-src is present"
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_font_src_missing_no_header():
+    response = Response(200)
+
+    message = await csp_ro_font_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_font_src_missing_no_font_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "base-uri 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_ro_font_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) font-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_font_src_missing_present_via_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
+
+    message = await csp_ro_font_src_missing(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) font-src is present"
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_worker_src_missing_no_header():
+    response = Response(200)
+
+    message = await csp_ro_worker_src_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_worker_src_missing_no_worker_src_no_script_src_no_default_src():
+    response = Response(200, headers={"content-security-policy-report-only": "base-uri 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_ro_worker_src_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) worker-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_ro_worker_src_missing_present():
+    response = Response(200, headers={"content-security-policy-report-only": "worker-src 'self'"})
+
+    message = await csp_ro_worker_src_missing(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) worker-src is present"
 
 
 @pytest.mark.asyncio
@@ -2279,6 +2837,46 @@ async def test_x_content_type_options_duplicated_duplicated():
 
 
 @pytest.mark.asyncio
+async def test_server_disclosure_header_absent():
+    response = Response(200)
+
+    message = await server_disclosure(response)
+
+    assert message == "Server header is not present"
+
+
+@pytest.mark.asyncio
+async def test_server_disclosure_present():
+    response = Response(200, headers={"server": "nginx"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await server_disclosure(response)
+
+    assert exc_info.value.message == "Server header discloses implementation details"
+    assert exc_info.value.metadata == {"value": "nginx"}
+
+
+@pytest.mark.asyncio
+async def test_x_powered_by_disclosure_header_absent():
+    response = Response(200)
+
+    message = await x_powered_by_disclosure(response)
+
+    assert message == "X-Powered-By header is not present"
+
+
+@pytest.mark.asyncio
+async def test_x_powered_by_disclosure_present():
+    response = Response(200, headers={"x-powered-by": "Express"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_powered_by_disclosure(response)
+
+    assert exc_info.value.message == "X-Powered-By header discloses implementation details"
+    assert exc_info.value.metadata == {"value": "Express"}
+
+
+@pytest.mark.asyncio
 async def test_referrer_policy_missing_missing():
     response = Response(200)
 
@@ -2433,6 +3031,35 @@ async def test_x_frame_options_invalid_valid(value: str):
     message = await x_frame_options_invalid(response)
 
     assert message == "X-Frame-Options header is valid"
+
+
+@pytest.mark.asyncio
+async def test_x_frame_options_duplicated_header_absent():
+    response = Response(200)
+
+    message = await x_frame_options_duplicated(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_x_frame_options_duplicated_single_header():
+    response = Response(200, headers={"x-frame-options": "DENY"})
+
+    message = await x_frame_options_duplicated(response)
+
+    assert message == "X-Frame-Options header is not duplicated"
+
+
+@pytest.mark.asyncio
+async def test_x_frame_options_duplicated_duplicated():
+    response = Response(200, headers=[("x-frame-options", "DENY"), ("x-frame-options", "SAMEORIGIN")])
+
+    with pytest.raises(ValidationError) as exc_info:
+        await x_frame_options_duplicated(response)
+
+    assert exc_info.value.message == "X-Frame-Options header is duplicated"
+    assert exc_info.value.metadata == {"values": "DENY, SAMEORIGIN"}
 
 
 @pytest.mark.asyncio
