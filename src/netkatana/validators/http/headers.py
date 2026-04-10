@@ -52,9 +52,6 @@ def _csp_effective_worker_sources(directives: dict[str, list[str]]) -> list[str]
 
 
 def _csp_sources_unrestricted(sources: list[str] | None) -> bool:
-    if sources is None:
-        return False
-
     return "*" in sources or "https:" in sources or "http:" in sources
 
 

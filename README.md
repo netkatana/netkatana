@@ -11,7 +11,9 @@ uvx netkatana tls example.com
 uvx netkatana dns example.com
 ```
 
-Implemented checks:
+## Implemented checks
+
+### Headers
 
 - headers_hsts_missing
 - headers_hsts_invalid
@@ -19,6 +21,7 @@ Implemented checks:
 - headers_hsts_max_age_low
 - headers_hsts_include_subdomains_missing
 - headers_hsts_preload_not_eligible
+- headers_hsts_duplicated
 - headers_csp_missing
 - headers_csp_unsafe_inline
 - headers_csp_unsafe_eval
@@ -56,6 +59,8 @@ Implemented checks:
 - headers_csp_report_only_font_src_unrestricted
 - headers_csp_report_only_worker_src_missing
 - headers_csp_report_only_worker_src_unrestricted
+- headers_csp_duplicated
+- headers_csp_report_only_duplicated
 - headers_cors_allow_origin_wildcard
 - headers_cors_allow_origin_null
 - headers_cors_allow_credentials_wildcard
@@ -90,12 +95,25 @@ Implemented checks:
 - headers_referrer_policy_unsafe
 - headers_x_frame_options_missing
 - headers_x_frame_options_invalid
+- headers_x_frame_options_duplicated
 - headers_cookie_secure_missing
 - headers_cookie_httponly_missing
 - headers_cookie_samesite_missing
 - headers_cookie_prefix_secure_misconfigured
 - headers_cookie_prefix_host_misconfigured
 - headers_cookie_invalid
+- headers_server_disclosure
+- headers_x_powered_by_disclosure
+
+### Response
+
+- response_redirect_https_downgrade
+- response_status_server_error
+- response_redirect_chain_long
+- response_redirect_chain_mixed_schemes
+
+### TLS
+
 - tls_version_deprecated
 - tls_version_outdated
 - tls_cert_expired
@@ -104,23 +122,16 @@ Implemented checks:
 - tls_cert_revoked
 - tls_cert_untrusted
 - tls_cipher_weak
+
+### DNS
+
 - dns_spf_missing
 - dns_spf_multiple
 - dns_spf_permissive
 - dns_dmarc_missing
 - dns_dmarc_multiple
-- headers_hsts_duplicated
-- headers_csp_duplicated
-- headers_csp_report_only_duplicated
-- headers_server_disclosure
-- headers_x_powered_by_disclosure
-- headers_x_frame_options_duplicated
-- response_redirect_https_downgrade
-- response_status_server_error
-- response_redirect_chain_long
-- response_redirect_chain_mixed_schemes
 
 Architecture notes:
 
-- rules are defined in [src/netkatana/rules.py](src/netkatana/rules.py)
-- validators live under [src/netkatana/validators](src/netkatana/validators)
+- rules are defined in [rules.py](https://github.com/netkatana/netkatana/blob/main/src/netkatana/rules.py)
+- validators live under [validators](https://github.com/netkatana/netkatana/tree/main/src/netkatana/validators)
