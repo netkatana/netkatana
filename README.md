@@ -32,6 +32,12 @@ Implemented checks:
 - headers_csp_style_src_unrestricted
 - headers_csp_connect_src_missing
 - headers_csp_connect_src_unrestricted
+- headers_csp_img_src_missing
+- headers_csp_img_src_unrestricted
+- headers_csp_font_src_missing
+- headers_csp_font_src_unrestricted
+- headers_csp_worker_src_missing
+- headers_csp_worker_src_unrestricted
 - headers_csp_report_only_unsafe_inline
 - headers_csp_report_only_unsafe_eval
 - headers_csp_report_only_object_src_unsafe
@@ -44,6 +50,12 @@ Implemented checks:
 - headers_csp_report_only_style_src_unrestricted
 - headers_csp_report_only_connect_src_missing
 - headers_csp_report_only_connect_src_unrestricted
+- headers_csp_report_only_img_src_missing
+- headers_csp_report_only_img_src_unrestricted
+- headers_csp_report_only_font_src_missing
+- headers_csp_report_only_font_src_unrestricted
+- headers_csp_report_only_worker_src_missing
+- headers_csp_report_only_worker_src_unrestricted
 - headers_cors_allow_origin_wildcard
 - headers_cors_allow_origin_null
 - headers_cors_allow_credentials_wildcard
@@ -97,6 +109,16 @@ Implemented checks:
 - dns_spf_permissive
 - dns_dmarc_missing
 - dns_dmarc_multiple
+- headers_hsts_duplicated
+- headers_csp_duplicated
+- headers_csp_report_only_duplicated
+- headers_server_disclosure
+- headers_x_powered_by_disclosure
+- headers_x_frame_options_duplicated
+- response_redirect_https_downgrade
+- response_status_server_error
+- response_redirect_chain_long
+- response_redirect_chain_mixed_schemes
 
 Architecture notes:
 

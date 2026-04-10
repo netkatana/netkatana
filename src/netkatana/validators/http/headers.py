@@ -27,8 +27,10 @@ _COEP_REPORT_ONLY_HEADER = "cross-origin-embedder-policy-report-only"
 _COOP_HEADER = "cross-origin-opener-policy"
 _COOP_REPORT_ONLY_HEADER = "cross-origin-opener-policy-report-only"
 _REFERRER_POLICY_HEADER = "referrer-policy"
+_SERVER_HEADER = "server"
 _X_CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 _X_FRAME_OPTIONS_HEADER = "x-frame-options"
+_X_POWERED_BY_HEADER = "x-powered-by"
 _SET_COOKIE_HEADER = "set-cookie"
 
 
@@ -37,6 +39,23 @@ def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> 
         return directives[directive]
 
     return directives.get("default-src")
+
+
+def _csp_effective_worker_sources(directives: dict[str, list[str]]) -> list[str] | None:
+    if "worker-src" in directives:
+        return directives["worker-src"]
+
+    if "script-src" in directives:
+        return directives["script-src"]
+
+    return directives.get("default-src")
+
+
+def _csp_sources_unrestricted(sources: list[str] | None) -> bool:
+    if sources is None:
+        return False
+
+    return "*" in sources or "https:" in sources or "http:" in sources
 
 
 def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
@@ -52,6 +71,10 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
 
 def _corp_header_values(response: Response) -> list[str]:
     return [value.strip() for value in response.headers.get_list(_CORP_HEADER)]
+
+
+def _header_values(response: Response, header_name: str) -> list[str]:
+    return [value.strip() for value in response.headers.get_list(header_name)]
 
 
 async def hsts_missing(response: Response) -> str | None:
@@ -73,6 +96,20 @@ async def hsts_invalid(response: Response) -> str | None:
         raise ValidationError("Strict-Transport-Security (HSTS) header is malformed", metadata={"value": value}) from e
 
     return "Strict-Transport-Security (HSTS) header is valid"
+
+
+async def hsts_duplicated(response: Response) -> str | None:
+    if "strict-transport-security" not in response.headers:
+        return None
+
+    values = _header_values(response, "strict-transport-security")
+    if len(values) > 1:
+        raise ValidationError(
+            "Strict-Transport-Security (HSTS) header is duplicated",
+            metadata={"values": ", ".join(values)},
+        )
+
+    return "Strict-Transport-Security (HSTS) header is not duplicated"
 
 
 async def hsts_max_age_zero(response: Response) -> str | None:
@@ -157,6 +194,34 @@ async def csp_missing(response: Response) -> str | None:
         raise ValidationError("Content-Security-Policy (CSP) missing")
 
     return "Content-Security-Policy (CSP) present"
+
+
+async def csp_duplicated(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    values = _header_values(response, _CSP_HEADER)
+    if len(values) > 1:
+        raise ValidationError(
+            "Content-Security-Policy (CSP) header is duplicated",
+            metadata={"values": ", ".join(values)},
+        )
+
+    return "Content-Security-Policy (CSP) header is not duplicated"
+
+
+async def csp_ro_duplicated(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    values = _header_values(response, _CSP_REPORT_ONLY_HEADER)
+    if len(values) > 1:
+        raise ValidationError(
+            "Content-Security-Policy-Report-Only (CSP) header is duplicated",
+            metadata={"values": ", ".join(values)},
+        )
+
+    return "Content-Security-Policy-Report-Only (CSP) header is not duplicated"
 
 
 async def csp_unsafe_inline(response: Response) -> str | None:
@@ -363,7 +428,7 @@ async def csp_script_src_unrestricted(response: Response) -> str | None:
     if effective is None:
         return None
 
-    if "*" in effective or "https:" in effective or "http:" in effective:
+    if _csp_sources_unrestricted(effective):
         raise ValidationError("Content-Security-Policy (CSP) script-src is unrestricted")
 
     return "Content-Security-Policy (CSP) script-src is restricted"
@@ -379,7 +444,7 @@ async def csp_ro_script_src_unrestricted(response: Response) -> str | None:
     if effective is None:
         return None
 
-    if "*" in effective or "https:" in effective or "http:" in effective:
+    if _csp_sources_unrestricted(effective):
         raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src is unrestricted")
 
     return "Content-Security-Policy-Report-Only (CSP) script-src is restricted"
@@ -408,7 +473,7 @@ async def csp_style_src_unrestricted(response: Response) -> str | None:
     if effective is None:
         return None
 
-    if "*" in effective or "https:" in effective or "http:" in effective:
+    if _csp_sources_unrestricted(effective):
         raise ValidationError("Content-Security-Policy (CSP) style-src is unrestricted")
 
     return "Content-Security-Policy (CSP) style-src is restricted"
@@ -437,7 +502,7 @@ async def csp_ro_style_src_unrestricted(response: Response) -> str | None:
     if effective is None:
         return None
 
-    if "*" in effective or "https:" in effective or "http:" in effective:
+    if _csp_sources_unrestricted(effective):
         raise ValidationError("Content-Security-Policy-Report-Only (CSP) style-src is unrestricted")
 
     return "Content-Security-Policy-Report-Only (CSP) style-src is restricted"
@@ -466,10 +531,97 @@ async def csp_connect_src_unrestricted(response: Response) -> str | None:
     if effective is None:
         return None
 
-    if "*" in effective or "https:" in effective or "http:" in effective:
+    if _csp_sources_unrestricted(effective):
         raise ValidationError("Content-Security-Policy (CSP) connect-src is unrestricted")
 
     return "Content-Security-Policy (CSP) connect-src is restricted"
+
+
+async def csp_img_src_unrestricted(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "img-src")
+
+    if effective is None:
+        return None
+
+    if _csp_sources_unrestricted(effective):
+        raise ValidationError("Content-Security-Policy (CSP) img-src is unrestricted")
+
+    return "Content-Security-Policy (CSP) img-src is restricted"
+
+
+async def csp_font_src_unrestricted(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "font-src")
+
+    if effective is None:
+        return None
+
+    if _csp_sources_unrestricted(effective):
+        raise ValidationError("Content-Security-Policy (CSP) font-src is unrestricted")
+
+    return "Content-Security-Policy (CSP) font-src is restricted"
+
+
+async def csp_worker_src_unrestricted(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_worker_sources(directives)
+
+    if effective is None:
+        return None
+
+    if _csp_sources_unrestricted(effective):
+        raise ValidationError("Content-Security-Policy (CSP) worker-src is unrestricted")
+
+    return "Content-Security-Policy (CSP) worker-src is restricted"
+
+
+async def csp_img_src_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "img-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy (CSP) img-src is missing")
+
+    return "Content-Security-Policy (CSP) img-src is present"
+
+
+async def csp_font_src_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_sources(directives, "font-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy (CSP) font-src is missing")
+
+    return "Content-Security-Policy (CSP) font-src is present"
+
+
+async def csp_worker_src_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+    effective = _csp_effective_worker_sources(directives)
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy (CSP) worker-src is missing")
+
+    return "Content-Security-Policy (CSP) worker-src is present"
 
 
 async def csp_ro_connect_src_missing(response: Response) -> str | None:
@@ -495,10 +647,97 @@ async def csp_ro_connect_src_unrestricted(response: Response) -> str | None:
     if effective is None:
         return None
 
-    if "*" in effective or "https:" in effective or "http:" in effective:
+    if _csp_sources_unrestricted(effective):
         raise ValidationError("Content-Security-Policy-Report-Only (CSP) connect-src is unrestricted")
 
     return "Content-Security-Policy-Report-Only (CSP) connect-src is restricted"
+
+
+async def csp_ro_img_src_unrestricted(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "img-src")
+
+    if effective is None:
+        return None
+
+    if _csp_sources_unrestricted(effective):
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) img-src is unrestricted")
+
+    return "Content-Security-Policy-Report-Only (CSP) img-src is restricted"
+
+
+async def csp_ro_font_src_unrestricted(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "font-src")
+
+    if effective is None:
+        return None
+
+    if _csp_sources_unrestricted(effective):
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) font-src is unrestricted")
+
+    return "Content-Security-Policy-Report-Only (CSP) font-src is restricted"
+
+
+async def csp_ro_worker_src_unrestricted(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_worker_sources(directives)
+
+    if effective is None:
+        return None
+
+    if _csp_sources_unrestricted(effective):
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) worker-src is unrestricted")
+
+    return "Content-Security-Policy-Report-Only (CSP) worker-src is restricted"
+
+
+async def csp_ro_img_src_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "img-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) img-src is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) img-src is present"
+
+
+async def csp_ro_font_src_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_sources(directives, "font-src")
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) font-src is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) font-src is present"
+
+
+async def csp_ro_worker_src_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+    effective = _csp_effective_worker_sources(directives)
+
+    if effective is None:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) worker-src is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) worker-src is present"
 
 
 async def access_control_allow_origin_wildcard(response: Response) -> str | None:
@@ -894,6 +1133,25 @@ async def x_content_type_options_duplicated(response: Response) -> str | None:
     return "X-Content-Type-Options header is not duplicated"
 
 
+async def server_disclosure(response: Response) -> str | None:
+    if _SERVER_HEADER not in response.headers:
+        return "Server header is not present"
+
+    raise ValidationError(
+        "Server header discloses implementation details", metadata={"value": response.headers[_SERVER_HEADER]}
+    )
+
+
+async def x_powered_by_disclosure(response: Response) -> str | None:
+    if _X_POWERED_BY_HEADER not in response.headers:
+        return "X-Powered-By header is not present"
+
+    raise ValidationError(
+        "X-Powered-By header discloses implementation details",
+        metadata={"value": response.headers[_X_POWERED_BY_HEADER]},
+    )
+
+
 async def referrer_policy_missing(response: Response) -> str | None:
     if _REFERRER_POLICY_HEADER not in response.headers:
         raise ValidationError("Referrer-Policy header missing")
@@ -951,6 +1209,20 @@ async def x_frame_options_invalid(response: Response) -> str | None:
         raise ValidationError("X-Frame-Options header is invalid", metadata={"value": value}) from e
 
     return "X-Frame-Options header is valid"
+
+
+async def x_frame_options_duplicated(response: Response) -> str | None:
+    if _X_FRAME_OPTIONS_HEADER not in response.headers:
+        return None
+
+    values = _header_values(response, _X_FRAME_OPTIONS_HEADER)
+    if len(values) > 1:
+        raise ValidationError(
+            "X-Frame-Options header is duplicated",
+            metadata={"values": ", ".join(values)},
+        )
+
+    return "X-Frame-Options header is not duplicated"
 
 
 async def cookie_secure_missing(response: Response) -> str | None:

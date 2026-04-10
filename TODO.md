@@ -4,31 +4,11 @@ This file is ordered by implementation priority, not by protocol.
 
 ## P0: high-signal checks with low-to-medium implementation cost
 
-### HTTP
-
-- `headers_server_disclosure` — notice
-- `headers_x_powered_by_disclosure` — notice
-
 ### Response
 
-- `response_redirect_https_downgrade` — critical
 - `response_redirect_http_upgrade_missing` — critical
-- `response_status_server_error` — warning
-- `response_redirect_chain_long` — warning
-- `response_redirect_chain_mixed_schemes` — warning
 
 ### Existing-group gaps to close early
-
-- `headers_hsts_duplicated` — warning
-- `headers_x_frame_options_duplicated` — critical
-- `headers_csp_duplicated` — critical
-- `headers_csp_report_only_duplicated` — warning
-- `headers_csp_img_src_missing` — warning
-- `headers_csp_font_src_missing` — notice
-- `headers_csp_worker_src_missing` — notice
-- `headers_csp_report_only_img_src_missing` — warning
-- `headers_csp_report_only_font_src_missing` — notice
-- `headers_csp_report_only_worker_src_missing` — notice
 
 ## P1: expand coverage in groups we already support
 
