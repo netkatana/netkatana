@@ -372,14 +372,14 @@ def _create_source_insecure_scheme_directive_validator(
     return validator
 
 
-csp_child_src_insecure_scheme_source = _create_source_insecure_scheme_directive_validator(
+csp_child_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
     header=_CSP_HEADER,
     directive="child-src",
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy (CSP) child-src sources do not use insecure schemes",
     error_message="Content-Security-Policy (CSP) child-src contains an insecure scheme source",
 )
-csp_report_only_child_src_insecure_scheme_source = _create_source_insecure_scheme_directive_validator(
+csp_report_only_child_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="child-src",
     fallback_directives=["default-src"],
@@ -414,19 +414,104 @@ def _create_source_ip_directive_validator(
     return validator
 
 
-csp_child_src_ip_source = _create_source_ip_directive_validator(
+csp_child_src_source_ip = _create_source_ip_directive_validator(
     header=_CSP_HEADER,
     directive="child-src",
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy (CSP) child-src sources do not use IP addresses",
     error_message="Content-Security-Policy (CSP) child-src contains an IP source",
 )
-csp_report_only_child_src_ip_source = _create_source_ip_directive_validator(
+csp_report_only_child_src_source_ip = _create_source_ip_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="child-src",
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy-Report-Only (CSP) child-src sources do not use IP addresses",
     error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an IP source",
+)
+
+csp_font_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src is present",
+    error_message="Content-Security-Policy (CSP) font-src is missing",
+)
+csp_report_only_font_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src is missing",
+)
+csp_font_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src is restricted",
+    error_message="Content-Security-Policy (CSP) font-src is unrestricted",
+)
+csp_report_only_font_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src is unrestricted",
+)
+csp_font_src_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src nonce sources are valid",
+    error_message="Content-Security-Policy (CSP) font-src contains an invalid nonce source",
+)
+csp_report_only_font_src_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src nonce sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an invalid nonce source",
+)
+csp_font_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src hash sources are valid",
+    error_message="Content-Security-Policy (CSP) font-src contains an invalid hash source",
+)
+csp_report_only_font_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src hash sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an invalid hash source",
+)
+csp_font_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) font-src contains an insecure scheme source",
+)
+csp_report_only_font_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an insecure scheme source",
+)
+csp_font_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) font-src contains an IP source",
+)
+csp_ro_font_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
 )
 
 # REFACTOR POINT ENDS HERE
@@ -737,22 +822,6 @@ async def csp_img_src_unrestricted(response: Response) -> str | None:
     return "Content-Security-Policy (CSP) img-src is restricted"
 
 
-async def csp_font_src_unrestricted(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "font-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy (CSP) font-src is unrestricted")
-
-    return "Content-Security-Policy (CSP) font-src is restricted"
-
-
 async def csp_worker_src_unrestricted(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         return None
@@ -780,19 +849,6 @@ async def csp_img_src_missing(response: Response) -> str | None:
         raise ValidationError("Content-Security-Policy (CSP) img-src is missing")
 
     return "Content-Security-Policy (CSP) img-src is present"
-
-
-async def csp_font_src_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "font-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy (CSP) font-src is missing")
-
-    return "Content-Security-Policy (CSP) font-src is present"
 
 
 async def csp_worker_src_missing(response: Response) -> str | None:
@@ -853,22 +909,6 @@ async def csp_ro_img_src_unrestricted(response: Response) -> str | None:
     return "Content-Security-Policy-Report-Only (CSP) img-src is restricted"
 
 
-async def csp_ro_font_src_unrestricted(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "font-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) font-src is unrestricted")
-
-    return "Content-Security-Policy-Report-Only (CSP) font-src is restricted"
-
-
 async def csp_ro_worker_src_unrestricted(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
@@ -896,19 +936,6 @@ async def csp_ro_img_src_missing(response: Response) -> str | None:
         raise ValidationError("Content-Security-Policy-Report-Only (CSP) img-src is missing")
 
     return "Content-Security-Policy-Report-Only (CSP) img-src is present"
-
-
-async def csp_ro_font_src_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "font-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) font-src is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) font-src is present"
 
 
 async def csp_ro_worker_src_missing(response: Response) -> str | None:
