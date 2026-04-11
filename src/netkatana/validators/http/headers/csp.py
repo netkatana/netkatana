@@ -67,7 +67,7 @@ csp_duplicated = _create_duplicated_header_validator(
     success_message="Content-Security-Policy (CSP) header is not duplicated",
     error_message="Content-Security-Policy (CSP) header is duplicated",
 )
-csp_read_only_duplicated = _create_duplicated_header_validator(
+csp_report_only_duplicated = _create_duplicated_header_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     success_message="Content-Security-Policy-Report-Only (CSP) header is not duplicated",
     error_message="Content-Security-Policy-Report-Only (CSP) header is duplicated",
@@ -102,6 +102,37 @@ csp_report_only_base_uri_missing = _create_missing_directive_validator(
     directive="base-uri",
     success_message="Content-Security-Policy-Report-Only (CSP) base-uri is present",
     error_message="Content-Security-Policy-Report-Only (CSP) base-uri is missing",
+)
+
+
+def _create_deprecated_directive_validator(
+    *, header: str, directive: str, success_message: str, error_message: str
+) -> Validator:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+
+        if directive in directives:
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+csp_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
+    header=_CSP_HEADER,
+    directive="block-all-mixed-content",
+    success_message="Content-Security-Policy (CSP) block-all-mixed-content is absent",
+    error_message="Content-Security-Policy (CSP) block-all-mixed-content is deprecated",
+)
+csp_report_only_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="block-all-mixed-content",
+    success_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is absent",
+    error_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is deprecated",
 )
 
 

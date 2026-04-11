@@ -2,6 +2,7 @@ from netkatana.types import DnsRule, HttpRule, Severity, TlsRule
 from netkatana.validators.dns import dmarc_missing, dmarc_multiple, spf_missing, spf_multiple, spf_permissive
 from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
+    csp_block_all_mixed_content_deprecated,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
     csp_duplicated,
@@ -13,8 +14,9 @@ from netkatana.validators.http.headers.csp import (
     csp_img_src_unrestricted,
     csp_missing,
     csp_object_src_unsafe,
-    csp_read_only_duplicated,
     csp_report_only_base_uri_missing,
+    csp_report_only_block_all_mixed_content_deprecated,
+    csp_report_only_duplicated,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
     csp_ro_font_src_missing,
@@ -169,7 +171,31 @@ http_rules = [
         code="headers_csp_report_only_duplicated",
         severity=Severity.CRITICAL,
         detail="The 'Content-Security-Policy-Report-Only' header should appear only once; duplicate instances create ambiguity and can distort rollout signals.",
-        validator=csp_read_only_duplicated,
+        validator=csp_report_only_duplicated,
+    ),
+    HttpRule(
+        code="headers_csp_base_uri_missing",
+        severity=Severity.WARNING,
+        detail="'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and bypassing 'script-src'; it does not fall back to 'default-src'.",
+        validator=csp_base_uri_missing,
+    ),
+    HttpRule(
+        code="headers_csp_report_only_base_uri_missing",
+        severity=Severity.WARNING,
+        detail="'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and bypassing 'script-src'; it does not fall back to 'default-src'.",
+        validator=csp_report_only_base_uri_missing,
+    ),
+    HttpRule(
+        code="headers_csp_block_all_mixed_content_deprecated",
+        severity=Severity.WARNING,
+        detail="TODO",
+        validator=csp_block_all_mixed_content_deprecated,
+    ),
+    HttpRule(
+        code="headers_csp_report_only_block_all_mixed_content_deprecated",
+        severity=Severity.WARNING,
+        detail="TODO",
+        validator=csp_report_only_block_all_mixed_content_deprecated,
     ),
     HttpRule(
         code="headers_csp_unsafe_inline",
@@ -206,18 +232,6 @@ http_rules = [
         severity=Severity.WARNING,
         detail="'object-src' (or 'default-src') controls <object> and <embed> elements; plugin content runs outside the browser's normal security model and has historically enabled code execution.",
         validator=csp_ro_object_src_unsafe,
-    ),
-    HttpRule(
-        code="headers_csp_base_uri_missing",
-        severity=Severity.WARNING,
-        detail="'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and bypassing 'script-src'; it does not fall back to 'default-src'.",
-        validator=csp_base_uri_missing,
-    ),
-    HttpRule(
-        code="headers_csp_report_only_base_uri_missing",
-        severity=Severity.WARNING,
-        detail="'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and bypassing 'script-src'; it does not fall back to 'default-src'.",
-        validator=csp_report_only_base_uri_missing,
     ),
     HttpRule(
         code="headers_csp_frame_ancestors_missing",

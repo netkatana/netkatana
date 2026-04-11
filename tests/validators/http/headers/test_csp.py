@@ -5,6 +5,7 @@ from netkatana.exceptions import ValidationError
 from netkatana.types import Validator
 from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
+    csp_block_all_mixed_content_deprecated,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
     csp_duplicated,
@@ -16,8 +17,9 @@ from netkatana.validators.http.headers.csp import (
     csp_img_src_unrestricted,
     csp_missing,
     csp_object_src_unsafe,
-    csp_read_only_duplicated,
     csp_report_only_base_uri_missing,
+    csp_report_only_block_all_mixed_content_deprecated,
+    csp_report_only_duplicated,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
     csp_ro_font_src_missing,
@@ -67,7 +69,7 @@ async def test_csp_missing_present():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("validator", [csp_duplicated, csp_read_only_duplicated])
+@pytest.mark.parametrize("validator", [csp_duplicated, csp_report_only_duplicated])
 async def test_csp_duplicated_header_absent(validator: Validator):
     response = Response(200)
 
@@ -83,7 +85,7 @@ async def test_csp_duplicated_header_absent(validator: Validator):
         ("content-security-policy", csp_duplicated, "Content-Security-Policy (CSP) header is not duplicated"),
         (
             "content-security-policy-report-only",
-            csp_read_only_duplicated,
+            csp_report_only_duplicated,
             "Content-Security-Policy-Report-Only (CSP) header is not duplicated",
         ),
     ],
@@ -101,7 +103,7 @@ async def test_csp_duplicated_single_header(header: str, validator: Validator, m
         ("content-security-policy", csp_duplicated, "Content-Security-Policy (CSP) header is duplicated"),
         (
             "content-security-policy-report-only",
-            csp_read_only_duplicated,
+            csp_report_only_duplicated,
             "Content-Security-Policy-Report-Only (CSP) header is duplicated",
         ),
     ],
@@ -164,6 +166,44 @@ async def test_csp_base_uri_missing_base_uri_present(header: str, validator: Val
     response = Response(200, headers={header: "default-src 'self'; base-uri 'none'"})
 
     assert await validator(response) == message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "validator", [csp_block_all_mixed_content_deprecated, csp_report_only_block_all_mixed_content_deprecated]
+)
+async def test_csp_deprecated_directive_no_csp_header(validator: Validator):
+    response = Response(200)
+
+    message = await validator(response)
+
+    assert message is None
+
+
+@pytest.mark.parametrize(
+    "header,validator,message",
+    [
+        (
+            "content-security-policy",
+            csp_block_all_mixed_content_deprecated,
+            "Content-Security-Policy (CSP) block-all-mixed-content is deprecated",
+        ),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_block_all_mixed_content_deprecated,
+            "Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is deprecated",
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_csp_deprecated_directive_present(header: str, validator: Validator, message: str):
+    response = Response(200, headers={header: "block-all-mixed-content"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await validator(response)
+
+    assert exc_info.value.message == message
+    assert exc_info.value.metadata == {}
 
 
 @pytest.mark.asyncio
