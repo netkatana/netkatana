@@ -7,6 +7,7 @@ from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
     csp_block_all_mixed_content_deprecated,
     csp_child_src_missing,
+    csp_child_src_nonce_invalid,
     csp_child_src_unrestricted,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
@@ -22,6 +23,7 @@ from netkatana.validators.http.headers.csp import (
     csp_report_only_base_uri_missing,
     csp_report_only_block_all_mixed_content_deprecated,
     csp_report_only_child_src_missing,
+    csp_report_only_child_src_nonce_invalid,
     csp_report_only_child_src_unrestricted,
     csp_report_only_duplicated,
     csp_ro_connect_src_missing,
@@ -342,6 +344,140 @@ async def test_csp_directive_unrestricted_unrestricted(header: str, value: str, 
     ],
 )
 async def test_csp_directive_unrestricted_unrestricted_default_src_fallback(
+    header: str, value: str, validator: Validator, message: str
+):
+    response = Response(200, headers={header: value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await validator(response)
+
+    assert exc_info.value.message == message
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("validator", [csp_child_src_nonce_invalid, csp_report_only_child_src_nonce_invalid])
+async def test_csp_directive_nonce_invalid_no_csp_header(validator: Validator):
+    response = Response(200)
+
+    message = await validator(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,validator",
+    [
+        ("content-security-policy", csp_child_src_nonce_invalid),
+        ("content-security-policy-report-only", csp_report_only_child_src_nonce_invalid),
+    ],
+)
+async def test_csp_directive_nonce_invalid_absent(header: str, validator: Validator):
+    response = Response(200, headers={header: "foo"})
+
+    message = await validator(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,value,validator,message",
+    [
+        (
+            "content-security-policy",
+            "child-src 'nonce-abc123=='",
+            csp_child_src_nonce_invalid,
+            "Content-Security-Policy (CSP) child-src nonce sources are valid",
+        ),
+        (
+            "content-security-policy-report-only",
+            "child-src 'nonce-abc123=='",
+            csp_report_only_child_src_nonce_invalid,
+            "Content-Security-Policy-Report-Only (CSP) child-src nonce sources are valid",
+        ),
+    ],
+)
+async def test_csp_directive_nonce_invalid_valid(header: str, value: str, validator: Validator, message: str):
+    response = Response(200, headers={header: value})
+
+    assert await validator(response) == message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,value,validator,message",
+    [
+        (
+            "content-security-policy",
+            "default-src 'nonce-abc123=='",
+            csp_child_src_nonce_invalid,
+            "Content-Security-Policy (CSP) child-src nonce sources are valid",
+        ),
+        (
+            "content-security-policy-report-only",
+            "default-src 'nonce-abc123=='",
+            csp_report_only_child_src_nonce_invalid,
+            "Content-Security-Policy-Report-Only (CSP) child-src nonce sources are valid",
+        ),
+    ],
+)
+async def test_csp_directive_nonce_invalid_valid_default_src_fallback(
+    header: str, value: str, validator: Validator, message: str
+):
+    response = Response(200, headers={header: value})
+
+    assert await validator(response) == message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,value,validator,message",
+    [
+        (
+            "content-security-policy",
+            "child-src 'nonce-'",
+            csp_child_src_nonce_invalid,
+            "Content-Security-Policy (CSP) child-src contains an invalid nonce source",
+        ),
+        (
+            "content-security-policy-report-only",
+            "child-src 'nonce-'",
+            csp_report_only_child_src_nonce_invalid,
+            "Content-Security-Policy-Report-Only (CSP) child-src contains an invalid nonce source",
+        ),
+    ],
+)
+async def test_csp_directive_nonce_invalid_invalid(header: str, value: str, validator: Validator, message: str):
+    response = Response(200, headers={header: value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await validator(response)
+
+    assert exc_info.value.message == message
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,value,validator,message",
+    [
+        (
+            "content-security-policy",
+            "default-src 'nonce-'",
+            csp_child_src_nonce_invalid,
+            "Content-Security-Policy (CSP) child-src contains an invalid nonce source",
+        ),
+        (
+            "content-security-policy-report-only",
+            "default-src 'nonce-'",
+            csp_report_only_child_src_nonce_invalid,
+            "Content-Security-Policy-Report-Only (CSP) child-src contains an invalid nonce source",
+        ),
+    ],
+)
+async def test_csp_directive_nonce_invalid_invalid_default_src_fallback(
     header: str, value: str, validator: Validator, message: str
 ):
     response = Response(200, headers={header: value})
