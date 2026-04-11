@@ -1,5 +1,23 @@
 # netkatana Agent Guide
 
+## Useful commands
+
+```sh
+make test
+make lint
+make format
+```
+
+You can also run specific tests with `pytest`:
+
+```sh
+uv run pytest tests/validators/test_tls.py
+```
+
+Don't forget to format and lint after making changes.
+
+## Rules
+
 - `src/netkatana/rules.py` is the source of truth for implemented checks.
 - Keep rule changes in sync across:
   - validators in `src/netkatana/validators/`
