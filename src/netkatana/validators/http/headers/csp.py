@@ -74,28 +74,35 @@ csp_read_only_duplicated = _create_duplicated_header_validator(
 )
 
 
-async def csp_base_uri_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
+def _create_missing_directive_validator(
+    *, header: str, directive: str, success_message: str, error_message: str
+) -> Validator:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
 
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+        directives = parse_content_security_policy(response.headers[header])
 
-    if "base-uri" not in directives:
-        raise ValidationError("Content-Security-Policy (CSP) base-uri is missing")
+        if directive not in directives:
+            raise ValidationError(error_message)
 
-    return "Content-Security-Policy (CSP) base-uri is present"
+        return success_message
+
+    return validator
 
 
-async def csp_read_only_base_uri_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-
-    if "base-uri" not in directives:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) base-uri is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) base-uri is present"
+csp_base_uri_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="base-uri",
+    success_message="Content-Security-Policy (CSP) base-uri is present",
+    error_message="Content-Security-Policy (CSP) base-uri is missing",
+)
+csp_report_only_base_uri_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="base-uri",
+    success_message="Content-Security-Policy-Report-Only (CSP) base-uri is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) base-uri is missing",
+)
 
 
 async def csp_unsafe_inline(response: Response) -> str | None:

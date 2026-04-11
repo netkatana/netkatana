@@ -13,8 +13,8 @@ from netkatana.validators.http.headers.csp import (
     csp_img_src_unrestricted,
     csp_missing,
     csp_object_src_unsafe,
-    csp_read_only_base_uri_missing,
     csp_read_only_duplicated,
+    csp_report_only_base_uri_missing,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
     csp_ro_font_src_missing,
@@ -217,7 +217,7 @@ http_rules = [
         code="headers_csp_report_only_base_uri_missing",
         severity=Severity.WARNING,
         detail="'base-uri' restricts the <base> element's 'href', preventing attackers from redirecting relative resource loads and bypassing 'script-src'; it does not fall back to 'default-src'.",
-        validator=csp_read_only_base_uri_missing,
+        validator=csp_report_only_base_uri_missing,
     ),
     HttpRule(
         code="headers_csp_frame_ancestors_missing",
