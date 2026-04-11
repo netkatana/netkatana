@@ -75,13 +75,26 @@ csp_report_only_duplicated = _create_duplicated_header_validator(
 
 
 def _create_missing_directive_validator(
-    *, header: str, directive: str, success_message: str, error_message: str
+    *,
+    header: str,
+    directive: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
 ) -> Validator:
     async def validator(response: Response) -> str | None:
         if header not in response.headers:
             return None
 
         directives = parse_content_security_policy(response.headers[header])
+
+        if directive in directives:
+            return success_message
+
+        if fallback_directives is not None and any(
+            fallback_directive in directives for fallback_directive in fallback_directives
+        ):
+            return success_message
 
         if directive not in directives:
             raise ValidationError(error_message)
@@ -134,6 +147,23 @@ csp_report_only_block_all_mixed_content_deprecated = _create_deprecated_directiv
     success_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is absent",
     error_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is deprecated",
 )
+
+csp_child_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src is present",
+    error_message="Content-Security-Policy (CSP) child-src is missing",
+)
+csp_report_only_child_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src is missing",
+)
+
+# REFACTOR POINT
 
 
 async def csp_unsafe_inline(response: Response) -> str | None:

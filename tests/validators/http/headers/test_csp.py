@@ -6,6 +6,7 @@ from netkatana.types import Validator
 from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
     csp_block_all_mixed_content_deprecated,
+    csp_child_src_missing,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
     csp_duplicated,
@@ -19,6 +20,7 @@ from netkatana.validators.http.headers.csp import (
     csp_object_src_unsafe,
     csp_report_only_base_uri_missing,
     csp_report_only_block_all_mixed_content_deprecated,
+    csp_report_only_child_src_missing,
     csp_report_only_duplicated,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
@@ -119,8 +121,11 @@ async def test_csp_duplicated_duplicated(header: str, validator: Validator, mess
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("validator", [csp_base_uri_missing, csp_report_only_base_uri_missing])
-async def test_csp_base_uri_missing_no_csp_header(validator: Validator):
+@pytest.mark.parametrize(
+    "validator",
+    [csp_base_uri_missing, csp_report_only_base_uri_missing, csp_child_src_missing, csp_report_only_child_src_missing],
+)
+async def test_csp_directive_missing_no_csp_header(validator: Validator):
     response = Response(200)
 
     message = await validator(response)
@@ -138,10 +143,16 @@ async def test_csp_base_uri_missing_no_csp_header(validator: Validator):
             csp_report_only_base_uri_missing,
             "Content-Security-Policy-Report-Only (CSP) base-uri is missing",
         ),
+        ("content-security-policy", csp_child_src_missing, "Content-Security-Policy (CSP) child-src is missing"),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_child_src_missing,
+            "Content-Security-Policy-Report-Only (CSP) child-src is missing",
+        ),
     ],
 )
-async def test_csp_base_uri_missing_base_uri_absent(header: str, validator: Validator, message: str):
-    response = Response(200, headers={header: "default-src 'self'"})
+async def test_csp_directive_missing_absent(header: str, validator: Validator, message: str):
+    response = Response(200, headers={header: "foo"})
 
     with pytest.raises(ValidationError) as exc_info:
         await validator(response)
@@ -152,18 +163,58 @@ async def test_csp_base_uri_missing_base_uri_absent(header: str, validator: Vali
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "header,validator,message",
+    "header,value,validator,message",
     [
-        ("content-security-policy", csp_base_uri_missing, "Content-Security-Policy (CSP) base-uri is present"),
+        (
+            "content-security-policy",
+            "base-uri 'none'",
+            csp_base_uri_missing,
+            "Content-Security-Policy (CSP) base-uri is present",
+        ),
         (
             "content-security-policy-report-only",
+            "base-uri 'none'",
             csp_report_only_base_uri_missing,
             "Content-Security-Policy-Report-Only (CSP) base-uri is present",
         ),
+        (
+            "content-security-policy",
+            "child-src 'self'",
+            csp_child_src_missing,
+            "Content-Security-Policy (CSP) child-src is present",
+        ),
+        (
+            "content-security-policy-report-only",
+            "child-src 'self'",
+            csp_report_only_child_src_missing,
+            "Content-Security-Policy-Report-Only (CSP) child-src is present",
+        ),
     ],
 )
-async def test_csp_base_uri_missing_base_uri_present(header: str, validator: Validator, message: str):
-    response = Response(200, headers={header: "default-src 'self'; base-uri 'none'"})
+async def test_csp_directive_missing_present(header: str, value: str, validator: Validator, message: str):
+    response = Response(200, headers={header: value})
+
+    assert await validator(response) == message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,validator,message",
+    [
+        (
+            "content-security-policy",
+            csp_child_src_missing,
+            "Content-Security-Policy (CSP) child-src is present",
+        ),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_child_src_missing,
+            "Content-Security-Policy-Report-Only (CSP) child-src is present",
+        ),
+    ],
+)
+async def test_csp_directive_missing_default_src_fallback(header: str, validator: Validator, message: str):
+    response = Response(200, headers={header: "default-src 'self'"})
 
     assert await validator(response) == message
 
