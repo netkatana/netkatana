@@ -15,10 +15,10 @@ from netkatana.validators.http.headers.csp import (
     csp_img_src_unrestricted,
     csp_missing,
     csp_object_src_unsafe,
-    csp_ro_base_uri_missing,
+    csp_read_only_base_uri_missing,
+    csp_read_only_duplicated,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
-    csp_ro_duplicated,
     csp_ro_font_src_missing,
     csp_ro_font_src_unrestricted,
     csp_ro_form_action_missing,
@@ -104,7 +104,7 @@ async def test_csp_duplicated_duplicated():
 async def test_csp_report_only_duplicated_header_absent():
     response = Response(200)
 
-    message = await csp_ro_duplicated(response)
+    message = await csp_read_only_duplicated(response)
 
     assert message is None
 
@@ -113,7 +113,7 @@ async def test_csp_report_only_duplicated_header_absent():
 async def test_csp_report_only_duplicated_single_header():
     response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
 
-    message = await csp_ro_duplicated(response)
+    message = await csp_read_only_duplicated(response)
 
     assert message == "Content-Security-Policy-Report-Only (CSP) header is not duplicated"
 
@@ -129,10 +129,77 @@ async def test_csp_report_only_duplicated_duplicated():
     )
 
     with pytest.raises(ValidationError) as exc_info:
-        await csp_ro_duplicated(response)
+        await csp_read_only_duplicated(response)
 
     assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) header is duplicated"
     assert exc_info.value.metadata == {"values": "default-src 'self', img-src 'self'"}
+
+
+@pytest.mark.asyncio
+async def test_csp_base_uri_missing_no_csp():
+    response = Response(200)
+
+    message = await csp_base_uri_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_base_uri_missing_base_uri_absent():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_base_uri_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) base-uri is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_base_uri_missing_base_uri_none():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'; base-uri 'none'"})
+
+    message = await csp_base_uri_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) base-uri is present"
+
+
+@pytest.mark.asyncio
+async def test_csp_base_uri_missing_base_uri_self():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'; base-uri 'self'"})
+
+    message = await csp_base_uri_missing(response)
+
+    assert message == "Content-Security-Policy (CSP) base-uri is present"
+
+
+@pytest.mark.asyncio
+async def test_csp_read_only_base_uri_missing_no_header():
+    response = Response(200)
+
+    message = await csp_read_only_base_uri_missing(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+async def test_csp_read_only_base_uri_missing_base_uri_absent():
+    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_read_only_base_uri_missing(response)
+
+    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) base-uri is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_csp_read_only_base_uri_missing_base_uri_present():
+    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'; base-uri 'none'"})
+
+    message = await csp_read_only_base_uri_missing(response)
+
+    assert message == "Content-Security-Policy-Report-Only (CSP) base-uri is present"
 
 
 @pytest.mark.asyncio
@@ -449,73 +516,6 @@ async def test_csp_ro_object_src_unsafe_no_object_src_no_default_src():
 
     assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) object-src is not restricted to 'none'"
     assert exc_info.value.metadata == {}
-
-
-@pytest.mark.asyncio
-async def test_csp_base_uri_missing_no_csp():
-    response = Response(200)
-
-    message = await csp_base_uri_missing(response)
-
-    assert message is None
-
-
-@pytest.mark.asyncio
-async def test_csp_base_uri_missing_base_uri_absent():
-    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
-
-    with pytest.raises(ValidationError) as exc_info:
-        await csp_base_uri_missing(response)
-
-    assert exc_info.value.message == "Content-Security-Policy (CSP) base-uri is missing"
-    assert exc_info.value.metadata == {}
-
-
-@pytest.mark.asyncio
-async def test_csp_base_uri_missing_base_uri_none():
-    response = Response(200, headers={"content-security-policy": "default-src 'self'; base-uri 'none'"})
-
-    message = await csp_base_uri_missing(response)
-
-    assert message == "Content-Security-Policy (CSP) base-uri is present"
-
-
-@pytest.mark.asyncio
-async def test_csp_base_uri_missing_base_uri_self():
-    response = Response(200, headers={"content-security-policy": "default-src 'self'; base-uri 'self'"})
-
-    message = await csp_base_uri_missing(response)
-
-    assert message == "Content-Security-Policy (CSP) base-uri is present"
-
-
-@pytest.mark.asyncio
-async def test_csp_ro_base_uri_missing_no_header():
-    response = Response(200)
-
-    message = await csp_ro_base_uri_missing(response)
-
-    assert message is None
-
-
-@pytest.mark.asyncio
-async def test_csp_ro_base_uri_missing_base_uri_absent():
-    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
-
-    with pytest.raises(ValidationError) as exc_info:
-        await csp_ro_base_uri_missing(response)
-
-    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) base-uri is missing"
-    assert exc_info.value.metadata == {}
-
-
-@pytest.mark.asyncio
-async def test_csp_ro_base_uri_missing_base_uri_present():
-    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'; base-uri 'none'"})
-
-    message = await csp_ro_base_uri_missing(response)
-
-    assert message == "Content-Security-Policy-Report-Only (CSP) base-uri is present"
 
 
 @pytest.mark.asyncio

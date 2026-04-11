@@ -39,6 +39,7 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
     )
 
 
+# TODO: Delete
 def _header_values(response: Response, header_name: str) -> list[str]:
     return [value.strip() for value in response.headers.get_list(header_name)]
 
@@ -64,7 +65,7 @@ async def csp_duplicated(response: Response) -> str | None:
     return "Content-Security-Policy (CSP) header is not duplicated"
 
 
-async def csp_ro_duplicated(response: Response) -> str | None:
+async def csp_read_only_duplicated(response: Response) -> str | None:
     if _CSP_REPORT_ONLY_HEADER not in response.headers:
         return None
 
@@ -76,6 +77,30 @@ async def csp_ro_duplicated(response: Response) -> str | None:
         )
 
     return "Content-Security-Policy-Report-Only (CSP) header is not duplicated"
+
+
+async def csp_base_uri_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
+
+    if "base-uri" not in directives:
+        raise ValidationError("Content-Security-Policy (CSP) base-uri is missing")
+
+    return "Content-Security-Policy (CSP) base-uri is present"
+
+
+async def csp_read_only_base_uri_missing(response: Response) -> str | None:
+    if _CSP_REPORT_ONLY_HEADER not in response.headers:
+        return None
+
+    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
+
+    if "base-uri" not in directives:
+        raise ValidationError("Content-Security-Policy-Report-Only (CSP) base-uri is missing")
+
+    return "Content-Security-Policy-Report-Only (CSP) base-uri is present"
 
 
 async def csp_unsafe_inline(response: Response) -> str | None:
@@ -172,30 +197,6 @@ async def csp_ro_object_src_unsafe(response: Response) -> str | None:
         return "Content-Security-Policy-Report-Only (CSP) object-src is restricted to 'none'"
 
     raise ValidationError("Content-Security-Policy-Report-Only (CSP) object-src is not restricted to 'none'")
-
-
-async def csp_base_uri_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-
-    if "base-uri" not in directives:
-        raise ValidationError("Content-Security-Policy (CSP) base-uri is missing")
-
-    return "Content-Security-Policy (CSP) base-uri is present"
-
-
-async def csp_ro_base_uri_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-
-    if "base-uri" not in directives:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) base-uri is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) base-uri is present"
 
 
 async def csp_frame_ancestors_missing(response: Response) -> str | None:
