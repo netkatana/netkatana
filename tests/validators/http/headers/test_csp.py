@@ -7,6 +7,7 @@ from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
     csp_block_all_mixed_content_deprecated,
     csp_child_src_missing,
+    csp_child_src_unrestricted,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
     csp_duplicated,
@@ -21,6 +22,7 @@ from netkatana.validators.http.headers.csp import (
     csp_report_only_base_uri_missing,
     csp_report_only_block_all_mixed_content_deprecated,
     csp_report_only_child_src_missing,
+    csp_report_only_child_src_unrestricted,
     csp_report_only_duplicated,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
@@ -220,10 +222,142 @@ async def test_csp_directive_missing_default_src_fallback(header: str, validator
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("validator", [csp_child_src_unrestricted, csp_report_only_child_src_unrestricted])
+async def test_csp_directive_unrestricted_no_csp_header(validator: Validator):
+    response = Response(200)
+
+    message = await validator(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,validator",
+    [
+        ("content-security-policy", csp_child_src_unrestricted),
+        ("content-security-policy-report-only", csp_report_only_child_src_unrestricted),
+    ],
+)
+async def test_csp_directive_unrestricted_absent(header: str, validator: Validator):
+    response = Response(200, headers={header: "foo"})
+
+    message = await validator(response)
+
+    assert message is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,value,validator,message",
+    [
+        (
+            "content-security-policy",
+            "child-src 'self'",
+            csp_child_src_unrestricted,
+            "Content-Security-Policy (CSP) child-src is restricted",
+        ),
+        (
+            "content-security-policy-report-only",
+            "child-src 'self'",
+            csp_report_only_child_src_unrestricted,
+            "Content-Security-Policy-Report-Only (CSP) child-src is restricted",
+        ),
+    ],
+)
+async def test_csp_directive_unrestricted_restricted(header: str, value: str, validator: Validator, message: str):
+    response = Response(200, headers={header: value})
+
+    assert await validator(response) == message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,validator,message",
+    [
+        (
+            "content-security-policy",
+            csp_child_src_unrestricted,
+            "Content-Security-Policy (CSP) child-src is restricted",
+        ),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_child_src_unrestricted,
+            "Content-Security-Policy-Report-Only (CSP) child-src is restricted",
+        ),
+    ],
+)
+async def test_csp_directive_unrestricted_restricted_default_src_fallback(
+    header: str, validator: Validator, message: str
+):
+    response = Response(200, headers={header: "default-src 'self'"})
+
+    assert await validator(response) == message
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,value,validator,message",
+    [
+        (
+            "content-security-policy",
+            "child-src *",
+            csp_child_src_unrestricted,
+            "Content-Security-Policy (CSP) child-src is unrestricted",
+        ),
+        (
+            "content-security-policy-report-only",
+            "child-src *",
+            csp_report_only_child_src_unrestricted,
+            "Content-Security-Policy-Report-Only (CSP) child-src is unrestricted",
+        ),
+    ],
+)
+async def test_csp_directive_unrestricted_unrestricted(header: str, value: str, validator: Validator, message: str):
+    response = Response(200, headers={header: value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await validator(response)
+
+    assert exc_info.value.message == message
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header,value,validator,message",
+    [
+        (
+            "content-security-policy",
+            "default-src https:",
+            csp_child_src_unrestricted,
+            "Content-Security-Policy (CSP) child-src is unrestricted",
+        ),
+        (
+            "content-security-policy-report-only",
+            "default-src https:",
+            csp_report_only_child_src_unrestricted,
+            "Content-Security-Policy-Report-Only (CSP) child-src is unrestricted",
+        ),
+    ],
+)
+async def test_csp_directive_unrestricted_unrestricted_default_src_fallback(
+    header: str, value: str, validator: Validator, message: str
+):
+    response = Response(200, headers={header: value})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await validator(response)
+
+    assert exc_info.value.message == message
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "validator", [csp_block_all_mixed_content_deprecated, csp_report_only_block_all_mixed_content_deprecated]
 )
-async def test_csp_deprecated_directive_no_csp_header(validator: Validator):
+async def test_csp_directive_deprecated_no_csp_header(validator: Validator):
     response = Response(200)
 
     message = await validator(response)
@@ -247,7 +381,7 @@ async def test_csp_deprecated_directive_no_csp_header(validator: Validator):
     ],
 )
 @pytest.mark.asyncio
-async def test_csp_deprecated_directive_present(header: str, validator: Validator, message: str):
+async def test_csp_directive_deprecated_present(header: str, validator: Validator, message: str):
     response = Response(200, headers={header: "block-all-mixed-content"})
 
     with pytest.raises(ValidationError) as exc_info:
@@ -255,6 +389,31 @@ async def test_csp_deprecated_directive_present(header: str, validator: Validato
 
     assert exc_info.value.message == message
     assert exc_info.value.metadata == {}
+
+
+@pytest.mark.parametrize(
+    "header,validator,message",
+    [
+        (
+            "content-security-policy",
+            csp_block_all_mixed_content_deprecated,
+            "Content-Security-Policy (CSP) block-all-mixed-content is absent",
+        ),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_block_all_mixed_content_deprecated,
+            "Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is absent",
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_csp_directive_deprecated_absent(header: str, validator: Validator, message: str):
+    response = Response(200, headers={header: "foo"})
+
+    assert await validator(response) == message
+
+
+# REFACTOR POINT ENDS HERE
 
 
 @pytest.mark.asyncio

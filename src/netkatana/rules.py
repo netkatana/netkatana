@@ -4,6 +4,7 @@ from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
     csp_block_all_mixed_content_deprecated,
     csp_child_src_missing,
+    csp_child_src_unrestricted,
     csp_connect_src_missing,
     csp_connect_src_unrestricted,
     csp_duplicated,
@@ -18,6 +19,7 @@ from netkatana.validators.http.headers.csp import (
     csp_report_only_base_uri_missing,
     csp_report_only_block_all_mixed_content_deprecated,
     csp_report_only_child_src_missing,
+    csp_report_only_child_src_unrestricted,
     csp_report_only_duplicated,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
@@ -223,6 +225,19 @@ http_rules = [
         detail="'unsafe-inline' in 'script-src' (or 'default-src') permits all inline scripts; a nonce or hash neutralizes it and restores XSS protection in CSP Level 2+ browsers.",
         validator=csp_ro_unsafe_inline,
     ),
+    HttpRule(
+        code="headers_csp_child_src_unrestricted",
+        severity=Severity.CRITICAL,
+        detail="A wildcard source (*, 'https:', 'http:', 'wss:', or 'ws:') in 'child-src' (or 'default-src') allows nested browsing contexts and workers from broad origins, weakening CSP's containment of embedded content.",
+        validator=csp_child_src_unrestricted,
+    ),
+    HttpRule(
+        code="headers_csp_report_only_child_src_unrestricted",
+        severity=Severity.CRITICAL,
+        detail="A wildcard source (*, 'https:', 'http:', 'wss:', or 'ws:') in 'child-src' (or 'default-src') allows nested browsing contexts and workers from broad origins, so report-only telemetry models a weak child policy.",
+        validator=csp_report_only_child_src_unrestricted,
+    ),
+    # REFACTOR POINT ENDS HERE
     HttpRule(
         code="headers_csp_unsafe_eval",
         severity=Severity.CRITICAL,

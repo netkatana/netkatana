@@ -25,8 +25,8 @@ def _csp_effective_worker_sources(directives: dict[str, list[str]]) -> list[str]
     return directives.get("default-src")
 
 
-def _csp_sources_unrestricted(sources: list[str] | None) -> bool:
-    return "*" in sources or "https:" in sources or "http:" in sources
+def _csp_sources_unrestricted(sources: list[str]) -> bool:
+    return "*" in sources or "https:" in sources or "http:" in sources or "wss:" in sources or "ws:" in sources
 
 
 def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
@@ -96,10 +96,7 @@ def _create_missing_directive_validator(
         ):
             return success_message
 
-        if directive not in directives:
-            raise ValidationError(error_message)
-
-        return success_message
+        raise ValidationError(error_message)
 
     return validator
 
@@ -163,7 +160,55 @@ csp_report_only_child_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) child-src is missing",
 )
 
-# REFACTOR POINT
+
+def _create_unrestricted_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = directives.get(directive)
+
+        if effective_sources is None and fallback_directives is not None:
+            for fallback_directive in fallback_directives:
+                if fallback_directive in directives:
+                    effective_sources = directives[fallback_directive]
+                    break
+
+        if effective_sources is None:
+            return None
+
+        if _csp_sources_unrestricted(effective_sources):
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+csp_child_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src is restricted",
+    error_message="Content-Security-Policy (CSP) child-src is unrestricted",
+)
+csp_report_only_child_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src is unrestricted",
+)
+
+# REFACTOR POINT ENDS HERE
 
 
 async def csp_unsafe_inline(response: Response) -> str | None:
