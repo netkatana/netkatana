@@ -81,7 +81,7 @@ class Rule(Generic[T]):
     code: str
     severity: Severity
     detail: str
-    validator: Validator
+    validator: Validator[T]
 
 
 HttpRule = Rule[Response]

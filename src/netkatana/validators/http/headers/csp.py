@@ -47,7 +47,9 @@ async def csp_missing(response: Response) -> str | None:
     return "Content-Security-Policy (CSP) present"
 
 
-def _create_duplicated_header_validator(*, header: str, success_message: str, error_message: str) -> Validator:
+def _create_duplicated_header_validator(
+    *, header: str, success_message: str, error_message: str
+) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
         if header not in response.headers:
             return None
@@ -81,7 +83,7 @@ def _create_missing_directive_validator(
     fallback_directives: list[str] | None = None,
     success_message: str,
     error_message: str,
-) -> Validator:
+) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
         if header not in response.headers:
             return None
@@ -117,7 +119,7 @@ csp_report_only_base_uri_missing = _create_missing_directive_validator(
 
 def _create_deprecated_directive_validator(
     *, header: str, directive: str, success_message: str, error_message: str
-) -> Validator:
+) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
         if header not in response.headers:
             return None
@@ -168,7 +170,7 @@ def _create_unrestricted_directive_validator(
     fallback_directives: list[str] | None = None,
     success_message: str,
     error_message: str,
-) -> Validator:
+) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
         if header not in response.headers:
             return None
