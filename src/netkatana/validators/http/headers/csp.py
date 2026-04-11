@@ -9,6 +9,7 @@ from netkatana.utils import parse_content_security_policy
 _CSP_HEADER = "content-security-policy"
 _CSP_REPORT_ONLY_HEADER = "content-security-policy-report-only"
 _CSP_NONCE_SOURCE_RE = re.compile(r"^'nonce-[A-Za-z0-9+/_-]+={0,2}'$")
+_CSP_HASH_SOURCE_RE = re.compile(r"^'(sha256|sha384|sha512)-[A-Za-z0-9+/_-]+={0,2}'$")
 
 
 def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
@@ -45,6 +46,10 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
 
 def _has_invalid_nonce_source(sources: list[str]) -> bool:
     return any(source.startswith("'nonce-") and _CSP_NONCE_SOURCE_RE.fullmatch(source) is None for source in sources)
+
+
+def _has_invalid_hash_source(sources: list[str]) -> bool:
+    return any(source.startswith("'sha") and _CSP_HASH_SOURCE_RE.fullmatch(source) is None for source in sources)
 
 
 async def csp_missing(response: Response) -> str | None:
@@ -263,6 +268,54 @@ csp_report_only_child_src_nonce_invalid = _create_nonce_invalid_directive_valida
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy-Report-Only (CSP) child-src nonce sources are valid",
     error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an invalid nonce source",
+)
+
+
+def _create_hash_invalid_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = directives.get(directive)
+
+        if effective_sources is None and fallback_directives is not None:
+            for fallback_directive in fallback_directives:
+                if fallback_directive in directives:
+                    effective_sources = directives[fallback_directive]
+                    break
+
+        if effective_sources is None:
+            return None
+
+        if _has_invalid_hash_source(effective_sources):
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+csp_child_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src hash sources are valid",
+    error_message="Content-Security-Policy (CSP) child-src contains an invalid hash source",
+)
+csp_report_only_child_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src hash sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an invalid hash source",
 )
 
 # REFACTOR POINT ENDS HERE

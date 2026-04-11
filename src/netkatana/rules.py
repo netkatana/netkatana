@@ -3,6 +3,7 @@ from netkatana.validators.dns import dmarc_missing, dmarc_multiple, spf_missing,
 from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
     csp_block_all_mixed_content_deprecated,
+    csp_child_src_hash_invalid,
     csp_child_src_missing,
     csp_child_src_nonce_invalid,
     csp_child_src_unrestricted,
@@ -19,6 +20,7 @@ from netkatana.validators.http.headers.csp import (
     csp_object_src_unsafe,
     csp_report_only_base_uri_missing,
     csp_report_only_block_all_mixed_content_deprecated,
+    csp_report_only_child_src_hash_invalid,
     csp_report_only_child_src_missing,
     csp_report_only_child_src_nonce_invalid,
     csp_report_only_child_src_unrestricted,
@@ -250,6 +252,18 @@ http_rules = [
         severity=Severity.WARNING,
         detail="Nonce sources in 'child-src' (or 'default-src') must use valid CSP nonce syntax; malformed nonces mean report-only telemetry is modeling an invalid allowlist entry.",
         validator=csp_report_only_child_src_nonce_invalid,
+    ),
+    HttpRule(
+        code="headers_csp_child_src_hash_invalid",
+        severity=Severity.CRITICAL,
+        detail="Hash sources in 'child-src' (or 'default-src') must use a supported algorithm and valid CSP hash syntax; malformed hashes create allowlist entries that browsers will not interpret as intended.",
+        validator=csp_child_src_hash_invalid,
+    ),
+    HttpRule(
+        code="headers_csp_report_only_child_src_hash_invalid",
+        severity=Severity.CRITICAL,
+        detail="Hash sources in 'child-src' (or 'default-src') must use a supported algorithm and valid CSP hash syntax; malformed hashes mean report-only telemetry is modeling an invalid allowlist entry.",
+        validator=csp_report_only_child_src_hash_invalid,
     ),
     # REFACTOR POINT ENDS HERE
     HttpRule(
