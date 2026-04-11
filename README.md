@@ -29,6 +29,11 @@ uvx netkatana dns example.com
 - headers_csp_base_uri_missing
 - headers_csp_frame_ancestors_missing
 - headers_csp_form_action_missing
+- headers_csp_form_action_unrestricted
+- headers_csp_form_action_source_nonce_invalid
+- headers_csp_form_action_source_hash_invalid
+- headers_csp_form_action_source_insecure_scheme
+- headers_csp_form_action_source_ip
 - headers_csp_script_src_missing
 - headers_csp_script_src_unrestricted
 - headers_csp_style_src_missing
@@ -47,6 +52,11 @@ uvx netkatana dns example.com
 - headers_csp_report_only_base_uri_missing
 - headers_csp_report_only_frame_ancestors_missing
 - headers_csp_report_only_form_action_missing
+- headers_csp_report_only_form_action_unrestricted
+- headers_csp_report_only_form_action_source_nonce_invalid
+- headers_csp_report_only_form_action_source_hash_invalid
+- headers_csp_report_only_form_action_source_insecure_scheme
+- headers_csp_report_only_form_action_source_ip
 - headers_csp_report_only_script_src_missing
 - headers_csp_report_only_script_src_unrestricted
 - headers_csp_report_only_style_src_missing

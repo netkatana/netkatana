@@ -506,12 +506,84 @@ csp_font_src_source_ip = _create_source_ip_directive_validator(
     success_message="Content-Security-Policy (CSP) font-src sources do not use IP addresses",
     error_message="Content-Security-Policy (CSP) font-src contains an IP source",
 )
-csp_ro_font_src_source_ip = _create_source_ip_directive_validator(
+csp_report_only_font_src_source_ip = _create_source_ip_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="font-src",
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy-Report-Only (CSP) font-src sources do not use IP addresses",
     error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
+)
+csp_form_action_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action is present",
+    error_message="Content-Security-Policy (CSP) form-action is missing",
+)
+csp_report_only_form_action_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action is missing",
+)
+csp_form_action_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action is restricted",
+    error_message="Content-Security-Policy (CSP) form-action is unrestricted",
+)
+csp_report_only_form_action_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action is unrestricted",
+)
+csp_form_action_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action nonce sources are valid",
+    error_message="Content-Security-Policy (CSP) form-action contains an invalid nonce source",
+)
+csp_report_only_form_action_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action nonce sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an invalid nonce source",
+)
+csp_form_action_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action hash sources are valid",
+    error_message="Content-Security-Policy (CSP) form-action contains an invalid hash source",
+)
+csp_report_only_form_action_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action hash sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an invalid hash source",
+)
+csp_form_action_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) form-action contains an insecure scheme source",
+)
+csp_report_only_form_action_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an insecure scheme source",
+)
+csp_form_action_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) form-action contains an IP source",
+)
+csp_report_only_form_action_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an IP source",
 )
 
 # REFACTOR POINT ENDS HERE
@@ -635,30 +707,6 @@ async def csp_ro_frame_ancestors_missing(response: Response) -> str | None:
         raise ValidationError("Content-Security-Policy-Report-Only (CSP) frame-ancestors is missing")
 
     return "Content-Security-Policy-Report-Only (CSP) frame-ancestors is present"
-
-
-async def csp_form_action_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-
-    if "form-action" not in directives:
-        raise ValidationError("Content-Security-Policy (CSP) form-action is missing")
-
-    return "Content-Security-Policy (CSP) form-action is present"
-
-
-async def csp_ro_form_action_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-
-    if "form-action" not in directives:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) form-action is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) form-action is present"
 
 
 async def csp_script_src_missing(response: Response) -> str | None:

@@ -21,7 +21,12 @@ from netkatana.validators.http.headers.csp import (
     csp_font_src_source_insecure_scheme,
     csp_font_src_source_ip,
     csp_font_src_unrestricted,
+    csp_form_action_hash_invalid,
     csp_form_action_missing,
+    csp_form_action_nonce_invalid,
+    csp_form_action_source_insecure_scheme,
+    csp_form_action_source_ip,
+    csp_form_action_unrestricted,
     csp_frame_ancestors_missing,
     csp_img_src_missing,
     csp_img_src_unrestricted,
@@ -40,11 +45,16 @@ from netkatana.validators.http.headers.csp import (
     csp_report_only_font_src_missing,
     csp_report_only_font_src_nonce_invalid,
     csp_report_only_font_src_source_insecure_scheme,
+    csp_report_only_font_src_source_ip,
     csp_report_only_font_src_unrestricted,
+    csp_report_only_form_action_hash_invalid,
+    csp_report_only_form_action_missing,
+    csp_report_only_form_action_nonce_invalid,
+    csp_report_only_form_action_source_insecure_scheme,
+    csp_report_only_form_action_source_ip,
+    csp_report_only_form_action_unrestricted,
     csp_ro_connect_src_missing,
     csp_ro_connect_src_unrestricted,
-    csp_ro_font_src_source_ip,
-    csp_ro_form_action_missing,
     csp_ro_frame_ancestors_missing,
     csp_ro_img_src_missing,
     csp_ro_img_src_unrestricted,
@@ -148,6 +158,8 @@ async def test_csp_duplicated_duplicated(header: str, validator: Validator, mess
         csp_report_only_child_src_missing,
         csp_font_src_missing,
         csp_report_only_font_src_missing,
+        csp_form_action_missing,
+        csp_report_only_form_action_missing,
     ],
 )
 async def test_csp_directive_missing_no_csp_header(validator: Validator):
@@ -179,6 +191,16 @@ async def test_csp_directive_missing_no_csp_header(validator: Validator):
             "content-security-policy-report-only",
             csp_report_only_font_src_missing,
             "Content-Security-Policy-Report-Only (CSP) font-src is missing",
+        ),
+        (
+            "content-security-policy",
+            csp_form_action_missing,
+            "Content-Security-Policy (CSP) form-action is missing",
+        ),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_form_action_missing,
+            "Content-Security-Policy-Report-Only (CSP) form-action is missing",
         ),
     ],
 )
@@ -232,6 +254,18 @@ async def test_csp_directive_missing_absent(header: str, validator: Validator, m
             csp_report_only_font_src_missing,
             "Content-Security-Policy-Report-Only (CSP) font-src is present",
         ),
+        (
+            "content-security-policy",
+            "form-action 'self'",
+            csp_form_action_missing,
+            "Content-Security-Policy (CSP) form-action is present",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action 'self'",
+            csp_report_only_form_action_missing,
+            "Content-Security-Policy-Report-Only (CSP) form-action is present",
+        ),
     ],
 )
 async def test_csp_directive_missing_present(header: str, value: str, validator: Validator, message: str):
@@ -274,12 +308,50 @@ async def test_csp_directive_missing_default_src_fallback(header: str, validator
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "header,validator,message",
+    [
+        (
+            "content-security-policy",
+            csp_base_uri_missing,
+            "Content-Security-Policy (CSP) base-uri is missing",
+        ),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_base_uri_missing,
+            "Content-Security-Policy-Report-Only (CSP) base-uri is missing",
+        ),
+        (
+            "content-security-policy",
+            csp_form_action_missing,
+            "Content-Security-Policy (CSP) form-action is missing",
+        ),
+        (
+            "content-security-policy-report-only",
+            csp_report_only_form_action_missing,
+            "Content-Security-Policy-Report-Only (CSP) form-action is missing",
+        ),
+    ],
+)
+async def test_csp_directive_missing_absent_no_default_src_fallback(header: str, validator: Validator, message: str):
+    response = Response(200, headers={header: "default-src 'self'"})
+
+    with pytest.raises(ValidationError) as exc_info:
+        await validator(response)
+
+    assert exc_info.value.message == message
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "validator",
     [
         csp_child_src_unrestricted,
         csp_report_only_child_src_unrestricted,
         csp_font_src_unrestricted,
         csp_report_only_font_src_unrestricted,
+        csp_form_action_unrestricted,
+        csp_report_only_form_action_unrestricted,
     ],
 )
 async def test_csp_directive_unrestricted_no_csp_header(validator: Validator):
@@ -298,6 +370,8 @@ async def test_csp_directive_unrestricted_no_csp_header(validator: Validator):
         ("content-security-policy-report-only", csp_report_only_child_src_unrestricted),
         ("content-security-policy", csp_font_src_unrestricted),
         ("content-security-policy-report-only", csp_report_only_font_src_unrestricted),
+        ("content-security-policy", csp_form_action_unrestricted),
+        ("content-security-policy-report-only", csp_report_only_form_action_unrestricted),
     ],
 )
 async def test_csp_directive_unrestricted_absent(header: str, validator: Validator):
@@ -335,6 +409,18 @@ async def test_csp_directive_unrestricted_absent(header: str, validator: Validat
             "font-src 'self'",
             csp_report_only_font_src_unrestricted,
             "Content-Security-Policy-Report-Only (CSP) font-src is restricted",
+        ),
+        (
+            "content-security-policy",
+            "form-action 'self'",
+            csp_form_action_unrestricted,
+            "Content-Security-Policy (CSP) form-action is restricted",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action 'self'",
+            csp_report_only_form_action_unrestricted,
+            "Content-Security-Policy-Report-Only (CSP) form-action is restricted",
         ),
     ],
 )
@@ -406,6 +492,18 @@ async def test_csp_directive_unrestricted_restricted_default_src_fallback(
             csp_report_only_font_src_unrestricted,
             "Content-Security-Policy-Report-Only (CSP) font-src is unrestricted",
         ),
+        (
+            "content-security-policy",
+            "form-action *",
+            csp_form_action_unrestricted,
+            "Content-Security-Policy (CSP) form-action is unrestricted",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action *",
+            csp_report_only_form_action_unrestricted,
+            "Content-Security-Policy-Report-Only (CSP) form-action is unrestricted",
+        ),
     ],
 )
 async def test_csp_directive_unrestricted_unrestricted(header: str, value: str, validator: Validator, message: str):
@@ -468,6 +566,8 @@ async def test_csp_directive_unrestricted_unrestricted_default_src_fallback(
         csp_report_only_child_src_nonce_invalid,
         csp_font_src_nonce_invalid,
         csp_report_only_font_src_nonce_invalid,
+        csp_form_action_nonce_invalid,
+        csp_report_only_form_action_nonce_invalid,
     ],
 )
 async def test_csp_directive_nonce_invalid_no_csp_header(validator: Validator):
@@ -486,6 +586,8 @@ async def test_csp_directive_nonce_invalid_no_csp_header(validator: Validator):
         ("content-security-policy-report-only", csp_report_only_child_src_nonce_invalid),
         ("content-security-policy", csp_font_src_nonce_invalid),
         ("content-security-policy-report-only", csp_report_only_font_src_nonce_invalid),
+        ("content-security-policy", csp_form_action_nonce_invalid),
+        ("content-security-policy-report-only", csp_report_only_form_action_nonce_invalid),
     ],
 )
 async def test_csp_directive_nonce_invalid_absent(header: str, validator: Validator):
@@ -523,6 +625,18 @@ async def test_csp_directive_nonce_invalid_absent(header: str, validator: Valida
             "font-src 'nonce-abc123=='",
             csp_report_only_font_src_nonce_invalid,
             "Content-Security-Policy-Report-Only (CSP) font-src nonce sources are valid",
+        ),
+        (
+            "content-security-policy",
+            "form-action 'nonce-abc123=='",
+            csp_form_action_nonce_invalid,
+            "Content-Security-Policy (CSP) form-action nonce sources are valid",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action 'nonce-abc123=='",
+            csp_report_only_form_action_nonce_invalid,
+            "Content-Security-Policy-Report-Only (CSP) form-action nonce sources are valid",
         ),
     ],
 )
@@ -598,6 +712,18 @@ async def test_csp_directive_nonce_invalid_valid_default_src_fallback(
             csp_report_only_font_src_nonce_invalid,
             "Content-Security-Policy-Report-Only (CSP) font-src contains an invalid nonce source",
         ),
+        (
+            "content-security-policy",
+            "form-action 'nonce-'",
+            csp_form_action_nonce_invalid,
+            "Content-Security-Policy (CSP) form-action contains an invalid nonce source",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action 'nonce-'",
+            csp_report_only_form_action_nonce_invalid,
+            "Content-Security-Policy-Report-Only (CSP) form-action contains an invalid nonce source",
+        ),
     ],
 )
 async def test_csp_directive_nonce_invalid_invalid(header: str, value: str, validator: Validator, message: str):
@@ -660,6 +786,8 @@ async def test_csp_directive_nonce_invalid_invalid_default_src_fallback(
         csp_report_only_child_src_hash_invalid,
         csp_font_src_hash_invalid,
         csp_report_only_font_src_hash_invalid,
+        csp_form_action_hash_invalid,
+        csp_report_only_form_action_hash_invalid,
     ],
 )
 async def test_csp_directive_hash_invalid_no_csp_header(validator: Validator):
@@ -678,6 +806,8 @@ async def test_csp_directive_hash_invalid_no_csp_header(validator: Validator):
         ("content-security-policy-report-only", csp_report_only_child_src_hash_invalid),
         ("content-security-policy", csp_font_src_hash_invalid),
         ("content-security-policy-report-only", csp_report_only_font_src_hash_invalid),
+        ("content-security-policy", csp_form_action_hash_invalid),
+        ("content-security-policy-report-only", csp_report_only_form_action_hash_invalid),
     ],
 )
 async def test_csp_directive_hash_invalid_absent(header: str, validator: Validator):
@@ -715,6 +845,18 @@ async def test_csp_directive_hash_invalid_absent(header: str, validator: Validat
             "font-src 'sha256-abc123=='",
             csp_report_only_font_src_hash_invalid,
             "Content-Security-Policy-Report-Only (CSP) font-src hash sources are valid",
+        ),
+        (
+            "content-security-policy",
+            "form-action 'sha256-abc123=='",
+            csp_form_action_hash_invalid,
+            "Content-Security-Policy (CSP) form-action hash sources are valid",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action 'sha256-abc123=='",
+            csp_report_only_form_action_hash_invalid,
+            "Content-Security-Policy-Report-Only (CSP) form-action hash sources are valid",
         ),
     ],
 )
@@ -790,6 +932,18 @@ async def test_csp_directive_hash_invalid_valid_default_src_fallback(
             csp_report_only_font_src_hash_invalid,
             "Content-Security-Policy-Report-Only (CSP) font-src contains an invalid hash source",
         ),
+        (
+            "content-security-policy",
+            "form-action 'sha1-abc123=='",
+            csp_form_action_hash_invalid,
+            "Content-Security-Policy (CSP) form-action contains an invalid hash source",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action 'sha1-abc123=='",
+            csp_report_only_form_action_hash_invalid,
+            "Content-Security-Policy-Report-Only (CSP) form-action contains an invalid hash source",
+        ),
     ],
 )
 async def test_csp_directive_hash_invalid_invalid(header: str, value: str, validator: Validator, message: str):
@@ -852,6 +1006,8 @@ async def test_csp_directive_hash_invalid_invalid_default_src_fallback(
         csp_report_only_child_src_source_insecure_scheme,
         csp_font_src_source_insecure_scheme,
         csp_report_only_font_src_source_insecure_scheme,
+        csp_form_action_source_insecure_scheme,
+        csp_report_only_form_action_source_insecure_scheme,
     ],
 )
 async def test_csp_directive_insecure_scheme_source_no_csp_header(validator: Validator):
@@ -870,6 +1026,8 @@ async def test_csp_directive_insecure_scheme_source_no_csp_header(validator: Val
         ("content-security-policy-report-only", csp_report_only_child_src_source_insecure_scheme),
         ("content-security-policy", csp_font_src_source_insecure_scheme),
         ("content-security-policy-report-only", csp_report_only_font_src_source_insecure_scheme),
+        ("content-security-policy", csp_form_action_source_insecure_scheme),
+        ("content-security-policy-report-only", csp_report_only_form_action_source_insecure_scheme),
     ],
 )
 async def test_csp_directive_insecure_scheme_source_absent(header: str, validator: Validator):
@@ -907,6 +1065,18 @@ async def test_csp_directive_insecure_scheme_source_absent(header: str, validato
             "font-src https://fonts.example",
             csp_report_only_font_src_source_insecure_scheme,
             "Content-Security-Policy-Report-Only (CSP) font-src sources do not use insecure schemes",
+        ),
+        (
+            "content-security-policy",
+            "form-action https://example.com",
+            csp_form_action_source_insecure_scheme,
+            "Content-Security-Policy (CSP) form-action sources do not use insecure schemes",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action https://example.com",
+            csp_report_only_form_action_source_insecure_scheme,
+            "Content-Security-Policy-Report-Only (CSP) form-action sources do not use insecure schemes",
         ),
     ],
 )
@@ -956,6 +1126,44 @@ async def test_csp_directive_insecure_scheme_source_valid_default_src_fallback(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "header,value,validator",
+    [
+        ("content-security-policy", "default-src *", csp_form_action_unrestricted),
+        ("content-security-policy-report-only", "default-src *", csp_report_only_form_action_unrestricted),
+        ("content-security-policy", "default-src 'nonce-abc123=='", csp_form_action_nonce_invalid),
+        (
+            "content-security-policy-report-only",
+            "default-src 'nonce-'",
+            csp_report_only_form_action_nonce_invalid,
+        ),
+        ("content-security-policy", "default-src 'sha1-abc123=='", csp_form_action_hash_invalid),
+        (
+            "content-security-policy-report-only",
+            "default-src 'sha256-abc123=='",
+            csp_report_only_form_action_hash_invalid,
+        ),
+        ("content-security-policy", "default-src http://example.com", csp_form_action_source_insecure_scheme),
+        (
+            "content-security-policy-report-only",
+            "default-src ws://example.com",
+            csp_report_only_form_action_source_insecure_scheme,
+        ),
+        ("content-security-policy", "default-src https://127.0.0.1", csp_form_action_source_ip),
+        (
+            "content-security-policy-report-only",
+            "default-src https://[2001:db8::1]",
+            csp_report_only_form_action_source_ip,
+        ),
+    ],
+)
+async def test_csp_directive_does_not_fall_back_to_default_src(header: str, value: str, validator: Validator):
+    response = Response(200, headers={header: value})
+
+    assert await validator(response) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "header,value,validator,message",
     [
         (
@@ -981,6 +1189,18 @@ async def test_csp_directive_insecure_scheme_source_valid_default_src_fallback(
             "font-src http://fonts.example",
             csp_report_only_font_src_source_insecure_scheme,
             "Content-Security-Policy-Report-Only (CSP) font-src contains an insecure scheme source",
+        ),
+        (
+            "content-security-policy",
+            "form-action http://example.com",
+            csp_form_action_source_insecure_scheme,
+            "Content-Security-Policy (CSP) form-action contains an insecure scheme source",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action ws://example.com",
+            csp_report_only_form_action_source_insecure_scheme,
+            "Content-Security-Policy-Report-Only (CSP) form-action contains an insecure scheme source",
         ),
     ],
 )
@@ -1045,7 +1265,9 @@ async def test_csp_directive_insecure_scheme_source_invalid_default_src_fallback
         csp_child_src_source_ip,
         csp_report_only_child_src_source_ip,
         csp_font_src_source_ip,
-        csp_ro_font_src_source_ip,
+        csp_report_only_font_src_source_ip,
+        csp_form_action_source_ip,
+        csp_report_only_form_action_source_ip,
     ],
 )
 async def test_csp_directive_ip_source_no_csp_header(validator: Validator):
@@ -1063,7 +1285,9 @@ async def test_csp_directive_ip_source_no_csp_header(validator: Validator):
         ("content-security-policy", csp_child_src_source_ip),
         ("content-security-policy-report-only", csp_report_only_child_src_source_ip),
         ("content-security-policy", csp_font_src_source_ip),
-        ("content-security-policy-report-only", csp_ro_font_src_source_ip),
+        ("content-security-policy-report-only", csp_report_only_font_src_source_ip),
+        ("content-security-policy", csp_form_action_source_ip),
+        ("content-security-policy-report-only", csp_report_only_form_action_source_ip),
     ],
 )
 async def test_csp_directive_ip_source_absent(header: str, validator: Validator):
@@ -1099,8 +1323,20 @@ async def test_csp_directive_ip_source_absent(header: str, validator: Validator)
         (
             "content-security-policy-report-only",
             "font-src https://fonts.example",
-            csp_ro_font_src_source_ip,
+            csp_report_only_font_src_source_ip,
             "Content-Security-Policy-Report-Only (CSP) font-src sources do not use IP addresses",
+        ),
+        (
+            "content-security-policy",
+            "form-action https://example.com",
+            csp_form_action_source_ip,
+            "Content-Security-Policy (CSP) form-action sources do not use IP addresses",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action https://example.com",
+            csp_report_only_form_action_source_ip,
+            "Content-Security-Policy-Report-Only (CSP) form-action sources do not use IP addresses",
         ),
     ],
 )
@@ -1135,7 +1371,7 @@ async def test_csp_directive_ip_source_valid(header: str, value: str, validator:
         (
             "content-security-policy-report-only",
             "default-src 'self' https://fonts.example",
-            csp_ro_font_src_source_ip,
+            csp_report_only_font_src_source_ip,
             "Content-Security-Policy-Report-Only (CSP) font-src sources do not use IP addresses",
         ),
     ],
@@ -1173,8 +1409,20 @@ async def test_csp_directive_ip_source_valid_default_src_fallback(
         (
             "content-security-policy-report-only",
             "font-src https://127.0.0.1",
-            csp_ro_font_src_source_ip,
+            csp_report_only_font_src_source_ip,
             "Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
+        ),
+        (
+            "content-security-policy",
+            "form-action https://127.0.0.1",
+            csp_form_action_source_ip,
+            "Content-Security-Policy (CSP) form-action contains an IP source",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action https://127.0.0.1",
+            csp_report_only_form_action_source_ip,
+            "Content-Security-Policy-Report-Only (CSP) form-action contains an IP source",
         ),
     ],
 )
@@ -1213,8 +1461,20 @@ async def test_csp_directive_ip_source_invalid_url_ip(header: str, value: str, v
         (
             "content-security-policy-report-only",
             "font-src 127.0.0.1",
-            csp_ro_font_src_source_ip,
+            csp_report_only_font_src_source_ip,
             "Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
+        ),
+        (
+            "content-security-policy",
+            "form-action 127.0.0.1",
+            csp_form_action_source_ip,
+            "Content-Security-Policy (CSP) form-action contains an IP source",
+        ),
+        (
+            "content-security-policy-report-only",
+            "form-action 127.0.0.1",
+            csp_report_only_form_action_source_ip,
+            "Content-Security-Policy-Report-Only (CSP) form-action contains an IP source",
         ),
     ],
 )
@@ -1253,7 +1513,7 @@ async def test_csp_directive_ip_source_invalid_bare_ip(header: str, value: str, 
         (
             "content-security-policy-report-only",
             "default-src https://[2001:db8::1]",
-            csp_ro_font_src_source_ip,
+            csp_report_only_font_src_source_ip,
             "Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
         ),
     ],
@@ -1707,64 +1967,6 @@ async def test_csp_ro_frame_ancestors_missing_frame_ancestors_present():
     message = await csp_ro_frame_ancestors_missing(response)
 
     assert message == "Content-Security-Policy-Report-Only (CSP) frame-ancestors is present"
-
-
-@pytest.mark.asyncio
-async def test_csp_form_action_missing_no_csp():
-    response = Response(200)
-
-    message = await csp_form_action_missing(response)
-
-    assert message is None
-
-
-@pytest.mark.asyncio
-async def test_csp_form_action_missing_form_action_absent():
-    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
-
-    with pytest.raises(ValidationError) as exc_info:
-        await csp_form_action_missing(response)
-
-    assert exc_info.value.message == "Content-Security-Policy (CSP) form-action is missing"
-    assert exc_info.value.metadata == {}
-
-
-@pytest.mark.asyncio
-async def test_csp_form_action_missing_form_action_present():
-    response = Response(200, headers={"content-security-policy": "default-src 'self'; form-action 'self'"})
-
-    message = await csp_form_action_missing(response)
-
-    assert message == "Content-Security-Policy (CSP) form-action is present"
-
-
-@pytest.mark.asyncio
-async def test_csp_ro_form_action_missing_no_header():
-    response = Response(200)
-
-    message = await csp_ro_form_action_missing(response)
-
-    assert message is None
-
-
-@pytest.mark.asyncio
-async def test_csp_ro_form_action_missing_form_action_absent():
-    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
-
-    with pytest.raises(ValidationError) as exc_info:
-        await csp_ro_form_action_missing(response)
-
-    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) form-action is missing"
-    assert exc_info.value.metadata == {}
-
-
-@pytest.mark.asyncio
-async def test_csp_ro_form_action_missing_form_action_present():
-    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'; form-action 'self'"})
-
-    message = await csp_ro_form_action_missing(response)
-
-    assert message == "Content-Security-Policy-Report-Only (CSP) form-action is present"
 
 
 @pytest.mark.asyncio
