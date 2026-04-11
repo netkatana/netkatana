@@ -1,4 +1,6 @@
+import ipaddress
 import re
+from urllib.parse import urlparse
 
 from httpx import Response
 
@@ -50,6 +52,49 @@ def _has_invalid_nonce_source(sources: list[str]) -> bool:
 
 def _has_invalid_hash_source(sources: list[str]) -> bool:
     return any(source.startswith("'sha") and _CSP_HASH_SOURCE_RE.fullmatch(source) is None for source in sources)
+
+
+def _effective_sources_for_directive(
+    directives: dict[str, list[str]], directive: str, fallback_directives: list[str] | None
+) -> list[str] | None:
+    effective_sources = directives.get(directive)
+
+    if effective_sources is None and fallback_directives is not None:
+        for fallback_directive in fallback_directives:
+            if fallback_directive in directives:
+                return directives[fallback_directive]
+
+    return effective_sources
+
+
+def _source_uses_insecure_scheme(source: str) -> bool:
+    return source in {"http:", "ws:"} or source.startswith("http://") or source.startswith("ws://")
+
+
+def _extract_host_from_csp_source(source: str) -> str | None:
+    if source.startswith("'") or source.endswith(":"):
+        return None
+
+    if "://" in source:
+        return urlparse(source).hostname
+
+    return urlparse(f"//{source}").hostname
+
+
+def _has_ip_source(sources: list[str]) -> bool:
+    for source in sources:
+        host = _extract_host_from_csp_source(source)
+        if host is None:
+            continue
+
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            continue
+
+        return True
+
+    return False
 
 
 async def csp_missing(response: Response) -> str | None:
@@ -188,13 +233,7 @@ def _create_unrestricted_directive_validator(
             return None
 
         directives = parse_content_security_policy(response.headers[header])
-        effective_sources = directives.get(directive)
-
-        if effective_sources is None and fallback_directives is not None:
-            for fallback_directive in fallback_directives:
-                if fallback_directive in directives:
-                    effective_sources = directives[fallback_directive]
-                    break
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
 
         if effective_sources is None:
             return None
@@ -236,13 +275,7 @@ def _create_nonce_invalid_directive_validator(
             return None
 
         directives = parse_content_security_policy(response.headers[header])
-        effective_sources = directives.get(directive)
-
-        if effective_sources is None and fallback_directives is not None:
-            for fallback_directive in fallback_directives:
-                if fallback_directive in directives:
-                    effective_sources = directives[fallback_directive]
-                    break
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
 
         if effective_sources is None:
             return None
@@ -284,13 +317,7 @@ def _create_hash_invalid_directive_validator(
             return None
 
         directives = parse_content_security_policy(response.headers[header])
-        effective_sources = directives.get(directive)
-
-        if effective_sources is None and fallback_directives is not None:
-            for fallback_directive in fallback_directives:
-                if fallback_directive in directives:
-                    effective_sources = directives[fallback_directive]
-                    break
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
 
         if effective_sources is None:
             return None
@@ -316,6 +343,90 @@ csp_report_only_child_src_hash_invalid = _create_hash_invalid_directive_validato
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy-Report-Only (CSP) child-src hash sources are valid",
     error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an invalid hash source",
+)
+
+
+def _create_source_insecure_scheme_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
+
+        if effective_sources is None:
+            return None
+
+        if any(_source_uses_insecure_scheme(source) for source in effective_sources):
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+csp_child_src_insecure_scheme_source = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) child-src contains an insecure scheme source",
+)
+csp_report_only_child_src_insecure_scheme_source = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an insecure scheme source",
+)
+
+
+def _create_source_ip_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
+
+        if effective_sources is None:
+            return None
+
+        if _has_ip_source(effective_sources):
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+csp_child_src_ip_source = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) child-src contains an IP source",
+)
+csp_report_only_child_src_ip_source = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an IP source",
 )
 
 # REFACTOR POINT ENDS HERE
