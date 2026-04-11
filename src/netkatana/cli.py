@@ -18,6 +18,8 @@ _formatters: dict[str, type[AbstractFormatter]] = {
     "table": TableFormatter,
 }
 
+_DEFAULT_CONCURRENCY = 100
+
 
 @click.group()
 def cli() -> None:
@@ -39,7 +41,7 @@ def _get_targets(ctx: click.Context, param: click.Parameter, values: tuple[str, 
 
 @cli.command()
 @click.argument("targets", nargs=-1, callback=_get_targets)
-@click.option("-c", "--concurrency", default=10, show_default=True, type=int)
+@click.option("-c", "--concurrency", default=_DEFAULT_CONCURRENCY, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
 def http(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
@@ -61,7 +63,7 @@ async def _http(*, targets: list[str], concurrency: int, fmt: str, show_passed: 
 
 @cli.command()
 @click.argument("targets", nargs=-1, callback=_get_targets)
-@click.option("-c", "--concurrency", default=10, show_default=True, type=int)
+@click.option("-c", "--concurrency", default=_DEFAULT_CONCURRENCY, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
 def tls(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
@@ -81,7 +83,7 @@ async def _tls(*, targets: list[str], concurrency: int, fmt: str, show_passed: b
 
 @cli.command()
 @click.argument("targets", nargs=-1, callback=_get_targets)
-@click.option("-c", "--concurrency", default=10, show_default=True, type=int)
+@click.option("-c", "--concurrency", default=_DEFAULT_CONCURRENCY, show_default=True, type=int)
 @click.option("-f", "--format", "fmt", default="verbose", show_default=True, type=click.Choice(_formatters.keys()))
 @click.option("--show-passed", is_flag=True, default=False)
 def dns(targets: list[str], concurrency: int, fmt: str, show_passed: bool) -> None:
