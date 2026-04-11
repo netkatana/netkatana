@@ -73,12 +73,15 @@ class DnsResult(BaseModel):
     dmarc_txt: list[str]
 
 
+Validator = Callable[[T], Awaitable[str | None]]
+
+
 @dataclass(kw_only=True)
 class Rule(Generic[T]):
     code: str
     severity: Severity
     detail: str
-    validator: Callable[[T], Awaitable[str | None]]
+    validator: Validator
 
 
 HttpRule = Rule[Response]

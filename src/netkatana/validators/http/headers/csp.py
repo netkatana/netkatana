@@ -1,6 +1,7 @@
 from httpx import Response
 
 from netkatana.exceptions import ValidationError
+from netkatana.types import Validator
 from netkatana.utils import parse_content_security_policy
 
 _CSP_HEADER = "content-security-policy"
@@ -39,11 +40,6 @@ def _neutralizes_unsafe_inline(sources: list[str]) -> bool:
     )
 
 
-# TODO: Delete
-def _header_values(response: Response, header_name: str) -> list[str]:
-    return [value.strip() for value in response.headers.get_list(header_name)]
-
-
 async def csp_missing(response: Response) -> str | None:
     if _CSP_HEADER not in response.headers:
         raise ValidationError("Content-Security-Policy (CSP) missing")
@@ -51,32 +47,31 @@ async def csp_missing(response: Response) -> str | None:
     return "Content-Security-Policy (CSP) present"
 
 
-async def csp_duplicated(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
+def _create_duplicated_header_validator(*, header: str, success_message: str, error_message: str) -> Validator:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
 
-    values = _header_values(response, _CSP_HEADER)
-    if len(values) > 1:
-        raise ValidationError(
-            "Content-Security-Policy (CSP) header is duplicated",
-            metadata={"values": ", ".join(values)},
-        )
+        values = [value.strip() for value in response.headers.get_list(header)]
 
-    return "Content-Security-Policy (CSP) header is not duplicated"
+        if len(values) > 1:
+            raise ValidationError(error_message, metadata={"values": ", ".join(values)})
+
+        return success_message
+
+    return validator
 
 
-async def csp_read_only_duplicated(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    values = _header_values(response, _CSP_REPORT_ONLY_HEADER)
-    if len(values) > 1:
-        raise ValidationError(
-            "Content-Security-Policy-Report-Only (CSP) header is duplicated",
-            metadata={"values": ", ".join(values)},
-        )
-
-    return "Content-Security-Policy-Report-Only (CSP) header is not duplicated"
+csp_duplicated = _create_duplicated_header_validator(
+    header=_CSP_HEADER,
+    success_message="Content-Security-Policy (CSP) header is not duplicated",
+    error_message="Content-Security-Policy (CSP) header is duplicated",
+)
+csp_read_only_duplicated = _create_duplicated_header_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    success_message="Content-Security-Policy-Report-Only (CSP) header is not duplicated",
+    error_message="Content-Security-Policy-Report-Only (CSP) header is duplicated",
+)
 
 
 async def csp_base_uri_missing(response: Response) -> str | None:

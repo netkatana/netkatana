@@ -2,6 +2,7 @@ import pytest
 from httpx import Response
 
 from netkatana.exceptions import ValidationError
+from netkatana.types import Validator
 from netkatana.validators.http.headers.csp import (
     csp_base_uri_missing,
     csp_connect_src_missing,
@@ -66,73 +67,53 @@ async def test_csp_missing_present():
 
 
 @pytest.mark.asyncio
-async def test_csp_duplicated_header_absent():
+@pytest.mark.parametrize("validator", [csp_duplicated, csp_read_only_duplicated])
+async def test_csp_duplicated_header_absent(validator: Validator):
     response = Response(200)
 
-    message = await csp_duplicated(response)
+    message = await validator(response)
 
     assert message is None
 
 
 @pytest.mark.asyncio
-async def test_csp_duplicated_single_header():
-    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+@pytest.mark.parametrize(
+    "header,validator,message",
+    [
+        ("content-security-policy", csp_duplicated, "Content-Security-Policy (CSP) header is not duplicated"),
+        (
+            "content-security-policy-report-only",
+            csp_read_only_duplicated,
+            "Content-Security-Policy-Report-Only (CSP) header is not duplicated",
+        ),
+    ],
+)
+async def test_csp_duplicated_single_header(header: str, validator: Validator, message: str):
+    response = Response(200, headers={header: "default-src 'self'"})
 
-    message = await csp_duplicated(response)
-
-    assert message == "Content-Security-Policy (CSP) header is not duplicated"
+    assert await validator(response) == message
 
 
 @pytest.mark.asyncio
-async def test_csp_duplicated_duplicated():
-    response = Response(
-        200,
-        headers=[
-            ("content-security-policy", "default-src 'self'"),
-            ("content-security-policy", "script-src 'self'"),
-        ],
-    )
+@pytest.mark.parametrize(
+    "header,validator,message",
+    [
+        ("content-security-policy", csp_duplicated, "Content-Security-Policy (CSP) header is duplicated"),
+        (
+            "content-security-policy-report-only",
+            csp_read_only_duplicated,
+            "Content-Security-Policy-Report-Only (CSP) header is duplicated",
+        ),
+    ],
+)
+async def test_csp_duplicated_duplicated(header: str, validator: Validator, message: str):
+    response = Response(200, headers=[(header, "default-src 'self'"), (header, "script-src 'self'")])
 
     with pytest.raises(ValidationError) as exc_info:
-        await csp_duplicated(response)
+        await validator(response)
 
-    assert exc_info.value.message == "Content-Security-Policy (CSP) header is duplicated"
+    assert exc_info.value.message == message
     assert exc_info.value.metadata == {"values": "default-src 'self', script-src 'self'"}
-
-
-@pytest.mark.asyncio
-async def test_csp_report_only_duplicated_header_absent():
-    response = Response(200)
-
-    message = await csp_read_only_duplicated(response)
-
-    assert message is None
-
-
-@pytest.mark.asyncio
-async def test_csp_report_only_duplicated_single_header():
-    response = Response(200, headers={"content-security-policy-report-only": "default-src 'self'"})
-
-    message = await csp_read_only_duplicated(response)
-
-    assert message == "Content-Security-Policy-Report-Only (CSP) header is not duplicated"
-
-
-@pytest.mark.asyncio
-async def test_csp_report_only_duplicated_duplicated():
-    response = Response(
-        200,
-        headers=[
-            ("content-security-policy-report-only", "default-src 'self'"),
-            ("content-security-policy-report-only", "img-src 'self'"),
-        ],
-    )
-
-    with pytest.raises(ValidationError) as exc_info:
-        await csp_read_only_duplicated(response)
-
-    assert exc_info.value.message == "Content-Security-Policy-Report-Only (CSP) header is duplicated"
-    assert exc_info.value.metadata == {"values": "default-src 'self', img-src 'self'"}
 
 
 @pytest.mark.asyncio
