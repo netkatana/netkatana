@@ -188,13 +188,13 @@ http_rules = [
     HttpRule(
         code="headers_csp_block_all_mixed_content_deprecated",
         severity=Severity.WARNING,
-        detail="TODO",
+        detail="'block-all-mixed-content' is deprecated in favor of 'upgrade-insecure-requests'; relying on it preserves older mixed-content behavior and complicates CSP maintenance.",
         validator=csp_block_all_mixed_content_deprecated,
     ),
     HttpRule(
         code="headers_csp_report_only_block_all_mixed_content_deprecated",
         severity=Severity.WARNING,
-        detail="TODO",
+        detail="'block-all-mixed-content' is deprecated in favor of 'upgrade-insecure-requests'; keeping it in report-only policies adds legacy noise without reflecting the modern upgrade path.",
         validator=csp_report_only_block_all_mixed_content_deprecated,
     ),
     HttpRule(
