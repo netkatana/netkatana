@@ -8,6 +8,8 @@ from netkatana.validators.http.headers.csp import (
     csp_child_src_source_insecure_scheme,
     csp_child_src_source_ip,
     csp_child_src_unrestricted,
+    csp_connect_src_source_insecure_scheme,
+    csp_connect_src_source_ip,
     csp_deprecated_directive,
     csp_duplicated,
     csp_form_action_hash_invalid,
@@ -17,24 +19,41 @@ from netkatana.validators.http.headers.csp import (
     csp_form_action_source_ip,
     csp_frame_ancestors_unsafe,
     csp_frame_src_missing,
+    csp_img_src_source_insecure_scheme,
+    csp_img_src_source_ip,
     csp_invalid_directive,
     csp_missing,
     csp_object_src_unsafe,
     csp_reporting_endpoint_missing,
+    csp_require_trusted_types_for_invalid,
     csp_require_trusted_types_for_missing,
+    csp_sandbox_allow_same_origin_and_scripts,
+    csp_sandbox_invalid,
     csp_sandbox_missing,
     csp_script_src_attr_missing,
     csp_script_src_attr_nonce_invalid,
     csp_script_src_elem_unsafe_inline,
+    csp_script_src_hash_invalid,
+    csp_script_src_nonce_invalid,
+    csp_script_src_source_insecure_scheme,
+    csp_script_src_source_ip,
     csp_style_src_attr_missing,
     csp_style_src_elem_hash_invalid,
     csp_style_src_elem_unsafe_inline,
+    csp_style_src_hash_invalid,
+    csp_style_src_nonce_invalid,
+    csp_style_src_source_insecure_scheme,
+    csp_style_src_source_ip,
+    csp_trusted_types_allow_duplicates,
+    csp_trusted_types_invalid,
     csp_trusted_types_missing,
     csp_unknown_directive,
     csp_unsafe_eval,
     csp_unsafe_inline,
     csp_upgrade_insecure_requests_missing,
     csp_worker_src_missing,
+    csp_worker_src_source_insecure_scheme,
+    csp_worker_src_source_ip,
     csp_worker_src_unrestricted,
 )
 
@@ -575,6 +594,46 @@ async def test_script_src_attr_missing_script_src_fallback():
 
 
 @pytest.mark.asyncio
+async def test_script_src_nonce_invalid_rejects_invalid_nonce():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_script_src_nonce_invalid(Response(200, headers={"content-security-policy": "script-src 'nonce-'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src contains an invalid nonce source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_script_src_hash_invalid_rejects_invalid_hash():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_script_src_hash_invalid(
+            Response(200, headers={"content-security-policy": "script-src 'sha1-abc123=='"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src contains an invalid hash source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_script_src_source_insecure_scheme_uses_default_src_fallback():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_script_src_source_insecure_scheme(
+            Response(200, headers={"content-security-policy": "default-src http://example.com"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src contains an insecure scheme source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_script_src_source_ip_rejects_ip_source():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_script_src_source_ip(Response(200, headers={"content-security-policy": "script-src 127.0.0.1"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src contains an IP source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
 async def test_script_src_attr_nonce_invalid_rejects_invalid_nonce():
     with pytest.raises(ValidationError) as exc_info:
         await csp_script_src_attr_nonce_invalid(
@@ -601,6 +660,46 @@ async def test_style_src_attr_missing_style_src_fallback():
     response = Response(200, headers={"content-security-policy": "style-src 'self'"})
 
     assert await csp_style_src_attr_missing(response) == "Content-Security-Policy (CSP) style-src-attr is present"
+
+
+@pytest.mark.asyncio
+async def test_style_src_nonce_invalid_rejects_invalid_nonce():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_style_src_nonce_invalid(Response(200, headers={"content-security-policy": "style-src 'nonce-'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src contains an invalid nonce source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_style_src_hash_invalid_rejects_invalid_hash():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_style_src_hash_invalid(
+            Response(200, headers={"content-security-policy": "style-src 'sha1-abc123=='"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src contains an invalid hash source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_style_src_source_insecure_scheme_rejects_http_source():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_style_src_source_insecure_scheme(
+            Response(200, headers={"content-security-policy": "style-src http://example.com"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src contains an insecure scheme source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_style_src_source_ip_rejects_ip_source():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_style_src_source_ip(Response(200, headers={"content-security-policy": "style-src https://127.0.0.1"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src contains an IP source"
+    assert exc_info.value.metadata == {}
 
 
 @pytest.mark.asyncio
@@ -686,10 +785,53 @@ async def test_presence_directive_missing():
 
 
 @pytest.mark.asyncio
+async def test_require_trusted_types_for_invalid_rejects_non_script_value():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_require_trusted_types_for_invalid(
+            Response(200, headers={"content-security-policy": "require-trusted-types-for 'style'"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) require-trusted-types-for value is invalid"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_require_trusted_types_for_invalid_accepts_script():
+    response = Response(200, headers={"content-security-policy": "require-trusted-types-for 'script'"})
+
+    assert (
+        await csp_require_trusted_types_for_invalid(response)
+        == "Content-Security-Policy (CSP) require-trusted-types-for value is valid"
+    )
+
+
+@pytest.mark.asyncio
 async def test_trusted_types_missing_present():
     response = Response(200, headers={"content-security-policy": "trusted-types default"})
 
     assert await csp_trusted_types_missing(response) == "Content-Security-Policy (CSP) trusted-types is present"
+
+
+@pytest.mark.asyncio
+async def test_trusted_types_invalid_rejects_none_with_other_value():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_trusted_types_invalid(
+            Response(200, headers={"content-security-policy": "trusted-types 'none' default"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) trusted-types value is invalid"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_trusted_types_allow_duplicates_rejects_keyword():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_trusted_types_allow_duplicates(
+            Response(200, headers={"content-security-policy": "trusted-types default 'allow-duplicates'"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) trusted-types allows duplicate policy names"
+    assert exc_info.value.metadata == {}
 
 
 @pytest.mark.asyncio
@@ -782,6 +924,36 @@ async def test_sandbox_missing_absent():
 
 
 @pytest.mark.asyncio
+async def test_sandbox_invalid_rejects_unknown_token():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_sandbox_invalid(Response(200, headers={"content-security-policy": "sandbox allow-lol"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) sandbox contains an invalid token"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_sandbox_allow_same_origin_and_scripts_rejects_unsafe_combination():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_sandbox_allow_same_origin_and_scripts(
+            Response(200, headers={"content-security-policy": "sandbox allow-scripts allow-same-origin"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) sandbox allows both scripts and same-origin"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_sandbox_allow_same_origin_and_scripts_accepts_single_capability():
+    response = Response(200, headers={"content-security-policy": "sandbox allow-scripts"})
+
+    assert (
+        await csp_sandbox_allow_same_origin_and_scripts(response)
+        == "Content-Security-Policy (CSP) sandbox does not allow both scripts and same-origin"
+    )
+
+
+@pytest.mark.asyncio
 async def test_worker_missing_header_absent():
     assert await csp_worker_src_missing(Response(200)) is None
 
@@ -850,4 +1022,66 @@ async def test_worker_unrestricted_default_src_fallback_unrestricted():
         await csp_worker_src_unrestricted(Response(200, headers={"content-security-policy": "default-src https:"}))
 
     assert exc_info.value.message == "Content-Security-Policy (CSP) worker-src is unrestricted"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_connect_src_source_insecure_scheme_rejects_http_source():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_connect_src_source_insecure_scheme(
+            Response(200, headers={"content-security-policy": "connect-src http://api.example.com"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) connect-src contains an insecure scheme source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_connect_src_source_ip_rejects_ip_source():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_connect_src_source_ip(
+            Response(200, headers={"content-security-policy": "connect-src https://127.0.0.1"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) connect-src contains an IP source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_img_src_source_insecure_scheme_rejects_http_source():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_img_src_source_insecure_scheme(
+            Response(200, headers={"content-security-policy": "img-src http://cdn.example.com"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) img-src contains an insecure scheme source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_img_src_source_ip_rejects_ip_source():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_img_src_source_ip(Response(200, headers={"content-security-policy": "img-src 127.0.0.1"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) img-src contains an IP source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_worker_src_source_insecure_scheme_uses_script_src_fallback():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_worker_src_source_insecure_scheme(
+            Response(200, headers={"content-security-policy": "script-src http://cdn.example.com"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) worker-src contains an insecure scheme source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_worker_src_source_ip_uses_child_src_fallback():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_worker_src_source_ip(Response(200, headers={"content-security-policy": "child-src 127.0.0.1"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) worker-src contains an IP source"
     assert exc_info.value.metadata == {}
