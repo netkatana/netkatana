@@ -8,6 +8,7 @@ from netkatana.validators.http.headers.csp import (
     csp_child_src_source_insecure_scheme,
     csp_child_src_source_ip,
     csp_child_src_unrestricted,
+    csp_deprecated_directive,
     csp_duplicated,
     csp_form_action_hash_invalid,
     csp_form_action_missing,
@@ -16,10 +17,23 @@ from netkatana.validators.http.headers.csp import (
     csp_form_action_source_ip,
     csp_frame_ancestors_unsafe,
     csp_frame_src_missing,
+    csp_invalid_directive,
     csp_missing,
     csp_object_src_unsafe,
+    csp_reporting_endpoint_missing,
+    csp_require_trusted_types_for_missing,
+    csp_sandbox_missing,
+    csp_script_src_attr_missing,
+    csp_script_src_attr_nonce_invalid,
+    csp_script_src_elem_unsafe_inline,
+    csp_style_src_attr_missing,
+    csp_style_src_elem_hash_invalid,
+    csp_style_src_elem_unsafe_inline,
+    csp_trusted_types_missing,
+    csp_unknown_directive,
     csp_unsafe_eval,
     csp_unsafe_inline,
+    csp_upgrade_insecure_requests_missing,
     csp_worker_src_missing,
     csp_worker_src_unrestricted,
 )
@@ -550,6 +564,220 @@ async def test_frame_src_missing_no_effective_fallback():
         await csp_frame_src_missing(Response(200, headers={"content-security-policy": "img-src 'self'"}))
 
     assert exc_info.value.message == "Content-Security-Policy (CSP) frame-src is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_script_src_attr_missing_script_src_fallback():
+    response = Response(200, headers={"content-security-policy": "script-src 'self'"})
+
+    assert await csp_script_src_attr_missing(response) == "Content-Security-Policy (CSP) script-src-attr is present"
+
+
+@pytest.mark.asyncio
+async def test_script_src_attr_nonce_invalid_rejects_invalid_nonce():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_script_src_attr_nonce_invalid(
+            Response(200, headers={"content-security-policy": "script-src-attr 'nonce-'"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src-attr contains an invalid nonce source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_script_src_elem_unsafe_inline_rejects_unsafe_inline():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_script_src_elem_unsafe_inline(
+            Response(200, headers={"content-security-policy": "script-src-elem 'self' 'unsafe-inline'"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) script-src-elem contains 'unsafe-inline'"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_style_src_attr_missing_style_src_fallback():
+    response = Response(200, headers={"content-security-policy": "style-src 'self'"})
+
+    assert await csp_style_src_attr_missing(response) == "Content-Security-Policy (CSP) style-src-attr is present"
+
+
+@pytest.mark.asyncio
+async def test_style_src_elem_hash_invalid_rejects_invalid_hash():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_style_src_elem_hash_invalid(
+            Response(200, headers={"content-security-policy": "style-src-elem 'sha1-abc123=='"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) style-src-elem contains an invalid hash source"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_style_src_elem_unsafe_inline_neutralized_by_nonce():
+    response = Response(
+        200,
+        headers={"content-security-policy": "style-src-elem 'nonce-abc123' 'unsafe-inline'"},
+    )
+
+    assert (
+        await csp_style_src_elem_unsafe_inline(response)
+        == "Content-Security-Policy (CSP) style-src-elem 'unsafe-inline' is neutralized by nonce or hash"
+    )
+
+
+@pytest.mark.asyncio
+async def test_reporting_endpoint_missing_header_absent():
+    assert await csp_reporting_endpoint_missing(Response(200)) is None
+
+
+@pytest.mark.asyncio
+async def test_reporting_endpoint_missing_report_to_present():
+    response = Response(200, headers={"content-security-policy": "report-to endpoint"})
+
+    assert (
+        await csp_reporting_endpoint_missing(response) == "Content-Security-Policy (CSP) reporting endpoint is present"
+    )
+
+
+@pytest.mark.asyncio
+async def test_reporting_endpoint_missing_report_uri_present():
+    response = Response(200, headers={"content-security-policy": "report-uri /csp-report"})
+
+    assert (
+        await csp_reporting_endpoint_missing(response) == "Content-Security-Policy (CSP) reporting endpoint is present"
+    )
+
+
+@pytest.mark.asyncio
+async def test_reporting_endpoint_missing_no_reporting_directive():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_reporting_endpoint_missing(Response(200, headers={"content-security-policy": "default-src 'self'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) reporting endpoint is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_presence_directive_header_absent():
+    assert await csp_require_trusted_types_for_missing(Response(200)) is None
+
+
+@pytest.mark.asyncio
+async def test_presence_directive_present():
+    response = Response(200, headers={"content-security-policy": "require-trusted-types-for 'script'"})
+
+    assert (
+        await csp_require_trusted_types_for_missing(response)
+        == "Content-Security-Policy (CSP) require-trusted-types-for is present"
+    )
+
+
+@pytest.mark.asyncio
+async def test_presence_directive_missing():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_require_trusted_types_for_missing(
+            Response(200, headers={"content-security-policy": "default-src 'self'"})
+        )
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) require-trusted-types-for is missing"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_trusted_types_missing_present():
+    response = Response(200, headers={"content-security-policy": "trusted-types default"})
+
+    assert await csp_trusted_types_missing(response) == "Content-Security-Policy (CSP) trusted-types is present"
+
+
+@pytest.mark.asyncio
+async def test_upgrade_insecure_requests_missing_present():
+    response = Response(200, headers={"content-security-policy": "upgrade-insecure-requests"})
+
+    assert (
+        await csp_upgrade_insecure_requests_missing(response)
+        == "Content-Security-Policy (CSP) upgrade-insecure-requests is present"
+    )
+
+
+@pytest.mark.asyncio
+async def test_invalid_directive_header_absent():
+    assert await csp_invalid_directive(Response(200)) is None
+
+
+@pytest.mark.asyncio
+async def test_invalid_directive_valid_names():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'; script-src 'self'"})
+
+    assert (
+        await csp_invalid_directive(response) == "Content-Security-Policy (CSP) directive names are syntactically valid"
+    )
+
+
+@pytest.mark.asyncio
+async def test_invalid_directive_invalid_name():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_invalid_directive(Response(200, headers={"content-security-policy": "script_src 'self'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) contains an invalid directive name"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_unknown_directive_known_names():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'; worker-src 'self'"})
+
+    assert await csp_unknown_directive(response) == "Content-Security-Policy (CSP) directives are recognized"
+
+
+@pytest.mark.asyncio
+async def test_unknown_directive_unknown_name():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_unknown_directive(Response(200, headers={"content-security-policy": "future-src 'self'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) contains an unknown directive"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_deprecated_directive_global_clean_policy():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'; script-src 'self'"})
+
+    assert (
+        await csp_deprecated_directive(response)
+        == "Content-Security-Policy (CSP) does not contain deprecated directives"
+    )
+
+
+@pytest.mark.asyncio
+async def test_deprecated_directive_global_deprecated_present():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_deprecated_directive(Response(200, headers={"content-security-policy": "prefetch-src 'self'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) contains a deprecated directive"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_sandbox_missing_header_absent():
+    assert await csp_sandbox_missing(Response(200)) is None
+
+
+@pytest.mark.asyncio
+async def test_sandbox_missing_present():
+    response = Response(200, headers={"content-security-policy": "sandbox allow-scripts"})
+
+    assert await csp_sandbox_missing(response) == "Content-Security-Policy (CSP) sandbox is present"
+
+
+@pytest.mark.asyncio
+async def test_sandbox_missing_absent():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_sandbox_missing(Response(200, headers={"content-security-policy": "default-src 'self'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) sandbox is missing"
     assert exc_info.value.metadata == {}
 
 
