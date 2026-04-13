@@ -4,7 +4,7 @@ test:
 lint:
 	uv run ruff format --check
 	uv run ruff check
-	mypy src --strict
+	uv run mypy src --strict
 
 format:
 	uv run ruff format
