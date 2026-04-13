@@ -14,6 +14,8 @@ from netkatana.validators.http.headers.csp import (
     csp_form_action_nonce_invalid,
     csp_form_action_source_insecure_scheme,
     csp_form_action_source_ip,
+    csp_frame_ancestors_unsafe,
+    csp_frame_src_missing,
     csp_missing,
     csp_object_src_unsafe,
     csp_unsafe_eval,
@@ -487,6 +489,67 @@ async def test_exact_value_validator_other_value_present():
         await csp_object_src_unsafe(Response(200, headers={"content-security-policy": "object-src 'self'"}))
 
     assert exc_info.value.message == "Content-Security-Policy (CSP) object-src is not restricted to 'none'"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_frame_ancestors_unsafe_header_absent():
+    assert await csp_frame_ancestors_unsafe(Response(200)) is None
+
+
+@pytest.mark.asyncio
+async def test_frame_ancestors_unsafe_none_allowed():
+    response = Response(200, headers={"content-security-policy": "frame-ancestors 'none'"})
+
+    assert (
+        await csp_frame_ancestors_unsafe(response)
+        == "Content-Security-Policy (CSP) frame-ancestors is restricted to 'none' or 'self'"
+    )
+
+
+@pytest.mark.asyncio
+async def test_frame_ancestors_unsafe_self_allowed():
+    response = Response(200, headers={"content-security-policy": "frame-ancestors 'self'"})
+
+    assert (
+        await csp_frame_ancestors_unsafe(response)
+        == "Content-Security-Policy (CSP) frame-ancestors is restricted to 'none' or 'self'"
+    )
+
+
+@pytest.mark.asyncio
+async def test_frame_ancestors_unsafe_other_origin_present():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_frame_ancestors_unsafe(
+            Response(200, headers={"content-security-policy": "frame-ancestors https://partner.example"})
+        )
+
+    assert (
+        exc_info.value.message == "Content-Security-Policy (CSP) frame-ancestors allows origins beyond 'none' or 'self'"
+    )
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_frame_src_missing_child_src_fallback():
+    response = Response(200, headers={"content-security-policy": "child-src 'self'"})
+
+    assert await csp_frame_src_missing(response) == "Content-Security-Policy (CSP) frame-src is present"
+
+
+@pytest.mark.asyncio
+async def test_frame_src_missing_default_src_fallback():
+    response = Response(200, headers={"content-security-policy": "default-src 'self'"})
+
+    assert await csp_frame_src_missing(response) == "Content-Security-Policy (CSP) frame-src is present"
+
+
+@pytest.mark.asyncio
+async def test_frame_src_missing_no_effective_fallback():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_frame_src_missing(Response(200, headers={"content-security-policy": "img-src 'self'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) frame-src is missing"
     assert exc_info.value.metadata == {}
 
 

@@ -651,6 +651,29 @@ def _create_exact_sources_directive_validator(
     return validator
 
 
+def _create_allowed_sources_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    allowed_sources: list[list[str]],
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = directives.get(directive)
+
+        if effective_sources in allowed_sources:
+            return success_message
+
+        raise ValidationError(error_message)
+
+    return validator
+
+
 csp_unsafe_inline = _create_unsafe_inline_directive_validator(
     header=_CSP_HEADER,
     directive="script-src",
@@ -710,6 +733,76 @@ csp_report_only_frame_ancestors_missing = _create_missing_directive_validator(
     directive="frame-ancestors",
     success_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors is present",
     error_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors is missing",
+)
+csp_frame_ancestors_unsafe = _create_allowed_sources_directive_validator(
+    header=_CSP_HEADER,
+    directive="frame-ancestors",
+    allowed_sources=[["'none'"], ["'self'"]],
+    success_message="Content-Security-Policy (CSP) frame-ancestors is restricted to 'none' or 'self'",
+    error_message="Content-Security-Policy (CSP) frame-ancestors allows origins beyond 'none' or 'self'",
+)
+csp_report_only_frame_ancestors_unsafe = _create_allowed_sources_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="frame-ancestors",
+    allowed_sources=[["'none'"], ["'self'"]],
+    success_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors is restricted to 'none' or 'self'",
+    error_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors allows origins beyond 'none' or 'self'",
+)
+csp_frame_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy (CSP) frame-src is present",
+    error_message="Content-Security-Policy (CSP) frame-src is missing",
+)
+csp_report_only_frame_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) frame-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) frame-src is missing",
+)
+csp_frame_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy (CSP) frame-src is restricted",
+    error_message="Content-Security-Policy (CSP) frame-src is unrestricted",
+)
+csp_report_only_frame_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) frame-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) frame-src is unrestricted",
+)
+csp_frame_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy (CSP) frame-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) frame-src contains an insecure scheme source",
+)
+csp_report_only_frame_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) frame-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) frame-src contains an insecure scheme source",
+)
+csp_frame_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy (CSP) frame-src sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) frame-src contains an IP source",
+)
+csp_report_only_frame_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="frame-src",
+    fallback_directives=["child-src", "default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) frame-src sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) frame-src contains an IP source",
 )
 csp_script_src_missing = _create_missing_directive_validator(
     header=_CSP_HEADER,
@@ -822,6 +915,118 @@ csp_report_only_img_src_unrestricted = _create_unrestricted_directive_validator(
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy-Report-Only (CSP) img-src is restricted",
     error_message="Content-Security-Policy-Report-Only (CSP) img-src is unrestricted",
+)
+csp_manifest_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) manifest-src is present",
+    error_message="Content-Security-Policy (CSP) manifest-src is missing",
+)
+csp_report_only_manifest_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) manifest-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) manifest-src is missing",
+)
+csp_manifest_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) manifest-src is restricted",
+    error_message="Content-Security-Policy (CSP) manifest-src is unrestricted",
+)
+csp_report_only_manifest_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) manifest-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) manifest-src is unrestricted",
+)
+csp_manifest_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) manifest-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) manifest-src contains an insecure scheme source",
+)
+csp_report_only_manifest_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) manifest-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) manifest-src contains an insecure scheme source",
+)
+csp_manifest_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) manifest-src sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) manifest-src contains an IP source",
+)
+csp_report_only_manifest_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="manifest-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) manifest-src sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) manifest-src contains an IP source",
+)
+csp_media_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) media-src is present",
+    error_message="Content-Security-Policy (CSP) media-src is missing",
+)
+csp_report_only_media_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) media-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) media-src is missing",
+)
+csp_media_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) media-src is restricted",
+    error_message="Content-Security-Policy (CSP) media-src is unrestricted",
+)
+csp_report_only_media_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) media-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) media-src is unrestricted",
+)
+csp_media_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) media-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) media-src contains an insecure scheme source",
+)
+csp_report_only_media_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) media-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) media-src contains an insecure scheme source",
+)
+csp_media_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) media-src sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) media-src contains an IP source",
+)
+csp_report_only_media_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="media-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) media-src sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) media-src contains an IP source",
 )
 csp_worker_src_missing = _create_missing_directive_validator(
     header=_CSP_HEADER,
