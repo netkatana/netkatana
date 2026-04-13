@@ -586,414 +586,332 @@ csp_report_only_form_action_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an IP source",
 )
 
-# REFACTOR POINT ENDS HERE
 
+def _create_token_absent_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    token: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
 
-async def csp_unsafe_inline(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
 
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
+        if effective_sources is None:
+            return None
 
-    if effective is None:
-        return None
+        if token in effective_sources:
+            raise ValidationError(error_message)
 
-    if "'unsafe-inline'" not in effective:
-        return "Content-Security-Policy (CSP) script-src does not contain 'unsafe-inline'"
+        return success_message
 
-    if _neutralizes_unsafe_inline(effective):
-        return "Content-Security-Policy (CSP) 'unsafe-inline' is neutralized by nonce or hash"
+    return validator
 
-    raise ValidationError("Content-Security-Policy (CSP) script-src contains 'unsafe-inline'")
 
+def _create_unsafe_inline_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    fallback_directives: list[str] | None = None,
+    absent_message: str,
+    neutralized_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
 
-async def csp_ro_unsafe_inline(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
-
-    if effective is None:
-        return None
-
-    if "'unsafe-inline'" not in effective:
-        return "Content-Security-Policy-Report-Only (CSP) script-src does not contain 'unsafe-inline'"
-
-    if _neutralizes_unsafe_inline(effective):
-        return "Content-Security-Policy-Report-Only (CSP) 'unsafe-inline' is neutralized by nonce or hash"
-
-    raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-inline'")
-
-
-async def csp_unsafe_eval(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
-
-    if effective is None:
-        return None
-
-    if "'unsafe-eval'" in effective:
-        raise ValidationError("Content-Security-Policy (CSP) script-src contains 'unsafe-eval'")
-
-    return "Content-Security-Policy (CSP) script-src does not contain 'unsafe-eval'"
-
-
-async def csp_ro_unsafe_eval(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
-
-    if effective is None:
-        return None
-
-    if "'unsafe-eval'" in effective:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-eval'")
-
-    return "Content-Security-Policy-Report-Only (CSP) script-src does not contain 'unsafe-eval'"
-
-
-async def csp_object_src_unsafe(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "object-src")
-
-    if effective == ["'none'"]:
-        return "Content-Security-Policy (CSP) object-src is restricted to 'none'"
-
-    raise ValidationError("Content-Security-Policy (CSP) object-src is not restricted to 'none'")
-
-
-async def csp_ro_object_src_unsafe(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "object-src")
-
-    if effective == ["'none'"]:
-        return "Content-Security-Policy-Report-Only (CSP) object-src is restricted to 'none'"
-
-    raise ValidationError("Content-Security-Policy-Report-Only (CSP) object-src is not restricted to 'none'")
-
-
-async def csp_frame_ancestors_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-
-    if "frame-ancestors" not in directives:
-        raise ValidationError("Content-Security-Policy (CSP) frame-ancestors is missing")
-
-    return "Content-Security-Policy (CSP) frame-ancestors is present"
-
-
-async def csp_ro_frame_ancestors_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-
-    if "frame-ancestors" not in directives:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) frame-ancestors is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) frame-ancestors is present"
-
-
-async def csp_script_src_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy (CSP) script-src is missing")
-
-    return "Content-Security-Policy (CSP) script-src is present"
-
-
-async def csp_ro_script_src_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) script-src is present"
-
-
-async def csp_script_src_unrestricted(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy (CSP) script-src is unrestricted")
-
-    return "Content-Security-Policy (CSP) script-src is restricted"
-
-
-async def csp_ro_script_src_unrestricted(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "script-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) script-src is unrestricted")
-
-    return "Content-Security-Policy-Report-Only (CSP) script-src is restricted"
-
-
-async def csp_style_src_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "style-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy (CSP) style-src is missing")
-
-    return "Content-Security-Policy (CSP) style-src is present"
-
-
-async def csp_style_src_unrestricted(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "style-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy (CSP) style-src is unrestricted")
-
-    return "Content-Security-Policy (CSP) style-src is restricted"
-
-
-async def csp_ro_style_src_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "style-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) style-src is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) style-src is present"
-
-
-async def csp_ro_style_src_unrestricted(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "style-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) style-src is unrestricted")
-
-    return "Content-Security-Policy-Report-Only (CSP) style-src is restricted"
-
-
-async def csp_connect_src_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "connect-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy (CSP) connect-src is missing")
-
-    return "Content-Security-Policy (CSP) connect-src is present"
-
-
-async def csp_connect_src_unrestricted(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "connect-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy (CSP) connect-src is unrestricted")
-
-    return "Content-Security-Policy (CSP) connect-src is restricted"
-
-
-async def csp_img_src_unrestricted(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "img-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy (CSP) img-src is unrestricted")
-
-    return "Content-Security-Policy (CSP) img-src is restricted"
-
-
-async def csp_worker_src_unrestricted(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_worker_sources(directives)
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy (CSP) worker-src is unrestricted")
-
-    return "Content-Security-Policy (CSP) worker-src is restricted"
-
-
-async def csp_img_src_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_sources(directives, "img-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy (CSP) img-src is missing")
-
-    return "Content-Security-Policy (CSP) img-src is present"
-
-
-async def csp_worker_src_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_HEADER])
-    effective = _csp_effective_worker_sources(directives)
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy (CSP) worker-src is missing")
-
-    return "Content-Security-Policy (CSP) worker-src is present"
-
-
-async def csp_ro_connect_src_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "connect-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) connect-src is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) connect-src is present"
-
-
-async def csp_ro_connect_src_unrestricted(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "connect-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) connect-src is unrestricted")
-
-    return "Content-Security-Policy-Report-Only (CSP) connect-src is restricted"
-
-
-async def csp_ro_img_src_unrestricted(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "img-src")
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) img-src is unrestricted")
-
-    return "Content-Security-Policy-Report-Only (CSP) img-src is restricted"
-
-
-async def csp_ro_worker_src_unrestricted(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_worker_sources(directives)
-
-    if effective is None:
-        return None
-
-    if _csp_sources_unrestricted(effective):
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) worker-src is unrestricted")
-
-    return "Content-Security-Policy-Report-Only (CSP) worker-src is restricted"
-
-
-async def csp_ro_img_src_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_sources(directives, "img-src")
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) img-src is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) img-src is present"
-
-
-async def csp_ro_worker_src_missing(response: Response) -> str | None:
-    if _CSP_REPORT_ONLY_HEADER not in response.headers:
-        return None
-
-    directives = parse_content_security_policy(response.headers[_CSP_REPORT_ONLY_HEADER])
-    effective = _csp_effective_worker_sources(directives)
-
-    if effective is None:
-        raise ValidationError("Content-Security-Policy-Report-Only (CSP) worker-src is missing")
-
-    return "Content-Security-Policy-Report-Only (CSP) worker-src is present"
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
+
+        if effective_sources is None:
+            return None
+
+        if "'unsafe-inline'" not in effective_sources:
+            return absent_message
+
+        if _neutralizes_unsafe_inline(effective_sources):
+            return neutralized_message
+
+        raise ValidationError(error_message)
+
+    return validator
+
+
+def _create_exact_sources_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    expected_sources: list[str],
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
+
+        if effective_sources == expected_sources:
+            return success_message
+
+        raise ValidationError(error_message)
+
+    return validator
+
+
+def _create_worker_missing_directive_validator(
+    *, header: str, success_message: str, error_message: str
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = _csp_effective_worker_sources(directives)
+
+        if effective_sources is None:
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+def _create_worker_unrestricted_directive_validator(
+    *, header: str, success_message: str, error_message: str
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        if header not in response.headers:
+            return None
+
+        directives = parse_content_security_policy(response.headers[header])
+        effective_sources = _csp_effective_worker_sources(directives)
+
+        if effective_sources is None:
+            return None
+
+        if _csp_sources_unrestricted(effective_sources):
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+csp_unsafe_inline = _create_unsafe_inline_directive_validator(
+    header=_CSP_HEADER,
+    directive="script-src",
+    fallback_directives=["default-src"],
+    absent_message="Content-Security-Policy (CSP) script-src does not contain 'unsafe-inline'",
+    neutralized_message="Content-Security-Policy (CSP) 'unsafe-inline' is neutralized by nonce or hash",
+    error_message="Content-Security-Policy (CSP) script-src contains 'unsafe-inline'",
+)
+csp_report_only_unsafe_inline = _create_unsafe_inline_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="script-src",
+    fallback_directives=["default-src"],
+    absent_message="Content-Security-Policy-Report-Only (CSP) script-src does not contain 'unsafe-inline'",
+    neutralized_message="Content-Security-Policy-Report-Only (CSP) 'unsafe-inline' is neutralized by nonce or hash",
+    error_message="Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-inline'",
+)
+csp_unsafe_eval = _create_token_absent_directive_validator(
+    header=_CSP_HEADER,
+    directive="script-src",
+    token="'unsafe-eval'",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) script-src does not contain 'unsafe-eval'",
+    error_message="Content-Security-Policy (CSP) script-src contains 'unsafe-eval'",
+)
+csp_report_only_unsafe_eval = _create_token_absent_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="script-src",
+    token="'unsafe-eval'",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) script-src does not contain 'unsafe-eval'",
+    error_message="Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-eval'",
+)
+csp_object_src_unsafe = _create_exact_sources_directive_validator(
+    header=_CSP_HEADER,
+    directive="object-src",
+    expected_sources=["'none'"],
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) object-src is restricted to 'none'",
+    error_message="Content-Security-Policy (CSP) object-src is not restricted to 'none'",
+)
+csp_report_only_object_src_unsafe = _create_exact_sources_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="object-src",
+    expected_sources=["'none'"],
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) object-src is restricted to 'none'",
+    error_message="Content-Security-Policy-Report-Only (CSP) object-src is not restricted to 'none'",
+)
+csp_frame_ancestors_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="frame-ancestors",
+    success_message="Content-Security-Policy (CSP) frame-ancestors is present",
+    error_message="Content-Security-Policy (CSP) frame-ancestors is missing",
+)
+csp_report_only_frame_ancestors_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="frame-ancestors",
+    success_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors is missing",
+)
+csp_script_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="script-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) script-src is present",
+    error_message="Content-Security-Policy (CSP) script-src is missing",
+)
+csp_report_only_script_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="script-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) script-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) script-src is missing",
+)
+csp_script_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="script-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) script-src is restricted",
+    error_message="Content-Security-Policy (CSP) script-src is unrestricted",
+)
+csp_report_only_script_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="script-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) script-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) script-src is unrestricted",
+)
+csp_style_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="style-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) style-src is present",
+    error_message="Content-Security-Policy (CSP) style-src is missing",
+)
+csp_report_only_style_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="style-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) style-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) style-src is missing",
+)
+csp_style_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="style-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) style-src is restricted",
+    error_message="Content-Security-Policy (CSP) style-src is unrestricted",
+)
+csp_report_only_style_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="style-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) style-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) style-src is unrestricted",
+)
+csp_connect_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="connect-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) connect-src is present",
+    error_message="Content-Security-Policy (CSP) connect-src is missing",
+)
+csp_report_only_connect_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="connect-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) connect-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) connect-src is missing",
+)
+csp_connect_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="connect-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) connect-src is restricted",
+    error_message="Content-Security-Policy (CSP) connect-src is unrestricted",
+)
+csp_report_only_connect_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="connect-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) connect-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) connect-src is unrestricted",
+)
+csp_img_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="img-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) img-src is present",
+    error_message="Content-Security-Policy (CSP) img-src is missing",
+)
+csp_report_only_img_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="img-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) img-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) img-src is missing",
+)
+csp_img_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="img-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) img-src is restricted",
+    error_message="Content-Security-Policy (CSP) img-src is unrestricted",
+)
+csp_report_only_img_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="img-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) img-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) img-src is unrestricted",
+)
+csp_worker_src_missing = _create_worker_missing_directive_validator(
+    header=_CSP_HEADER,
+    success_message="Content-Security-Policy (CSP) worker-src is present",
+    error_message="Content-Security-Policy (CSP) worker-src is missing",
+)
+csp_report_only_worker_src_missing = _create_worker_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    success_message="Content-Security-Policy-Report-Only (CSP) worker-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) worker-src is missing",
+)
+csp_worker_src_unrestricted = _create_worker_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    success_message="Content-Security-Policy (CSP) worker-src is restricted",
+    error_message="Content-Security-Policy (CSP) worker-src is unrestricted",
+)
+csp_report_only_worker_src_unrestricted = _create_worker_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    success_message="Content-Security-Policy-Report-Only (CSP) worker-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) worker-src is unrestricted",
+)
+
+# Temporary aliases while report-only names are being normalized across the codebase.
+csp_ro_unsafe_inline = csp_report_only_unsafe_inline
+csp_ro_unsafe_eval = csp_report_only_unsafe_eval
+csp_ro_object_src_unsafe = csp_report_only_object_src_unsafe
+csp_ro_frame_ancestors_missing = csp_report_only_frame_ancestors_missing
+csp_ro_script_src_missing = csp_report_only_script_src_missing
+csp_ro_script_src_unrestricted = csp_report_only_script_src_unrestricted
+csp_ro_style_src_missing = csp_report_only_style_src_missing
+csp_ro_style_src_unrestricted = csp_report_only_style_src_unrestricted
+csp_ro_connect_src_missing = csp_report_only_connect_src_missing
+csp_ro_connect_src_unrestricted = csp_report_only_connect_src_unrestricted
+csp_ro_img_src_missing = csp_report_only_img_src_missing
+csp_ro_img_src_unrestricted = csp_report_only_img_src_unrestricted
+csp_ro_worker_src_missing = csp_report_only_worker_src_missing
+csp_ro_worker_src_unrestricted = csp_report_only_worker_src_unrestricted
