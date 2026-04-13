@@ -519,6 +519,13 @@ async def test_worker_missing_script_src_fallback():
 
 
 @pytest.mark.asyncio
+async def test_worker_missing_child_src_fallback():
+    response = Response(200, headers={"content-security-policy": "child-src 'self'"})
+
+    assert await csp_worker_src_missing(response) == "Content-Security-Policy (CSP) worker-src is present"
+
+
+@pytest.mark.asyncio
 async def test_worker_missing_default_src_fallback():
     response = Response(200, headers={"content-security-policy": "default-src 'self'"})
 
@@ -535,6 +542,13 @@ async def test_worker_unrestricted_worker_src_restricted():
 @pytest.mark.asyncio
 async def test_worker_unrestricted_script_src_fallback_restricted():
     response = Response(200, headers={"content-security-policy": "script-src 'self'"})
+
+    assert await csp_worker_src_unrestricted(response) == "Content-Security-Policy (CSP) worker-src is restricted"
+
+
+@pytest.mark.asyncio
+async def test_worker_unrestricted_child_src_fallback_restricted():
+    response = Response(200, headers={"content-security-policy": "child-src 'self'"})
 
     assert await csp_worker_src_unrestricted(response) == "Content-Security-Policy (CSP) worker-src is restricted"
 

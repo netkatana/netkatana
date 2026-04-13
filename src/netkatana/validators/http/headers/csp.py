@@ -14,23 +14,6 @@ _CSP_NONCE_SOURCE_RE = re.compile(r"^'nonce-[A-Za-z0-9+/_-]+={0,2}'$")
 _CSP_HASH_SOURCE_RE = re.compile(r"^'(sha256|sha384|sha512)-[A-Za-z0-9+/_-]+={0,2}'$")
 
 
-def _csp_effective_sources(directives: dict[str, list[str]], directive: str) -> list[str] | None:
-    if directive in directives:
-        return directives[directive]
-
-    return directives.get("default-src")
-
-
-def _csp_effective_worker_sources(directives: dict[str, list[str]]) -> list[str] | None:
-    if "worker-src" in directives:
-        return directives["worker-src"]
-
-    if "script-src" in directives:
-        return directives["script-src"]
-
-    return directives.get("default-src")
-
-
 def _csp_sources_unrestricted(sources: list[str]) -> bool:
     return "*" in sources or "https:" in sources or "http:" in sources or "wss:" in sources or "ws:" in sources
 
@@ -668,45 +651,6 @@ def _create_exact_sources_directive_validator(
     return validator
 
 
-def _create_worker_missing_directive_validator(
-    *, header: str, success_message: str, error_message: str
-) -> Validator[Response]:
-    async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _csp_effective_worker_sources(directives)
-
-        if effective_sources is None:
-            raise ValidationError(error_message)
-
-        return success_message
-
-    return validator
-
-
-def _create_worker_unrestricted_directive_validator(
-    *, header: str, success_message: str, error_message: str
-) -> Validator[Response]:
-    async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _csp_effective_worker_sources(directives)
-
-        if effective_sources is None:
-            return None
-
-        if _csp_sources_unrestricted(effective_sources):
-            raise ValidationError(error_message)
-
-        return success_message
-
-    return validator
-
-
 csp_unsafe_inline = _create_unsafe_inline_directive_validator(
     header=_CSP_HEADER,
     directive="script-src",
@@ -879,39 +823,31 @@ csp_report_only_img_src_unrestricted = _create_unrestricted_directive_validator(
     success_message="Content-Security-Policy-Report-Only (CSP) img-src is restricted",
     error_message="Content-Security-Policy-Report-Only (CSP) img-src is unrestricted",
 )
-csp_worker_src_missing = _create_worker_missing_directive_validator(
+csp_worker_src_missing = _create_missing_directive_validator(
     header=_CSP_HEADER,
+    directive="worker-src",
+    fallback_directives=["child-src", "script-src", "default-src"],
     success_message="Content-Security-Policy (CSP) worker-src is present",
     error_message="Content-Security-Policy (CSP) worker-src is missing",
 )
-csp_report_only_worker_src_missing = _create_worker_missing_directive_validator(
+csp_report_only_worker_src_missing = _create_missing_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
+    directive="worker-src",
+    fallback_directives=["child-src", "script-src", "default-src"],
     success_message="Content-Security-Policy-Report-Only (CSP) worker-src is present",
     error_message="Content-Security-Policy-Report-Only (CSP) worker-src is missing",
 )
-csp_worker_src_unrestricted = _create_worker_unrestricted_directive_validator(
+csp_worker_src_unrestricted = _create_unrestricted_directive_validator(
     header=_CSP_HEADER,
+    directive="worker-src",
+    fallback_directives=["child-src", "script-src", "default-src"],
     success_message="Content-Security-Policy (CSP) worker-src is restricted",
     error_message="Content-Security-Policy (CSP) worker-src is unrestricted",
 )
-csp_report_only_worker_src_unrestricted = _create_worker_unrestricted_directive_validator(
+csp_report_only_worker_src_unrestricted = _create_unrestricted_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
+    directive="worker-src",
+    fallback_directives=["child-src", "script-src", "default-src"],
     success_message="Content-Security-Policy-Report-Only (CSP) worker-src is restricted",
     error_message="Content-Security-Policy-Report-Only (CSP) worker-src is unrestricted",
 )
-
-# Temporary aliases while report-only names are being normalized across the codebase.
-csp_ro_unsafe_inline = csp_report_only_unsafe_inline
-csp_ro_unsafe_eval = csp_report_only_unsafe_eval
-csp_ro_object_src_unsafe = csp_report_only_object_src_unsafe
-csp_ro_frame_ancestors_missing = csp_report_only_frame_ancestors_missing
-csp_ro_script_src_missing = csp_report_only_script_src_missing
-csp_ro_script_src_unrestricted = csp_report_only_script_src_unrestricted
-csp_ro_style_src_missing = csp_report_only_style_src_missing
-csp_ro_style_src_unrestricted = csp_report_only_style_src_unrestricted
-csp_ro_connect_src_missing = csp_report_only_connect_src_missing
-csp_ro_connect_src_unrestricted = csp_report_only_connect_src_unrestricted
-csp_ro_img_src_missing = csp_report_only_img_src_missing
-csp_ro_img_src_unrestricted = csp_report_only_img_src_unrestricted
-csp_ro_worker_src_missing = csp_report_only_worker_src_missing
-csp_ro_worker_src_unrestricted = csp_report_only_worker_src_unrestricted

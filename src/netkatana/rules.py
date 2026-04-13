@@ -591,13 +591,13 @@ http_rules = [
     HttpRule(
         code="headers_csp_worker_src_missing",
         severity=Severity.NOTICE,
-        detail="'worker-src' (falling back to 'script-src', then 'default-src') restricts which URLs may create workers; without any effective directive, worker creation is not explicitly constrained.",
+        detail="'worker-src' (falling back to 'child-src', then 'script-src', then 'default-src') restricts which URLs may create workers; without any effective directive, worker creation is not explicitly constrained.",
         validator=csp_worker_src_missing,
     ),
     HttpRule(
         code="headers_csp_report_only_worker_src_missing",
         severity=Severity.NOTICE,
-        detail="'worker-src' (falling back to 'script-src', then 'default-src') restricts which URLs may create workers; without any effective directive, report-only telemetry does not model worker restrictions.",
+        detail="'worker-src' (falling back to 'child-src', then 'script-src', then 'default-src') restricts which URLs may create workers; without any effective directive, report-only telemetry does not model worker restrictions.",
         validator=csp_report_only_worker_src_missing,
     ),
     HttpRule(
