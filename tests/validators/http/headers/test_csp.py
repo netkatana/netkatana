@@ -37,6 +37,7 @@ from netkatana.validators.http.headers.csp import (
     csp_script_src_nonce_invalid,
     csp_script_src_source_insecure_scheme,
     csp_script_src_source_ip,
+    csp_script_src_unsafe_eval,
     csp_style_src_attr_missing,
     csp_style_src_elem_hash_invalid,
     csp_style_src_elem_unsafe_inline,
@@ -48,7 +49,6 @@ from netkatana.validators.http.headers.csp import (
     csp_trusted_types_invalid,
     csp_trusted_types_missing,
     csp_unknown_directive,
-    csp_unsafe_eval,
     csp_unsafe_inline,
     csp_upgrade_insecure_requests_missing,
     csp_worker_src_missing,
@@ -59,7 +59,7 @@ from netkatana.validators.http.headers.csp import (
 
 
 @pytest.mark.asyncio
-async def test_csp_missing_missing():
+async def test_missing_absent():
     with pytest.raises(ValidationError) as exc_info:
         await csp_missing(Response(200))
 
@@ -68,7 +68,7 @@ async def test_csp_missing_missing():
 
 
 @pytest.mark.asyncio
-async def test_csp_missing_present():
+async def test_missing_present():
     response = Response(200, headers={"content-security-policy": "default-src 'self'"})
 
     assert await csp_missing(response) == "Content-Security-Policy (CSP) present"
@@ -480,25 +480,32 @@ async def test_unsafe_inline_via_default_src_fallback():
 
 @pytest.mark.asyncio
 async def test_unsafe_eval_header_absent():
-    assert await csp_unsafe_eval(Response(200)) is None
+    assert await csp_script_src_unsafe_eval(Response(200)) is None
 
 
 @pytest.mark.asyncio
 async def test_unsafe_eval_no_effective_script_source():
-    assert await csp_unsafe_eval(Response(200, headers={"content-security-policy": "img-src 'self'"})) is None
+    assert (
+        await csp_script_src_unsafe_eval(Response(200, headers={"content-security-policy": "img-src 'self'"})) is None
+    )
 
 
 @pytest.mark.asyncio
 async def test_unsafe_eval_clean_script_src():
     response = Response(200, headers={"content-security-policy": "script-src 'self'"})
 
-    assert await csp_unsafe_eval(response) == "Content-Security-Policy (CSP) script-src does not contain 'unsafe-eval'"
+    assert (
+        await csp_script_src_unsafe_eval(response)
+        == "Content-Security-Policy (CSP) script-src does not contain 'unsafe-eval'"
+    )
 
 
 @pytest.mark.asyncio
 async def test_unsafe_eval_present():
     with pytest.raises(ValidationError) as exc_info:
-        await csp_unsafe_eval(Response(200, headers={"content-security-policy": "script-src 'self' 'unsafe-eval'"}))
+        await csp_script_src_unsafe_eval(
+            Response(200, headers={"content-security-policy": "script-src 'self' 'unsafe-eval'"})
+        )
 
     assert exc_info.value.message == "Content-Security-Policy (CSP) script-src contains 'unsafe-eval'"
     assert exc_info.value.metadata == {}

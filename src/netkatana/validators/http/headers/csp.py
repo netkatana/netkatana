@@ -11,9 +11,16 @@ from netkatana.utils import parse_content_security_policy
 
 _CSP_HEADER = "content-security-policy"
 _CSP_REPORT_ONLY_HEADER = "content-security-policy-report-only"
+
+# https://www.w3.org/TR/CSP3/#grammardef-nonce-source
 _CSP_NONCE_SOURCE_RE = re.compile(r"^'nonce-[A-Za-z0-9+/_-]+={0,2}'$")
+
+# https://www.w3.org/TR/CSP3/#grammardef-hash-source
 _CSP_HASH_SOURCE_RE = re.compile(r"^'(sha256|sha384|sha512)-[A-Za-z0-9+/_-]+={0,2}'$")
+
+# https://www.w3.org/TR/CSP3/#grammardef-directive-name
 _CSP_DIRECTIVE_NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
 _TRUSTED_TYPES_KEYWORDS = {"'allow-duplicates'", "'none'"}
 _SANDBOX_ALLOWED_TOKENS = {
     "allow-downloads",
@@ -176,13 +183,6 @@ def _trusted_types_allows_duplicates(sources: list[str]) -> bool:
     return "'allow-duplicates'" in sources
 
 
-async def csp_missing(response: Response) -> str | None:
-    if _CSP_HEADER not in response.headers:
-        raise ValidationError("Content-Security-Policy (CSP) missing")
-
-    return "Content-Security-Policy (CSP) present"
-
-
 def _create_duplicated_header_validator(
     *, header: str, success_message: str, error_message: str
 ) -> Validator[Response]:
@@ -198,18 +198,6 @@ def _create_duplicated_header_validator(
         return success_message
 
     return validator
-
-
-csp_duplicated = _create_duplicated_header_validator(
-    header=_CSP_HEADER,
-    success_message="Content-Security-Policy (CSP) header is not duplicated",
-    error_message="Content-Security-Policy (CSP) header is duplicated",
-)
-csp_report_only_duplicated = _create_duplicated_header_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    success_message="Content-Security-Policy-Report-Only (CSP) header is not duplicated",
-    error_message="Content-Security-Policy-Report-Only (CSP) header is duplicated",
-)
 
 
 def _create_missing_directive_validator(
@@ -239,20 +227,6 @@ def _create_missing_directive_validator(
     return validator
 
 
-csp_base_uri_missing = _create_missing_directive_validator(
-    header=_CSP_HEADER,
-    directive="base-uri",
-    success_message="Content-Security-Policy (CSP) base-uri is present",
-    error_message="Content-Security-Policy (CSP) base-uri is missing",
-)
-csp_report_only_base_uri_missing = _create_missing_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="base-uri",
-    success_message="Content-Security-Policy-Report-Only (CSP) base-uri is present",
-    error_message="Content-Security-Policy-Report-Only (CSP) base-uri is missing",
-)
-
-
 def _create_deprecated_directive_validator(
     *, header: str, directive: str, success_message: str, error_message: str
 ) -> Validator[Response]:
@@ -268,35 +242,6 @@ def _create_deprecated_directive_validator(
         return success_message
 
     return validator
-
-
-csp_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
-    header=_CSP_HEADER,
-    directive="block-all-mixed-content",
-    success_message="Content-Security-Policy (CSP) block-all-mixed-content is absent",
-    error_message="Content-Security-Policy (CSP) block-all-mixed-content is deprecated",
-)
-csp_report_only_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="block-all-mixed-content",
-    success_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is absent",
-    error_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is deprecated",
-)
-
-csp_child_src_missing = _create_missing_directive_validator(
-    header=_CSP_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) child-src is present",
-    error_message="Content-Security-Policy (CSP) child-src is missing",
-)
-csp_report_only_child_src_missing = _create_missing_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) child-src is present",
-    error_message="Content-Security-Policy-Report-Only (CSP) child-src is missing",
-)
 
 
 def _create_unrestricted_directive_validator(
@@ -325,22 +270,6 @@ def _create_unrestricted_directive_validator(
     return validator
 
 
-csp_child_src_unrestricted = _create_unrestricted_directive_validator(
-    header=_CSP_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) child-src is restricted",
-    error_message="Content-Security-Policy (CSP) child-src is unrestricted",
-)
-csp_report_only_child_src_unrestricted = _create_unrestricted_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) child-src is restricted",
-    error_message="Content-Security-Policy-Report-Only (CSP) child-src is unrestricted",
-)
-
-
 def _create_nonce_invalid_directive_validator(
     *,
     header: str,
@@ -365,22 +294,6 @@ def _create_nonce_invalid_directive_validator(
         return success_message
 
     return validator
-
-
-csp_child_src_nonce_invalid = _create_nonce_invalid_directive_validator(
-    header=_CSP_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) child-src nonce sources are valid",
-    error_message="Content-Security-Policy (CSP) child-src contains an invalid nonce source",
-)
-csp_report_only_child_src_nonce_invalid = _create_nonce_invalid_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) child-src nonce sources are valid",
-    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an invalid nonce source",
-)
 
 
 def _create_hash_invalid_directive_validator(
@@ -409,22 +322,6 @@ def _create_hash_invalid_directive_validator(
     return validator
 
 
-csp_child_src_hash_invalid = _create_hash_invalid_directive_validator(
-    header=_CSP_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) child-src hash sources are valid",
-    error_message="Content-Security-Policy (CSP) child-src contains an invalid hash source",
-)
-csp_report_only_child_src_hash_invalid = _create_hash_invalid_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) child-src hash sources are valid",
-    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an invalid hash source",
-)
-
-
 def _create_source_insecure_scheme_directive_validator(
     *,
     header: str,
@@ -451,22 +348,6 @@ def _create_source_insecure_scheme_directive_validator(
     return validator
 
 
-csp_child_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
-    header=_CSP_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) child-src sources do not use insecure schemes",
-    error_message="Content-Security-Policy (CSP) child-src contains an insecure scheme source",
-)
-csp_report_only_child_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) child-src sources do not use insecure schemes",
-    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an insecure scheme source",
-)
-
-
 def _create_source_ip_directive_validator(
     *,
     header: str,
@@ -491,179 +372,6 @@ def _create_source_ip_directive_validator(
         return success_message
 
     return validator
-
-
-csp_child_src_source_ip = _create_source_ip_directive_validator(
-    header=_CSP_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) child-src sources do not use IP addresses",
-    error_message="Content-Security-Policy (CSP) child-src contains an IP source",
-)
-csp_report_only_child_src_source_ip = _create_source_ip_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="child-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) child-src sources do not use IP addresses",
-    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an IP source",
-)
-
-csp_font_src_missing = _create_missing_directive_validator(
-    header=_CSP_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) font-src is present",
-    error_message="Content-Security-Policy (CSP) font-src is missing",
-)
-csp_report_only_font_src_missing = _create_missing_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) font-src is present",
-    error_message="Content-Security-Policy-Report-Only (CSP) font-src is missing",
-)
-csp_font_src_unrestricted = _create_unrestricted_directive_validator(
-    header=_CSP_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) font-src is restricted",
-    error_message="Content-Security-Policy (CSP) font-src is unrestricted",
-)
-csp_report_only_font_src_unrestricted = _create_unrestricted_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) font-src is restricted",
-    error_message="Content-Security-Policy-Report-Only (CSP) font-src is unrestricted",
-)
-csp_font_src_nonce_invalid = _create_nonce_invalid_directive_validator(
-    header=_CSP_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) font-src nonce sources are valid",
-    error_message="Content-Security-Policy (CSP) font-src contains an invalid nonce source",
-)
-csp_report_only_font_src_nonce_invalid = _create_nonce_invalid_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) font-src nonce sources are valid",
-    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an invalid nonce source",
-)
-csp_font_src_hash_invalid = _create_hash_invalid_directive_validator(
-    header=_CSP_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) font-src hash sources are valid",
-    error_message="Content-Security-Policy (CSP) font-src contains an invalid hash source",
-)
-csp_report_only_font_src_hash_invalid = _create_hash_invalid_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) font-src hash sources are valid",
-    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an invalid hash source",
-)
-csp_font_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
-    header=_CSP_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) font-src sources do not use insecure schemes",
-    error_message="Content-Security-Policy (CSP) font-src contains an insecure scheme source",
-)
-csp_report_only_font_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) font-src sources do not use insecure schemes",
-    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an insecure scheme source",
-)
-csp_font_src_source_ip = _create_source_ip_directive_validator(
-    header=_CSP_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy (CSP) font-src sources do not use IP addresses",
-    error_message="Content-Security-Policy (CSP) font-src contains an IP source",
-)
-csp_report_only_font_src_source_ip = _create_source_ip_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="font-src",
-    fallback_directives=["default-src"],
-    success_message="Content-Security-Policy-Report-Only (CSP) font-src sources do not use IP addresses",
-    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
-)
-csp_form_action_missing = _create_missing_directive_validator(
-    header=_CSP_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy (CSP) form-action is present",
-    error_message="Content-Security-Policy (CSP) form-action is missing",
-)
-csp_report_only_form_action_missing = _create_missing_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy-Report-Only (CSP) form-action is present",
-    error_message="Content-Security-Policy-Report-Only (CSP) form-action is missing",
-)
-csp_form_action_unrestricted = _create_unrestricted_directive_validator(
-    header=_CSP_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy (CSP) form-action is restricted",
-    error_message="Content-Security-Policy (CSP) form-action is unrestricted",
-)
-csp_report_only_form_action_unrestricted = _create_unrestricted_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy-Report-Only (CSP) form-action is restricted",
-    error_message="Content-Security-Policy-Report-Only (CSP) form-action is unrestricted",
-)
-csp_form_action_nonce_invalid = _create_nonce_invalid_directive_validator(
-    header=_CSP_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy (CSP) form-action nonce sources are valid",
-    error_message="Content-Security-Policy (CSP) form-action contains an invalid nonce source",
-)
-csp_report_only_form_action_nonce_invalid = _create_nonce_invalid_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy-Report-Only (CSP) form-action nonce sources are valid",
-    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an invalid nonce source",
-)
-csp_form_action_hash_invalid = _create_hash_invalid_directive_validator(
-    header=_CSP_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy (CSP) form-action hash sources are valid",
-    error_message="Content-Security-Policy (CSP) form-action contains an invalid hash source",
-)
-csp_report_only_form_action_hash_invalid = _create_hash_invalid_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy-Report-Only (CSP) form-action hash sources are valid",
-    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an invalid hash source",
-)
-csp_form_action_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
-    header=_CSP_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy (CSP) form-action sources do not use insecure schemes",
-    error_message="Content-Security-Policy (CSP) form-action contains an insecure scheme source",
-)
-csp_report_only_form_action_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy-Report-Only (CSP) form-action sources do not use insecure schemes",
-    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an insecure scheme source",
-)
-csp_form_action_source_ip = _create_source_ip_directive_validator(
-    header=_CSP_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy (CSP) form-action sources do not use IP addresses",
-    error_message="Content-Security-Policy (CSP) form-action contains an IP source",
-)
-csp_report_only_form_action_source_ip = _create_source_ip_directive_validator(
-    header=_CSP_REPORT_ONLY_HEADER,
-    directive="form-action",
-    success_message="Content-Security-Policy-Report-Only (CSP) form-action sources do not use IP addresses",
-    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an IP source",
-)
 
 
 def _create_token_absent_directive_validator(
@@ -884,6 +592,305 @@ def _create_deprecated_directives_validator(
     return validator
 
 
+async def csp_missing(response: Response) -> str | None:
+    if _CSP_HEADER not in response.headers:
+        raise ValidationError("Content-Security-Policy (CSP) missing")
+
+    return "Content-Security-Policy (CSP) present"
+
+
+csp_duplicated = _create_duplicated_header_validator(
+    header=_CSP_HEADER,
+    success_message="Content-Security-Policy (CSP) header is not duplicated",
+    error_message="Content-Security-Policy (CSP) header is duplicated",
+)
+csp_report_only_duplicated = _create_duplicated_header_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    success_message="Content-Security-Policy-Report-Only (CSP) header is not duplicated",
+    error_message="Content-Security-Policy-Report-Only (CSP) header is duplicated",
+)
+
+
+csp_base_uri_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="base-uri",
+    success_message="Content-Security-Policy (CSP) base-uri is present",
+    error_message="Content-Security-Policy (CSP) base-uri is missing",
+)
+csp_report_only_base_uri_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="base-uri",
+    success_message="Content-Security-Policy-Report-Only (CSP) base-uri is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) base-uri is missing",
+)
+
+
+csp_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
+    header=_CSP_HEADER,
+    directive="block-all-mixed-content",
+    success_message="Content-Security-Policy (CSP) block-all-mixed-content is absent",
+    error_message="Content-Security-Policy (CSP) block-all-mixed-content is deprecated",
+)
+csp_report_only_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="block-all-mixed-content",
+    success_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is absent",
+    error_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is deprecated",
+)
+
+csp_child_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src is present",
+    error_message="Content-Security-Policy (CSP) child-src is missing",
+)
+csp_report_only_child_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src is missing",
+)
+
+
+csp_child_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src is restricted",
+    error_message="Content-Security-Policy (CSP) child-src is unrestricted",
+)
+csp_report_only_child_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src is unrestricted",
+)
+
+
+csp_child_src_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src nonce sources are valid",
+    error_message="Content-Security-Policy (CSP) child-src contains an invalid nonce source",
+)
+csp_report_only_child_src_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src nonce sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an invalid nonce source",
+)
+
+
+csp_child_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src hash sources are valid",
+    error_message="Content-Security-Policy (CSP) child-src contains an invalid hash source",
+)
+csp_report_only_child_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src hash sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an invalid hash source",
+)
+
+
+csp_child_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) child-src contains an insecure scheme source",
+)
+csp_report_only_child_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an insecure scheme source",
+)
+
+
+csp_child_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) child-src sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) child-src contains an IP source",
+)
+csp_report_only_child_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="child-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) child-src sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an IP source",
+)
+
+csp_font_src_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src is present",
+    error_message="Content-Security-Policy (CSP) font-src is missing",
+)
+csp_report_only_font_src_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src is missing",
+)
+csp_font_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src is restricted",
+    error_message="Content-Security-Policy (CSP) font-src is unrestricted",
+)
+csp_report_only_font_src_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src is unrestricted",
+)
+csp_font_src_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src nonce sources are valid",
+    error_message="Content-Security-Policy (CSP) font-src contains an invalid nonce source",
+)
+csp_report_only_font_src_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src nonce sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an invalid nonce source",
+)
+csp_font_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src hash sources are valid",
+    error_message="Content-Security-Policy (CSP) font-src contains an invalid hash source",
+)
+csp_report_only_font_src_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src hash sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an invalid hash source",
+)
+csp_font_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) font-src contains an insecure scheme source",
+)
+csp_report_only_font_src_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an insecure scheme source",
+)
+csp_font_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy (CSP) font-src sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) font-src contains an IP source",
+)
+csp_report_only_font_src_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="font-src",
+    fallback_directives=["default-src"],
+    success_message="Content-Security-Policy-Report-Only (CSP) font-src sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
+)
+csp_form_action_missing = _create_missing_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action is present",
+    error_message="Content-Security-Policy (CSP) form-action is missing",
+)
+csp_report_only_form_action_missing = _create_missing_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action is present",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action is missing",
+)
+csp_form_action_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action is restricted",
+    error_message="Content-Security-Policy (CSP) form-action is unrestricted",
+)
+csp_report_only_form_action_unrestricted = _create_unrestricted_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action is restricted",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action is unrestricted",
+)
+csp_form_action_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action nonce sources are valid",
+    error_message="Content-Security-Policy (CSP) form-action contains an invalid nonce source",
+)
+csp_report_only_form_action_nonce_invalid = _create_nonce_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action nonce sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an invalid nonce source",
+)
+csp_form_action_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action hash sources are valid",
+    error_message="Content-Security-Policy (CSP) form-action contains an invalid hash source",
+)
+csp_report_only_form_action_hash_invalid = _create_hash_invalid_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action hash sources are valid",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an invalid hash source",
+)
+csp_form_action_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action sources do not use insecure schemes",
+    error_message="Content-Security-Policy (CSP) form-action contains an insecure scheme source",
+)
+csp_report_only_form_action_source_insecure_scheme = _create_source_insecure_scheme_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action sources do not use insecure schemes",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an insecure scheme source",
+)
+csp_form_action_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy (CSP) form-action sources do not use IP addresses",
+    error_message="Content-Security-Policy (CSP) form-action contains an IP source",
+)
+csp_report_only_form_action_source_ip = _create_source_ip_directive_validator(
+    header=_CSP_REPORT_ONLY_HEADER,
+    directive="form-action",
+    success_message="Content-Security-Policy-Report-Only (CSP) form-action sources do not use IP addresses",
+    error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an IP source",
+)
+
+
 csp_unsafe_inline = _create_unsafe_inline_directive_validator(
     header=_CSP_HEADER,
     directive="script-src",
@@ -900,7 +907,7 @@ csp_report_only_unsafe_inline = _create_unsafe_inline_directive_validator(
     neutralized_message="Content-Security-Policy-Report-Only (CSP) 'unsafe-inline' is neutralized by nonce or hash",
     error_message="Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-inline'",
 )
-csp_unsafe_eval = _create_token_absent_directive_validator(
+csp_script_src_unsafe_eval = _create_token_absent_directive_validator(
     header=_CSP_HEADER,
     directive="script-src",
     token="'unsafe-eval'",
@@ -908,7 +915,7 @@ csp_unsafe_eval = _create_token_absent_directive_validator(
     success_message="Content-Security-Policy (CSP) script-src does not contain 'unsafe-eval'",
     error_message="Content-Security-Policy (CSP) script-src contains 'unsafe-eval'",
 )
-csp_report_only_unsafe_eval = _create_token_absent_directive_validator(
+csp_report_only_script_src_unsafe_eval = _create_token_absent_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="script-src",
     token="'unsafe-eval'",
