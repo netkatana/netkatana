@@ -30,27 +30,6 @@ This file is ordered by implementation priority, not by protocol.
 - `headers_content_type_non_html` — notice
 - `headers_content_type_unsafe` — warning
 
-### CSP hardening gaps
-
-- `headers_csp_require_trusted_types_for_missing` — warning
-- `headers_csp_trusted_types_missing` — notice
-- `headers_csp_invalid_directive` — warning
-- `headers_csp_unknown_directive` — notice
-- `headers_csp_deprecated_directive` — notice
-- `headers_csp_insecure_scheme_source` — critical
-- `headers_csp_ip_source` — warning
-- `headers_csp_nonce_invalid` — warning
-- `headers_csp_hash_invalid` — critical
-- `headers_csp_report_only_require_trusted_types_for_missing` — warning
-- `headers_csp_report_only_trusted_types_missing` — notice
-- `headers_csp_report_only_invalid_directive` — warning
-- `headers_csp_report_only_unknown_directive` — notice
-- `headers_csp_report_only_deprecated_directive` — notice
-- `headers_csp_report_only_insecure_scheme_source` — critical
-- `headers_csp_report_only_ip_source` — warning
-- `headers_csp_report_only_nonce_invalid` — warning
-- `headers_csp_report_only_hash_invalid` — critical
-
 ### TLS
 
 - `tls_cert_expiring_7d` — critical
@@ -109,8 +88,7 @@ This file is ordered by implementation priority, not by protocol.
 
 ### In groups already implemented
 
-- HSTS currently checks presence and some policy quality, but not duplicate header instances or duplicate/conflicting directives.
-- CSP currently covers the highest-value directives (`script-src`, `style-src`, `connect-src`, `object-src`, `base-uri`, `frame-ancestors`, `form-action`) but still misses several syntax and source-quality validations, plus `img-src`, `font-src`, `worker-src`, and Trusted Types rollout checks.
+- HSTS currently checks presence, duplicate header instances, and several policy-quality issues, but not duplicate/conflicting directives inside a single header value.
 - CORS currently covers the most dangerous origin and credential combinations, but does not yet look at unsafe `Allow` exposure or response-body/content-type context.
 - COOP/COEP/CORP have baseline presence and invalid-value coverage, but not duplicate-header handling or richer rollout consistency checks.
 
