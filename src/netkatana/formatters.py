@@ -10,7 +10,7 @@ from netkatana.types import Finding, Severity
 
 _SEVERITY_SYMBOL: dict[Severity, tuple[str, str]] = {
     Severity.PASS: ("P", "bold green"),
-    Severity.NOTICE: ("I", "bold cyan"),
+    Severity.NOTICE: ("N", "bold cyan"),
     Severity.WARNING: ("W", "bold yellow"),
     Severity.CRITICAL: ("C", "bold red"),
 }
