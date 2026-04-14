@@ -34,3 +34,4 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}:latest
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:latest
