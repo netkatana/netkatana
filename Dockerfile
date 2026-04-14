@@ -1,5 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.14-alpine
 
+COPY --from=projectdiscovery/tlsx /usr/local/bin/tlsx /usr/local/bin/
+
 ENV UV_PYTHON_DOWNLOADS=never
 ENV UV_PYTHON=python3
 
