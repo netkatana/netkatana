@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import ssl
 from collections.abc import AsyncIterator, Sequence
 from itertools import chain
 from typing import ClassVar, TypeVar
@@ -95,7 +96,7 @@ class HttpScanner:
     async def _get_scheme_response(self, scheme: str, target: str) -> httpx.Response | None:
         try:
             return await self._get_response(f"{scheme}://{target}")
-        except httpx.TransportError as e:
+        except (httpx.TransportError, ssl.SSLError) as e:
             _logger.debug("%s %s: %r", target, scheme.upper(), e)
             return None
 
