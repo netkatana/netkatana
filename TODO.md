@@ -2,14 +2,6 @@
 
 This file is ordered by implementation priority, not by protocol.
 
-## P0: high-signal checks with low-to-medium implementation cost
-
-### Response
-
-- `response_redirect_http_upgrade_missing` — critical
-
-### Existing-group gaps to close early
-
 ## P1: expand coverage in groups we already support
 
 ### HTTP

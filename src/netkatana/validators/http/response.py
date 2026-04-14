@@ -14,6 +14,34 @@ async def status_server_error(response: Response) -> str | None:
     return "Response did not return a server error status"
 
 
+async def https_unsupported(response: Response) -> str | None:
+    if response.extensions.get("netkatana.https.failed", False):
+        raise ValidationError("HTTPS is not supported")
+
+    return "HTTPS is supported"
+
+
+async def https_upgrade_redirect_missing(response: Response) -> str | None:
+    schemes = _redirect_schemes(response)
+
+    if not schemes or schemes[0] != "http":
+        return None
+
+    if "https" not in schemes[1:]:
+        raise ValidationError("HTTP endpoint does not redirect to HTTPS")
+
+    https_seen = False
+    for scheme in schemes[1:]:
+        if scheme == "https":
+            https_seen = True
+            continue
+
+        if https_seen and scheme == "http":
+            raise ValidationError("HTTP endpoint does not redirect to HTTPS")
+
+    return "HTTP endpoint redirects to HTTPS"
+
+
 def _redirect_chain(response: Response) -> list[Response]:
     return [*response.history, response]
 

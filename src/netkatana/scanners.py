@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Sequence
 from itertools import chain
-from typing import TypeVar
+from typing import ClassVar, TypeVar
 
 import dns.asyncresolver
 import dns.exception
@@ -23,8 +23,6 @@ from netkatana.types import (
 
 _logger = logging.getLogger(__name__)
 T = TypeVar("T")
-
-_HTTPS_FAILED_EXTENSION = "netkatana.https.failed"
 
 
 def _make_finding(target: str, rule: Rule[T], error: ValidationError) -> Finding:
@@ -58,6 +56,8 @@ async def _run_rules(target: str, rules: Sequence[Rule[T]], result: T) -> list[F
 
 
 class HttpScanner:
+    _https_upgrade_redirect_missing_code: ClassVar[str] = "response_https_upgrade_redirect_missing"
+
     def __init__(
         self,
         rules: list[HttpRule],
@@ -66,7 +66,7 @@ class HttpScanner:
     ) -> None:
         self._rules = rules
         self._client = client
-        self._semaphore = asyncio.Semaphore(concurrency)
+        self._http_semaphore = asyncio.Semaphore(concurrency)
 
     async def scan(self, targets: Sequence[str]) -> AsyncIterator[Finding]:
         tasks = [asyncio.create_task(self._scan_target(target)) for target in targets]
@@ -76,30 +76,48 @@ class HttpScanner:
                 yield finding
 
     async def _scan_target(self, target: str) -> list[Finding]:
-        try:
-            response = await self._get_response(f"https://{target}")
-            response.extensions[_HTTPS_FAILED_EXTENSION] = False
-            return await _run_rules(target, self._rules, response)
-        except httpx.TransportError as e:
-            _logger.debug("%s HTTPS: %r", target, e)
-            https_error = e
+        if (https_response := await self._get_scheme_response("https", target)) is not None:
+            primary_findings = await self._run_primary_rules(target, https_response)
 
-        try:
-            response = await self._get_response(f"http://{target}")
-        except httpx.TransportError as e:
-            _logger.warning("%s unreachable over HTTPS and HTTP: HTTPS=%r HTTP=%r", target, https_error, e)
-            return []
+            http_upgrade_response = await self._get_scheme_response("http", target)
+            if http_upgrade_response is None:
+                return primary_findings
 
-        response.extensions[_HTTPS_FAILED_EXTENSION] = True
-        return await _run_rules(target, self._rules, response)
+            upgrade_findings = await self._run_upgrade_rules(target, http_upgrade_response)
+            return primary_findings + upgrade_findings
+
+        if (http_fallback_response := await self._get_scheme_response("http", target)) is not None:
+            http_fallback_response.extensions["netkatana.https.failed"] = True
+            return await self._run_primary_rules(target, http_fallback_response)
+
+        return []
+
+    async def _get_scheme_response(self, scheme: str, target: str) -> httpx.Response | None:
+        try:
+            return await self._get_response(f"{scheme}://{target}")
+        except httpx.TransportError as e:
+            _logger.debug("%s %s: %r", target, scheme.upper(), e)
+            return None
 
     async def _get_response(self, url: str) -> httpx.Response:
-        async with self._semaphore:
+        async with self._http_semaphore:
             try:
                 return await self._client.get(url)
             except RedirectError as e:
                 _logger.warning("%s: %r", url, e)
                 return e.response
+
+    async def _run_primary_rules(self, target: str, response: httpx.Response) -> list[Finding]:
+        return await _run_rules(target, self._get_primary_rules(), response)
+
+    async def _run_upgrade_rules(self, target: str, response: httpx.Response) -> list[Finding]:
+        return await _run_rules(target, self._get_upgrade_rules(), response)
+
+    def _get_primary_rules(self) -> list[HttpRule]:
+        return [rule for rule in self._rules if rule.code != self._https_upgrade_redirect_missing_code]
+
+    def _get_upgrade_rules(self) -> list[HttpRule]:
+        return [rule for rule in self._rules if rule.code == self._https_upgrade_redirect_missing_code]
 
 
 class TlsScanner:
