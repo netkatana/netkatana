@@ -9,8 +9,8 @@ and DNS configuration.
 
 ```sh
 uvx netkatana http example.com
-uvx netkatana tls example.com --severity critical
-uvx netkatana dns example.com
+uvx netkatana tls example.com --severity=critical
+uvx netkatana dns example.com -s critical -s warning -s notice -s pass -f jsonl
 ```
 
 ## Implemented Checks
