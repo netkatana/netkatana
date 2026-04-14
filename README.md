@@ -7,10 +7,20 @@
 Security scanner for HTTP headers, TLS certificates (using [tlsx](https://github.com/projectdiscovery/tlsx)),
 and DNS configuration.
 
+## Usage
+
+Using uvx:
+
 ```sh
 uvx netkatana http example.com
 uvx netkatana tls example.com --severity=critical
 uvx netkatana dns example.com -s critical -s warning -s notice -s pass -f jsonl
+```
+
+Using docker:
+
+```sh
+docker run -it ghcr.io/netkatana/netkatana tls expired.badssl.com
 ```
 
 ## Implemented Checks
