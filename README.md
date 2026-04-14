@@ -1,5 +1,7 @@
 # netkatana
 
+[![CI](https://github.com/netkatana/netkatana/actions/workflows/ci.yml/badge.svg)](https://github.com/netkatana/netkatana/actions/workflows/ci.yml)
+
 🚧Experiment, under construction 🚧
 
 Security scanner for HTTP headers, TLS certificates (using [tlsx](https://github.com/projectdiscovery/tlsx)),
