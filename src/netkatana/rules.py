@@ -575,7 +575,6 @@ http_rules = [
         detail="IP address sources in 'form-action' are brittle and bypass hostname-based policy boundaries, so report-only telemetry models a harder-to-audit form submission policy.",
         validator=csp_report_only_form_action_source_ip,
     ),
-    # REFACTOR POINT ENDS HERE
     HttpRule(
         code="headers_csp_unsafe_eval",
         severity=Severity.CRITICAL,
