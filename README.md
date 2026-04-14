@@ -9,7 +9,7 @@ and DNS configuration.
 
 ```sh
 uvx netkatana http example.com
-uvx netkatana tls example.com
+uvx netkatana tls example.com --severity critical
 uvx netkatana dns example.com
 ```
 
