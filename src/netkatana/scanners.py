@@ -24,6 +24,8 @@ from netkatana.types import (
 _logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
+_HTTPS_FAILED_EXTENSION = "netkatana.https.failed"
+
 
 def _make_finding(target: str, rule: Rule[T], error: ValidationError) -> Finding:
     return Finding(
@@ -74,17 +76,30 @@ class HttpScanner:
                 yield finding
 
     async def _scan_target(self, target: str) -> list[Finding]:
+        try:
+            response = await self._get_response(f"https://{target}")
+            response.extensions[_HTTPS_FAILED_EXTENSION] = False
+            return await _run_rules(target, self._rules, response)
+        except httpx.TransportError as e:
+            _logger.debug("%s HTTPS: %r", target, e)
+            https_error = e
+
+        try:
+            response = await self._get_response(f"http://{target}")
+        except httpx.TransportError as e:
+            _logger.warning("%s unreachable over HTTPS and HTTP: HTTPS=%r HTTP=%r", target, https_error, e)
+            return []
+
+        response.extensions[_HTTPS_FAILED_EXTENSION] = True
+        return await _run_rules(target, self._rules, response)
+
+    async def _get_response(self, url: str) -> httpx.Response:
         async with self._semaphore:
             try:
-                response = await self._client.get(f"https://{target}")
+                return await self._client.get(url)
             except RedirectError as e:
-                _logger.warning("%s: %r", target, e)
-                response = e.response
-            except httpx.TransportError as e:
-                _logger.warning("%s: %r", target, e)
-                return []
-
-        return await _run_rules(target, self._rules, response)
+                _logger.warning("%s: %r", url, e)
+                return e.response
 
 
 class TlsScanner:
