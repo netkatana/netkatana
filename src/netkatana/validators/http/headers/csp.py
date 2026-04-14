@@ -76,6 +76,7 @@ _DEPRECATED_CSP_DIRECTIVES = {
     "referrer",
     "reflected-xss",
 }
+_CspDirectives = dict[str, list[str]]
 
 
 def _csp_sources_unrestricted(sources: list[str]) -> bool:
@@ -102,7 +103,7 @@ def _has_invalid_hash_source(sources: list[str]) -> bool:
 
 
 def _effective_sources_for_directive(
-    directives: dict[str, list[str]], directive: str, fallback_directives: list[str] | None
+    directives: _CspDirectives, directive: str, fallback_directives: list[str] | None
 ) -> list[str] | None:
     effective_sources = directives.get(directive)
 
@@ -157,6 +158,31 @@ def _parse_csp_directive_names(value: str) -> list[str]:
     return names
 
 
+def _get_csp_directives(response: Response, header: str) -> _CspDirectives | None:
+    if header not in response.headers:
+        return None
+
+    return parse_content_security_policy(response.headers[header])
+
+
+def _get_csp_directive_names(response: Response, header: str) -> list[str] | None:
+    if header not in response.headers:
+        return None
+
+    return _parse_csp_directive_names(response.headers[header])
+
+
+def _get_effective_sources(
+    response: Response, header: str, directive: str, fallback_directives: list[str] | None = None
+) -> list[str] | None:
+    directives = _get_csp_directives(response, header)
+
+    if directives is None:
+        return None
+
+    return _effective_sources_for_directive(directives, directive, fallback_directives)
+
+
 def _trusted_types_values_invalid(sources: list[str]) -> bool:
     if not sources:
         return True
@@ -187,7 +213,9 @@ def _create_duplicated_header_validator(
     *, header: str, success_message: str, error_message: str
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directives = _get_csp_directives(response, header)
+
+        if directives is None:
             return None
 
         values = [value.strip() for value in response.headers.get_list(header)]
@@ -200,7 +228,7 @@ def _create_duplicated_header_validator(
     return validator
 
 
-def _create_missing_directive_validator(
+def _create_presence_directive_validator(
     *,
     header: str,
     directive: str,
@@ -209,10 +237,10 @@ def _create_missing_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
+        directives = _get_csp_directives(response, header)
 
-        directives = parse_content_security_policy(response.headers[header])
+        if directives is None:
+            return None
 
         if directive in directives:
             return success_message
@@ -231,12 +259,57 @@ def _create_deprecated_directive_validator(
     *, header: str, directive: str, success_message: str, error_message: str
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directives = _get_csp_directives(response, header)
+
+        if directives is None:
             return None
 
-        directives = parse_content_security_policy(response.headers[header])
-
         if directive in directives:
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+def _create_source_insecure_scheme_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        effective_sources = _get_effective_sources(response, header, directive, fallback_directives)
+
+        if effective_sources is None:
+            return None
+
+        if any(_source_uses_insecure_scheme(source) for source in effective_sources):
+            raise ValidationError(error_message)
+
+        return success_message
+
+    return validator
+
+
+def _create_token_absent_directive_validator(
+    *,
+    header: str,
+    directive: str,
+    token: str,
+    fallback_directives: list[str] | None = None,
+    success_message: str,
+    error_message: str,
+) -> Validator[Response]:
+    async def validator(response: Response) -> str | None:
+        effective_sources = _get_effective_sources(response, header, directive, fallback_directives)
+
+        if effective_sources is None:
+            return None
+
+        if token in effective_sources:
             raise ValidationError(error_message)
 
         return success_message
@@ -253,11 +326,7 @@ def _create_unrestricted_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
+        effective_sources = _get_effective_sources(response, header, directive, fallback_directives)
 
         if effective_sources is None:
             return None
@@ -279,12 +348,7 @@ def _create_nonce_invalid_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
-
+        effective_sources = _get_effective_sources(response, header, directive, fallback_directives)
         if effective_sources is None:
             return None
 
@@ -305,42 +369,11 @@ def _create_hash_invalid_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
-
+        effective_sources = _get_effective_sources(response, header, directive, fallback_directives)
         if effective_sources is None:
             return None
 
         if _has_invalid_hash_source(effective_sources):
-            raise ValidationError(error_message)
-
-        return success_message
-
-    return validator
-
-
-def _create_source_insecure_scheme_directive_validator(
-    *,
-    header: str,
-    directive: str,
-    fallback_directives: list[str] | None = None,
-    success_message: str,
-    error_message: str,
-) -> Validator[Response]:
-    async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
-
-        if effective_sources is None:
-            return None
-
-        if any(_source_uses_insecure_scheme(source) for source in effective_sources):
             raise ValidationError(error_message)
 
         return success_message
@@ -357,12 +390,7 @@ def _create_source_ip_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
-
+        effective_sources = _get_effective_sources(response, header, directive, fallback_directives)
         if effective_sources is None:
             return None
 
@@ -374,26 +402,24 @@ def _create_source_ip_directive_validator(
     return validator
 
 
-def _create_token_absent_directive_validator(
+def _create_directive_sources_validator(
     *,
     header: str,
     directive: str,
-    token: str,
-    fallback_directives: list[str] | None = None,
+    invalid_sources: Callable[[list[str]], bool],
     success_message: str,
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directives = _get_csp_directives(response, header)
+        if directives is None:
             return None
 
-        directives = parse_content_security_policy(response.headers[header])
-        effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
-
-        if effective_sources is None:
+        sources = directives.get(directive)
+        if sources is None:
             return None
 
-        if token in effective_sources:
+        if invalid_sources(sources):
             raise ValidationError(error_message)
 
         return success_message
@@ -411,10 +437,10 @@ def _create_unsafe_inline_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directives = _get_csp_directives(response, header)
+        if directives is None:
             return None
 
-        directives = parse_content_security_policy(response.headers[header])
         effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
 
         if effective_sources is None:
@@ -441,10 +467,10 @@ def _create_exact_sources_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directives = _get_csp_directives(response, header)
+        if directives is None:
             return None
 
-        directives = parse_content_security_policy(response.headers[header])
         effective_sources = _effective_sources_for_directive(directives, directive, fallback_directives)
 
         if effective_sources == expected_sources:
@@ -464,10 +490,10 @@ def _create_allowed_sources_directive_validator(
     error_message: str,
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directives = _get_csp_directives(response, header)
+        if directives is None:
             return None
 
-        directives = parse_content_security_policy(response.headers[header])
         effective_sources = directives.get(directive)
 
         if effective_sources in allowed_sources:
@@ -478,57 +504,13 @@ def _create_allowed_sources_directive_validator(
     return validator
 
 
-def _create_presence_directive_validator(
-    *, header: str, directive: str, success_message: str, error_message: str
-) -> Validator[Response]:
-    async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-
-        if directive in directives:
-            return success_message
-
-        raise ValidationError(error_message)
-
-    return validator
-
-
-def _create_directive_sources_validator(
-    *,
-    header: str,
-    directive: str,
-    invalid_sources: Callable[[list[str]], bool],
-    success_message: str,
-    error_message: str,
-) -> Validator[Response]:
-    async def validator(response: Response) -> str | None:
-        if header not in response.headers:
-            return None
-
-        directives = parse_content_security_policy(response.headers[header])
-        sources = directives.get(directive)
-
-        if sources is None:
-            return None
-
-        if invalid_sources(sources):
-            raise ValidationError(error_message)
-
-        return success_message
-
-    return validator
-
-
 def _create_reporting_endpoint_validator(
     *, header: str, success_message: str, error_message: str
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directives = _get_csp_directives(response, header)
+        if directives is None:
             return None
-
-        directives = parse_content_security_policy(response.headers[header])
 
         if "report-uri" in directives or "report-to" in directives:
             return success_message
@@ -542,10 +524,9 @@ def _create_invalid_directive_validator(
     *, header: str, success_message: str, error_message: str
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directive_names = _get_csp_directive_names(response, header)
+        if directive_names is None:
             return None
-
-        directive_names = _parse_csp_directive_names(response.headers[header])
 
         if any(_CSP_DIRECTIVE_NAME_RE.fullmatch(name) is None for name in directive_names):
             raise ValidationError(error_message)
@@ -559,10 +540,9 @@ def _create_unknown_directive_validator(
     *, header: str, success_message: str, error_message: str
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directive_names = _get_csp_directive_names(response, header)
+        if directive_names is None:
             return None
-
-        directive_names = _parse_csp_directive_names(response.headers[header])
 
         if any(
             _CSP_DIRECTIVE_NAME_RE.fullmatch(name) is not None and name not in _KNOWN_CSP_DIRECTIVES
@@ -579,10 +559,9 @@ def _create_deprecated_directives_validator(
     *, header: str, success_message: str, error_message: str
 ) -> Validator[Response]:
     async def validator(response: Response) -> str | None:
-        if header not in response.headers:
+        directive_names = _get_csp_directive_names(response, header)
+        if directive_names is None:
             return None
-
-        directive_names = _parse_csp_directive_names(response.headers[header])
 
         if any(name in _DEPRECATED_CSP_DIRECTIVES for name in directive_names):
             raise ValidationError(error_message)
@@ -659,14 +638,13 @@ csp_report_only_reporting_endpoint_missing = _create_reporting_endpoint_validato
     error_message="Content-Security-Policy-Report-Only (CSP) reporting endpoint is missing",
 )
 
-csp_base_uri_missing = _create_missing_directive_validator(
+csp_base_uri_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="base-uri",
     success_message="Content-Security-Policy (CSP) base-uri is present",
     error_message="Content-Security-Policy (CSP) base-uri is missing",
 )
-
-csp_report_only_base_uri_missing = _create_missing_directive_validator(
+csp_report_only_base_uri_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="base-uri",
     success_message="Content-Security-Policy-Report-Only (CSP) base-uri is present",
@@ -679,7 +657,6 @@ csp_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
     success_message="Content-Security-Policy (CSP) block-all-mixed-content is absent",
     error_message="Content-Security-Policy (CSP) block-all-mixed-content is deprecated",
 )
-
 csp_report_only_block_all_mixed_content_deprecated = _create_deprecated_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="block-all-mixed-content",
@@ -687,15 +664,14 @@ csp_report_only_block_all_mixed_content_deprecated = _create_deprecated_directiv
     error_message="Content-Security-Policy-Report-Only (CSP) block-all-mixed-content is deprecated",
 )
 
-csp_child_src_missing = _create_missing_directive_validator(
+csp_child_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="child-src",
     fallback_directives=["default-src"],
     success_message="Content-Security-Policy (CSP) child-src is present",
     error_message="Content-Security-Policy (CSP) child-src is missing",
 )
-
-csp_report_only_child_src_missing = _create_missing_directive_validator(
+csp_report_only_child_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="child-src",
     fallback_directives=["default-src"],
@@ -783,7 +759,7 @@ csp_report_only_child_src_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) child-src contains an IP source",
 )
 
-csp_connect_src_missing = _create_missing_directive_validator(
+csp_connect_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="connect-src",
     fallback_directives=["default-src"],
@@ -791,7 +767,7 @@ csp_connect_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) connect-src is missing",
 )
 
-csp_report_only_connect_src_missing = _create_missing_directive_validator(
+csp_report_only_connect_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="connect-src",
     fallback_directives=["default-src"],
@@ -847,7 +823,7 @@ csp_report_only_connect_src_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) connect-src contains an IP source",
 )
 
-csp_font_src_missing = _create_missing_directive_validator(
+csp_font_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="font-src",
     fallback_directives=["default-src"],
@@ -855,7 +831,7 @@ csp_font_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) font-src is missing",
 )
 
-csp_report_only_font_src_missing = _create_missing_directive_validator(
+csp_report_only_font_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="font-src",
     fallback_directives=["default-src"],
@@ -943,14 +919,14 @@ csp_report_only_font_src_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) font-src contains an IP source",
 )
 
-csp_form_action_missing = _create_missing_directive_validator(
+csp_form_action_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="form-action",
     success_message="Content-Security-Policy (CSP) form-action is present",
     error_message="Content-Security-Policy (CSP) form-action is missing",
 )
 
-csp_report_only_form_action_missing = _create_missing_directive_validator(
+csp_report_only_form_action_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="form-action",
     success_message="Content-Security-Policy-Report-Only (CSP) form-action is present",
@@ -1027,14 +1003,14 @@ csp_report_only_form_action_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) form-action contains an IP source",
 )
 
-csp_frame_ancestors_missing = _create_missing_directive_validator(
+csp_frame_ancestors_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="frame-ancestors",
     success_message="Content-Security-Policy (CSP) frame-ancestors is present",
     error_message="Content-Security-Policy (CSP) frame-ancestors is missing",
 )
 
-csp_report_only_frame_ancestors_missing = _create_missing_directive_validator(
+csp_report_only_frame_ancestors_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="frame-ancestors",
     success_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors is present",
@@ -1057,7 +1033,7 @@ csp_report_only_frame_ancestors_unsafe = _create_allowed_sources_directive_valid
     error_message="Content-Security-Policy-Report-Only (CSP) frame-ancestors allows origins beyond 'none' or 'self'",
 )
 
-csp_frame_src_missing = _create_missing_directive_validator(
+csp_frame_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="frame-src",
     fallback_directives=["child-src", "default-src"],
@@ -1065,7 +1041,7 @@ csp_frame_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) frame-src is missing",
 )
 
-csp_report_only_frame_src_missing = _create_missing_directive_validator(
+csp_report_only_frame_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="frame-src",
     fallback_directives=["child-src", "default-src"],
@@ -1121,7 +1097,7 @@ csp_report_only_frame_src_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) frame-src contains an IP source",
 )
 
-csp_img_src_missing = _create_missing_directive_validator(
+csp_img_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="img-src",
     fallback_directives=["default-src"],
@@ -1129,7 +1105,7 @@ csp_img_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) img-src is missing",
 )
 
-csp_report_only_img_src_missing = _create_missing_directive_validator(
+csp_report_only_img_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="img-src",
     fallback_directives=["default-src"],
@@ -1185,7 +1161,7 @@ csp_report_only_img_src_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) img-src contains an IP source",
 )
 
-csp_manifest_src_missing = _create_missing_directive_validator(
+csp_manifest_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="manifest-src",
     fallback_directives=["default-src"],
@@ -1193,7 +1169,7 @@ csp_manifest_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) manifest-src is missing",
 )
 
-csp_report_only_manifest_src_missing = _create_missing_directive_validator(
+csp_report_only_manifest_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="manifest-src",
     fallback_directives=["default-src"],
@@ -1249,7 +1225,7 @@ csp_report_only_manifest_src_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) manifest-src contains an IP source",
 )
 
-csp_media_src_missing = _create_missing_directive_validator(
+csp_media_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="media-src",
     fallback_directives=["default-src"],
@@ -1257,7 +1233,7 @@ csp_media_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) media-src is missing",
 )
 
-csp_report_only_media_src_missing = _create_missing_directive_validator(
+csp_report_only_media_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="media-src",
     fallback_directives=["default-src"],
@@ -1407,7 +1383,7 @@ csp_report_only_sandbox_allow_same_origin_and_scripts = _create_directive_source
     error_message="Content-Security-Policy-Report-Only (CSP) sandbox allows both scripts and same-origin",
 )
 
-csp_script_src_missing = _create_missing_directive_validator(
+csp_script_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="script-src",
     fallback_directives=["default-src"],
@@ -1415,7 +1391,7 @@ csp_script_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) script-src is missing",
 )
 
-csp_report_only_script_src_missing = _create_missing_directive_validator(
+csp_report_only_script_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="script-src",
     fallback_directives=["default-src"],
@@ -1539,7 +1515,7 @@ csp_report_only_script_src_unsafe_eval = _create_token_absent_directive_validato
     error_message="Content-Security-Policy-Report-Only (CSP) script-src contains 'unsafe-eval'",
 )
 
-csp_script_src_attr_missing = _create_missing_directive_validator(
+csp_script_src_attr_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="script-src-attr",
     fallback_directives=["script-src", "default-src"],
@@ -1547,7 +1523,7 @@ csp_script_src_attr_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) script-src-attr is missing",
 )
 
-csp_report_only_script_src_attr_missing = _create_missing_directive_validator(
+csp_report_only_script_src_attr_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="script-src-attr",
     fallback_directives=["script-src", "default-src"],
@@ -1621,7 +1597,7 @@ csp_report_only_script_src_attr_unsafe_inline = _create_unsafe_inline_directive_
     error_message="Content-Security-Policy-Report-Only (CSP) script-src-attr contains 'unsafe-inline'",
 )
 
-csp_script_src_elem_missing = _create_missing_directive_validator(
+csp_script_src_elem_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="script-src-elem",
     fallback_directives=["script-src", "default-src"],
@@ -1629,7 +1605,7 @@ csp_script_src_elem_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) script-src-elem is missing",
 )
 
-csp_report_only_script_src_elem_missing = _create_missing_directive_validator(
+csp_report_only_script_src_elem_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="script-src-elem",
     fallback_directives=["script-src", "default-src"],
@@ -1703,7 +1679,7 @@ csp_report_only_script_src_elem_unsafe_inline = _create_unsafe_inline_directive_
     error_message="Content-Security-Policy-Report-Only (CSP) script-src-elem contains 'unsafe-inline'",
 )
 
-csp_style_src_missing = _create_missing_directive_validator(
+csp_style_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="style-src",
     fallback_directives=["default-src"],
@@ -1711,7 +1687,7 @@ csp_style_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) style-src is missing",
 )
 
-csp_report_only_style_src_missing = _create_missing_directive_validator(
+csp_report_only_style_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="style-src",
     fallback_directives=["default-src"],
@@ -1799,7 +1775,7 @@ csp_report_only_style_src_source_ip = _create_source_ip_directive_validator(
     error_message="Content-Security-Policy-Report-Only (CSP) style-src contains an IP source",
 )
 
-csp_style_src_attr_missing = _create_missing_directive_validator(
+csp_style_src_attr_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="style-src-attr",
     fallback_directives=["style-src", "default-src"],
@@ -1807,7 +1783,7 @@ csp_style_src_attr_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) style-src-attr is missing",
 )
 
-csp_report_only_style_src_attr_missing = _create_missing_directive_validator(
+csp_report_only_style_src_attr_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="style-src-attr",
     fallback_directives=["style-src", "default-src"],
@@ -1881,7 +1857,7 @@ csp_report_only_style_src_attr_unsafe_inline = _create_unsafe_inline_directive_v
     error_message="Content-Security-Policy-Report-Only (CSP) style-src-attr contains 'unsafe-inline'",
 )
 
-csp_style_src_elem_missing = _create_missing_directive_validator(
+csp_style_src_elem_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="style-src-elem",
     fallback_directives=["style-src", "default-src"],
@@ -1889,7 +1865,7 @@ csp_style_src_elem_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) style-src-elem is missing",
 )
 
-csp_report_only_style_src_elem_missing = _create_missing_directive_validator(
+csp_report_only_style_src_elem_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="style-src-elem",
     fallback_directives=["style-src", "default-src"],
@@ -2023,7 +1999,7 @@ csp_report_only_upgrade_insecure_requests_missing = _create_presence_directive_v
     error_message="Content-Security-Policy-Report-Only (CSP) upgrade-insecure-requests is missing",
 )
 
-csp_worker_src_missing = _create_missing_directive_validator(
+csp_worker_src_missing = _create_presence_directive_validator(
     header=_CSP_HEADER,
     directive="worker-src",
     fallback_directives=["child-src", "script-src", "default-src"],
@@ -2031,7 +2007,7 @@ csp_worker_src_missing = _create_missing_directive_validator(
     error_message="Content-Security-Policy (CSP) worker-src is missing",
 )
 
-csp_report_only_worker_src_missing = _create_missing_directive_validator(
+csp_report_only_worker_src_missing = _create_presence_directive_validator(
     header=_CSP_REPORT_ONLY_HEADER,
     directive="worker-src",
     fallback_directives=["child-src", "script-src", "default-src"],

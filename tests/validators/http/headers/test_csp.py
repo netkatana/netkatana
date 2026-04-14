@@ -831,6 +831,37 @@ async def test_trusted_types_invalid_rejects_none_with_other_value():
 
 
 @pytest.mark.asyncio
+async def test_trusted_types_invalid_rejects_empty_value():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_trusted_types_invalid(Response(200, headers={"content-security-policy": "trusted-types"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) trusted-types value is invalid"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_trusted_types_invalid_rejects_unknown_quoted_keyword():
+    with pytest.raises(ValidationError) as exc_info:
+        await csp_trusted_types_invalid(Response(200, headers={"content-security-policy": "trusted-types 'report'"}))
+
+    assert exc_info.value.message == "Content-Security-Policy (CSP) trusted-types value is invalid"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_trusted_types_invalid_header_absent():
+    assert await csp_trusted_types_invalid(Response(200)) is None
+
+
+@pytest.mark.asyncio
+async def test_trusted_types_invalid_directive_absent():
+    assert (
+        await csp_trusted_types_invalid(Response(200, headers={"content-security-policy": "default-src 'self'"}))
+        is None
+    )
+
+
+@pytest.mark.asyncio
 async def test_trusted_types_allow_duplicates_rejects_keyword():
     with pytest.raises(ValidationError) as exc_info:
         await csp_trusted_types_allow_duplicates(
@@ -858,7 +889,7 @@ async def test_invalid_directive_header_absent():
 
 @pytest.mark.asyncio
 async def test_invalid_directive_valid_names():
-    response = Response(200, headers={"content-security-policy": "default-src 'self'; script-src 'self'"})
+    response = Response(200, headers={"content-security-policy": "default-src 'self'; ; script-src 'self'"})
 
     assert (
         await csp_invalid_directive(response) == "Content-Security-Policy (CSP) directive names are syntactically valid"
@@ -875,6 +906,11 @@ async def test_invalid_directive_invalid_name():
 
 
 @pytest.mark.asyncio
+async def test_unknown_directive_header_absent():
+    assert await csp_unknown_directive(Response(200)) is None
+
+
+@pytest.mark.asyncio
 async def test_unknown_directive_known_names():
     response = Response(200, headers={"content-security-policy": "default-src 'self'; worker-src 'self'"})
 
@@ -888,6 +924,11 @@ async def test_unknown_directive_unknown_name():
 
     assert exc_info.value.message == "Content-Security-Policy (CSP) contains an unknown directive"
     assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_deprecated_directive_global_header_absent():
+    assert await csp_deprecated_directive(Response(200)) is None
 
 
 @pytest.mark.asyncio
