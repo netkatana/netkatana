@@ -12,8 +12,13 @@ from netkatana.validators.http.response import (
 )
 
 
-def _response(status_code: int, url: str, history: list[Response] | None = None) -> Response:
-    response = Response(status_code, request=Request("GET", url))
+def _response(
+    status_code: int,
+    url: str,
+    history: list[Response] | None = None,
+    headers: dict[str, str] | None = None,
+) -> Response:
+    response = Response(status_code, request=Request("GET", url), headers=headers)
     response.history = history or []
     return response
 
@@ -75,6 +80,37 @@ async def test_https_upgrade_redirect_missing_failure_when_final_response_is_htt
         "http://example.com/login",
         history=[_response(301, "http://example.com")],
     )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await https_upgrade_redirect_missing(response)
+
+    assert exc_info.value.message == "HTTP endpoint does not redirect to HTTPS"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_https_upgrade_redirect_missing_success_when_location_targets_https():
+    response = _response(301, "http://example.com", headers={"location": "https://www.example.com/login"})
+
+    message = await https_upgrade_redirect_missing(response)
+
+    assert message == "HTTP endpoint redirects to HTTPS"
+
+
+@pytest.mark.asyncio
+async def test_https_upgrade_redirect_missing_failure_when_location_is_missing():
+    response = _response(301, "http://example.com")
+
+    with pytest.raises(ValidationError) as exc_info:
+        await https_upgrade_redirect_missing(response)
+
+    assert exc_info.value.message == "HTTP endpoint does not redirect to HTTPS"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_https_upgrade_redirect_missing_failure_when_location_is_invalid():
+    response = _response(301, "http://example.com", headers={"location": "http://[::1"})
 
     with pytest.raises(ValidationError) as exc_info:
         await https_upgrade_redirect_missing(response)

@@ -1,3 +1,4 @@
+import httpx
 from httpx import Response
 
 from netkatana.exceptions import ValidationError
@@ -11,6 +12,18 @@ def _redirect_chain(response: Response) -> list[Response]:
 
 def _redirect_schemes(response: Response) -> list[str]:
     return [hop.request.url.scheme for hop in _redirect_chain(response)]
+
+
+def _response_location_scheme(response: Response) -> str | None:
+    location = response.headers.get("location")
+
+    if location is None:
+        return None
+
+    try:
+        return response.request.url.join(location).scheme
+    except httpx.InvalidURL:
+        return None
 
 
 async def status_server_error(response: Response) -> str | None:
@@ -35,7 +48,7 @@ async def https_upgrade_redirect_missing(response: Response) -> str | None:
     if schemes[0] != "http":
         return None
 
-    if response.request.url.scheme != "https":
+    if response.request.url.scheme != "https" and _response_location_scheme(response) != "https":
         raise ValidationError("HTTP endpoint does not redirect to HTTPS")
 
     return "HTTP endpoint redirects to HTTPS"
