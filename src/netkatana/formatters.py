@@ -10,7 +10,7 @@ from netkatana.types import Finding, Severity
 
 _SEVERITY_SYMBOL: dict[Severity, tuple[str, str]] = {
     Severity.PASS: ("P", "bold green"),
-    Severity.NOTICE: ("I", "bold cyan"),
+    Severity.NOTICE: ("N", "bold cyan"),
     Severity.WARNING: ("W", "bold yellow"),
     Severity.CRITICAL: ("C", "bold red"),
 }
@@ -18,12 +18,9 @@ _SEVERITY_SYMBOL: dict[Severity, tuple[str, str]] = {
 _INDENT = "    "
 
 
-class AbstractFormatter(ABC):
-    def __init__(self, show_passed: bool = False) -> None:
-        self._show_passed = show_passed
-
+class Formatter(ABC):
     @abstractmethod
-    def emit(self, finding: Finding) -> None: ...
+    def emit(self, finding: Finding, severities: set[Severity]) -> None: ...
 
     def flush(self) -> None:
         pass
@@ -35,13 +32,12 @@ class AbstractFormatter(ABC):
         self.flush()
 
 
-class VerboseFormatter(AbstractFormatter):
-    def __init__(self, show_passed: bool = False) -> None:
-        super().__init__(show_passed)
+class VerboseFormatter(Formatter):
+    def __init__(self) -> None:
         self._console = Console(highlight=False)
 
-    def emit(self, finding: Finding) -> None:
-        if finding.severity == Severity.PASS and not self._show_passed:
+    def emit(self, finding: Finding, severities: set[Severity]) -> None:
+        if finding.severity not in severities:
             return
 
         symbol, style = _SEVERITY_SYMBOL[finding.severity]
@@ -70,23 +66,19 @@ def _serialize(finding: Finding) -> dict[str, object]:
     }
 
 
-class JsonlFormatter(AbstractFormatter):
-    def __init__(self, show_passed: bool = False) -> None:
-        super().__init__(show_passed)
-
-    def emit(self, finding: Finding) -> None:
-        if finding.severity == Severity.PASS and not self._show_passed:
+class JsonlFormatter(Formatter):
+    def emit(self, finding: Finding, severities: set[Severity]) -> None:
+        if finding.severity not in severities:
             return
         print(json.dumps(_serialize(finding)))
 
 
-class JsonFormatter(AbstractFormatter):
-    def __init__(self, show_passed: bool = False) -> None:
-        super().__init__(show_passed)
+class JsonFormatter(Formatter):
+    def __init__(self) -> None:
         self._findings: list[Finding] = []
 
-    def emit(self, finding: Finding) -> None:
-        if finding.severity == Severity.PASS and not self._show_passed:
+    def emit(self, finding: Finding, severities: set[Severity]) -> None:
+        if finding.severity not in severities:
             return
         self._findings.append(finding)
 
@@ -94,14 +86,13 @@ class JsonFormatter(AbstractFormatter):
         print(json.dumps([_serialize(finding) for finding in self._findings], indent=2))
 
 
-class TableFormatter(AbstractFormatter):
-    def __init__(self, show_passed: bool = False) -> None:
-        super().__init__(show_passed)
+class TableFormatter(Formatter):
+    def __init__(self) -> None:
         self._console = Console(highlight=False)
         self._findings: list[Finding] = []
 
-    def emit(self, finding: Finding) -> None:
-        if finding.severity == Severity.PASS and not self._show_passed:
+    def emit(self, finding: Finding, severities: set[Severity]) -> None:
+        if finding.severity not in severities:
             return
         self._findings.append(finding)
 
