@@ -5,6 +5,14 @@ from netkatana.exceptions import ValidationError
 _LONG_REDIRECT_CHAIN = 2
 
 
+def _redirect_chain(response: Response) -> list[Response]:
+    return [*response.history, response]
+
+
+def _redirect_schemes(response: Response) -> list[str]:
+    return [hop.request.url.scheme for hop in _redirect_chain(response)]
+
+
 async def status_server_error(response: Response) -> str | None:
     if 500 <= response.status_code <= 599:
         raise ValidationError(
@@ -14,12 +22,23 @@ async def status_server_error(response: Response) -> str | None:
     return "Response did not return a server error status"
 
 
-def _redirect_chain(response: Response) -> list[Response]:
-    return [*response.history, response]
+async def https_unsupported(response: Response) -> str | None:
+    if response.extensions.get("netkatana.https.failed", False):
+        raise ValidationError("HTTPS is not supported")
+
+    return "HTTPS is supported"
 
 
-def _redirect_schemes(response: Response) -> list[str]:
-    return [hop.request.url.scheme for hop in _redirect_chain(response)]
+async def https_upgrade_redirect_missing(response: Response) -> str | None:
+    schemes = _redirect_schemes(response)
+
+    if schemes[0] != "http":
+        return None
+
+    if response.request.url.scheme != "https":
+        raise ValidationError("HTTP endpoint does not redirect to HTTPS")
+
+    return "HTTP endpoint redirects to HTTPS"
 
 
 async def redirect_https_downgrade(response: Response) -> str | None:

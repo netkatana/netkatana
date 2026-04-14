@@ -246,6 +246,8 @@ from netkatana.validators.http.headers.general import (
     x_powered_by_disclosure,
 )
 from netkatana.validators.http.response import (
+    https_unsupported,
+    https_upgrade_redirect_missing,
     redirect_chain_long,
     redirect_chain_mixed_schemes,
     redirect_https_downgrade,
@@ -1714,6 +1716,18 @@ http_rules = [
         severity=Severity.WARNING,
         detail="A 5xx response indicates a server-side failure; beyond availability impact, error paths often expose unstable behavior or operational problems worth investigating.",
         validator=status_server_error,
+    ),
+    HttpRule(
+        code="response_https_unsupported",
+        severity=Severity.CRITICAL,
+        detail="Serving the site only over plain HTTP leaves all content and cookies exposed to interception and tampering in transit.",
+        validator=https_unsupported,
+    ),
+    HttpRule(
+        code="response_https_upgrade_redirect_missing",
+        severity=Severity.CRITICAL,
+        detail="Plain HTTP should redirect immediately to HTTPS; otherwise first visits remain vulnerable to downgrade attacks and session exposure before any HSTS policy can take effect.",
+        validator=https_upgrade_redirect_missing,
     ),
     HttpRule(
         code="response_redirect_https_downgrade",

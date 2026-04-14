@@ -15,9 +15,9 @@ uvx netkatana dns example.com
 
 ## Implemented Checks
 
-- HTTP: 245 checks
+- HTTP: 247 checks
 - HTTP headers: 241 checks
-- HTTP response behavior: 4 checks
+- HTTP response behavior: 6 checks
 - CSP: 191 checks
 - HSTS: 7 checks
 - CORS: 6 checks
