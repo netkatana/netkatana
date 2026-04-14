@@ -3,6 +3,8 @@ from httpx import Request, Response
 
 from netkatana.exceptions import ValidationError
 from netkatana.validators.http.response import (
+    https_unsupported,
+    https_upgrade_redirect_missing,
     redirect_chain_long,
     redirect_chain_mixed_schemes,
     redirect_https_downgrade,
@@ -34,6 +36,60 @@ async def test_status_server_error_failure():
 
     assert exc_info.value.message == "Response returned a server error status"
     assert exc_info.value.metadata == {"status_code": "503"}
+
+
+@pytest.mark.asyncio
+async def test_https_unsupported_success():
+    response = _response(200, "https://example.com")
+
+    message = await https_unsupported(response)
+
+    assert message == "HTTPS is supported"
+
+
+@pytest.mark.asyncio
+async def test_https_unsupported_failure():
+    response = _response(200, "http://example.com")
+    response.extensions["netkatana.https.failed"] = True
+
+    with pytest.raises(ValidationError) as exc_info:
+        await https_unsupported(response)
+
+    assert exc_info.value.message == "HTTPS is not supported"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_https_upgrade_redirect_missing_success():
+    response = _response(200, "https://example.com/login", history=[_response(301, "http://example.com")])
+
+    message = await https_upgrade_redirect_missing(response)
+
+    assert message == "HTTP endpoint redirects to HTTPS"
+
+
+@pytest.mark.asyncio
+async def test_https_upgrade_redirect_missing_failure_when_final_response_is_http():
+    response = _response(
+        200,
+        "http://example.com/login",
+        history=[_response(301, "http://example.com")],
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        await https_upgrade_redirect_missing(response)
+
+    assert exc_info.value.message == "HTTP endpoint does not redirect to HTTPS"
+    assert exc_info.value.metadata == {}
+
+
+@pytest.mark.asyncio
+async def test_https_upgrade_redirect_missing_not_applicable_for_https_origin():
+    response = _response(200, "https://example.com")
+
+    message = await https_upgrade_redirect_missing(response)
+
+    assert message is None
 
 
 @pytest.mark.asyncio
