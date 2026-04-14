@@ -1,6 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.14-alpine
 
-COPY --from=projectdiscovery/tlsx /usr/local/bin/tlsx /usr/local/bin/
+# Install tlsx v1.2.2
+COPY --from=projectdiscovery/tlsx@sha256:8a3298106704f50d0ef1049fe70ed26fe1605a9c9cde0064beb1f80071bf4dbc /usr/local/bin/tlsx /usr/local/bin/
 
 ENV UV_PYTHON_DOWNLOADS=never
 ENV UV_PYTHON=python3
