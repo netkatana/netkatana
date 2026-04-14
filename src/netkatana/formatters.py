@@ -83,7 +83,7 @@ class JsonFormatter(Formatter):
         self._findings.append(finding)
 
     def flush(self) -> None:
-        print(json.dumps([_serialize(finding) for finding in self._findings], indent=2))
+        print(json.dumps([_serialize(finding) for finding in self._findings]))
 
 
 class TableFormatter(Formatter):

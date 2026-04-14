@@ -1,6 +1,6 @@
 # Python-generated files
-__pycache__/
-*.py[oc]
+**/__pycache__/
+**/*.py[oc]
 build/
 dist/
 wheels/
@@ -10,6 +10,7 @@ wheels/
 .venv
 
 # Root dirs
+.git/
 .idea/
 .mypy_cache/
 .pytest_cache/
