@@ -7,9 +7,7 @@ authors = [
     { name = "Vlad Dmitrievich", email = "2tunnels@proton.me" }
 ]
 license = "MIT"
-urls = [
-    { source = "https://github.com/netkatana/netkatana" }
-]
+urls = { source = "https://github.com/netkatana/netkatana" }
 classifiers = [
     "Development Status :: 1 - Planning",
     "Environment :: Console",
