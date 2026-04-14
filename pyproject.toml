@@ -6,6 +6,10 @@ readme = "README.md"
 authors = [
     { name = "Vlad Dmitrievich", email = "2tunnels@proton.me" }
 ]
+license = "MIT"
+urls = [
+    { source = "https://github.com/netkatana/netkatana" }
+]
 classifiers = [
     "Development Status :: 1 - Planning",
     "Environment :: Console",
@@ -41,7 +45,7 @@ dev = [
 line-length = 120
 
 [tool.ruff.lint]
-extend-select = ["I","C"]
+extend-select = ["I", "C"]
 
 [project.scripts]
 netkatana = "netkatana.cli:cli"
